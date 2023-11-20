@@ -1,0 +1,12 @@
+:root {
+  --table-border-color: #E6E7EC;
+  --table-text-color: #040B29;
+
+  --table-header-cell-padding: 15px 16px;
+  --table-header-cell-bg: #FAFAFA;
+  --table-header-cell-text-color: var(--table-text-color);
+  --table-header-cell-text-size: 14px;
+
+  --table-body-cell-text-color: var(--table-text-color);
+  --table-body-cell-padding: 16px;
+}

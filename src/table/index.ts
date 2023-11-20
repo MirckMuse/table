@@ -6,6 +6,7 @@ const install: Plugin = (app: App) => {
   app.component(Table.name, Table);
 }
 
-export {
-  install
+export default {
+  install,
+  Table
 }
