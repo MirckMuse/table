@@ -1,7 +1,7 @@
 <script lang="ts">
-import type { VNode } from "vue";
+import type { StyleValue, VNode } from "vue";
 import { PropType, defineComponent, h } from "vue";
-import { TableColumn } from "../../typing";
+import { TableColumn, TableColumnEllipsisObject } from "../../typing";
 import Cell from "./cell.vue";
 
 export default defineComponent({
@@ -12,8 +12,23 @@ export default defineComponent({
   },
 
   setup(props) {
-    function renderCell(column: TableColumn): VNode {
-      return h(Cell, { column })
+    // TODO: 可以考虑做个检测列检测，colSpan 相加和 大于展示行数，提示开发者
+    function renderCell(column: TableColumn): VNode | null {
+      if (typeof column.colSpan === "number" && column.colSpan <= 0) {
+        return null;
+      }
+
+      const style: StyleValue = {};
+
+      if (typeof column.colSpan === "number" && column.colSpan > 0) {
+        style.gridColumn = `span ${column.colSpan}`;
+      }
+
+      return h(Cell, {
+        column,
+        style,
+        ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined
+      })
     }
 
     return () => {

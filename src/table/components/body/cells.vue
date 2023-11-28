@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { StyleValue, VNode } from "vue";
 import { PropType, defineComponent, h } from "vue";
-import { RowData, TableColumn } from "../../typing";
+import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
 import Cell from "./cell.vue"
 
 export default defineComponent({
@@ -26,16 +26,13 @@ export default defineComponent({
           column,
           record,
           isHover,
+          ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined,
           rowIndex,
           "data-col-index": column.dataIndex,
           "data-row-index": rowIndex,
           "data-type": "cell"
         }
       );
-    }
-
-    function renderRow() {
-
     }
 
     return () => {

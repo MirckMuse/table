@@ -9,4 +9,19 @@
 
   --table-body-cell-text-color: var(--table-text-color);
   --table-body-cell-padding: 16px;
+
+  --table-scroll-track: #ededed;
+  --table-scroll-thumb: #737779;
+}
+
+.s-table {
+  &-bordered {
+    border-left: 1px solid var(--table-border-color);
+    border-top: 1px solid var(--table-border-color);
+
+    .s-table-header-cell,
+    .s-table-body-cell {
+      border-right: 1px solid var(--table-border-color);
+    }
+  }
 }

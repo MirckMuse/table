@@ -79,7 +79,10 @@ export class TableState {
   rowMeta: Record<RowMetaKey, RowMeta> = {};
 
   dataSource: RowData[] = [];
+
+  fixedLeftColumns: TableColumn[] = [];
   columns: TableColumn[] = [];
+  fixedRightColumns: TableColumn[] = [];
 
   // TODO: 缓冲行数
   buffer = 10;
@@ -99,8 +102,23 @@ export class TableState {
   }
 
   updateColumns(columns: TableColumn[]) {
-    // TODO: 可以确定列宽？
-    this.columns = columns;
+    const { left, center, right } = columns.reduce<{ left: TableColumn[], right: TableColumn[], center: TableColumn[] }>(
+      (result, column) => {
+        if (column.fixed === true || column.fixed === "left") {
+          result.left.push(column);
+        } else if (column.fixed === "right") {
+          result.right.push(column);
+        } else {
+          result.center.push(column);
+        }
+        return result;
+      },
+      { left: [], right: [], center: [] }
+    )
+
+    this.fixedLeftColumns = left;
+    this.columns = center;
+    this.fixedRightColumns = right;
   }
 
 
@@ -168,7 +186,6 @@ export class TableState {
 
     const lastRowMeta = this.rowMeta[this.rowMetaIndexes[this.rowMetaIndexes.length - 1]];
     lastRowMeta && this.updateBBox(this.bbox.width ?? 0, lastRowMeta.height + lastRowMeta.y)
-    console.log(this.bbox)
   }
 
   // 执行交换两行数据

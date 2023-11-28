@@ -32,3 +32,9 @@ const rootClass = computed(() => {
   ];
 })
 </script>
+
+<style lang="less" scoped>
+.s-table {
+  overscroll-behavior: contain;
+}
+</style>

@@ -1,6 +1,6 @@
 import { createApp } from "vue";
 import TablePlugin from "./table";
-import "./table/style/index.css";
+import "./table/style/index.less";
 
 import App from "./App.vue";
 

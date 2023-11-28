@@ -1,90 +1,79 @@
-<script lang="ts">
-import { Spin as ASpin, Pagination as APagination } from "ant-design-vue";
+<template>
+  <component :is="InteralSpin" v-bind="spinProps">
+    <component v-if="paginationProps.vertical === 'top'" :is="InteralPagination" v-bind="paginationBind"></component>
 
+    <div ref="tableRef" :class="tableClass" :style="tableStyle">
+      <TableHeader ref="tableHeaderRef"></TableHeader>
+      <TableBody ref="tableBodyRef"></TableBody>
+    </div>
+
+    <component v-if="paginationProps.vertical === 'bottom'" :is="InteralPagination" v-bind="paginationBind"></component>
+  </component>
+</template>
+
+<script lang="ts" setup>
+import { Pagination as APagination, Spin as ASpin } from "ant-design-vue";
+
+import { computed, ref } from "vue";
 import { useOverrideInject } from "../context/OverrideContext";
-import { computed, defineComponent, h, ref } from "vue";
-import { TableProps } from "../typing";
 import { usePagination } from "../hooks";
-import TableHeader from "./header/index.vue";
+import { TableProps } from "../typing";
 import TableBody from "./body/index.vue";
+import TableHeader from "./header/index.vue";
+import { useScrollProvide } from "../hooks"
 
-
-// 负责表格的渲染。
-export default defineComponent<TableProps>({
+defineOptions({
   name: "SInteralTable",
+});
 
-  setup(props) {
-    const {
-      spin: overrideSpin,
-      pagination: overridePagination,
-    } = useOverrideInject();
+useScrollProvide();
 
-    // table 相关的属性
-    const tableRef = ref<HTMLElement>();
-    const tableClass = computed(() => {
-      // TODO:
-      return "";
-    });
-    const tableStyle = computed(() => {
-      // TODO:
-      return "";
-    });
+const props = defineProps<TableProps>()
 
-    const tableHeaderRef = ref<any>();
-    const tableBodyRef = ref<any>();
+const {
+  spin: overrideSpin,
+  pagination: overridePagination,
+} = useOverrideInject();
 
-    // Spin 组件相关
-    const Spin = overrideSpin?.component ?? ASpin;
-    const spinProps = computed(() => Object.assign({}, overrideSpin?.props, { spinning: !!props.loading }));
+const prefixClass = "s-table";
 
-    // Pagination 组件相关
-    const Pagination = overridePagination?.component ?? APagination;
-    const {
-      props: paginationProps,
-      onChange: onPaginationChange,
-    } = usePagination(props);
+// table 相关的属性
+const tableRef = ref<HTMLElement>();
+const tableClass = computed(() => {
+  return {
+    [`${prefixClass}-bordered`]: props.bordered
+  };
+});
+const tableStyle = computed(() => {
+  // TODO:
+  return "";
+});
 
-    return () => {
-      const pagination = h(Pagination, {
-        class: `s-pagination s-pagination-${paginationProps.value.horizontal || 'right'}`,
-        onChange: onPaginationChange,
-        onShowSizeChange: onPaginationChange,
-      });
+const tableHeaderRef = ref<any>();
+const tableBodyRef = ref<any>();
 
-      const tableStructure = [];
+// Spin 组件相关
+const InteralSpin = overrideSpin?.component ?? ASpin;
+const spinProps = computed(() => {
+  return Object.assign({}, overrideSpin?.props, { spinning: !!props.loading });
+});
 
-      if (paginationProps.value.vertical === "top") {
-        tableStructure.push(pagination);
-      }
+// Pagination 组件相关
+const InteralPagination = overridePagination?.component ?? APagination;
+const {
+  props: paginationProps,
+  onChange: onPaginationChange,
+} = usePagination(props);
 
-      const tableContent = h(
-        "div",
-        {
-          ref: tableRef,
-          class: tableClass.value,
-          style: tableStyle.value,
-        },
-        [
-          // TODO: 塞入表头结构。
-          h(TableHeader, { ref: tableHeaderRef }),
 
-          // TODO: 塞入表体的结构
-          h(TableBody, { ref: tableBodyRef }),
-        ]
-      );
-
-      tableStructure.push(tableContent);
-
-      const spin = h(Spin, { ...spinProps.value }, tableStructure);
-
-      if (paginationProps.value.vertical === "bottom") {
-        tableStructure.push(pagination);
-      }
-
-      return [
-        spin
-      ]
-    };
-  },
-})
+const paginationBind = computed(() => {
+  return {
+    class: `s-pagination s-pagination-${paginationProps.value.horizontal || 'right'}`,
+    onChange: onPaginationChange,
+    onShowSizeChange: onPaginationChange,
+  }
+});
 </script>
+
+<style lang="less" scoped>
+</style>

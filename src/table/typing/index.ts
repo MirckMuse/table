@@ -17,10 +17,20 @@ export interface TableProps {
   dataSource?: RowData[];
 
   columns?: TableColumn[];
+
+  bordered?: boolean;
 }
 
 
 export type TableColumnTitle = string | (() => string);
+
+export type TableColumnEllipsisObject = { showTitle?: boolean };
+
+export type TableColumnEllipsis = boolean | TableColumnEllipsisObject;
+
+export type TableColumnAlign = 'left' | 'right' | 'center';
+
+export type TableColumnFixed = 'left' | 'right';
 
 /**
  * 表格列配置，key 和dataIndex 至少有一个必填
@@ -30,7 +40,20 @@ export interface TableColumn {
 
   dataIndex?: string;
 
+  align?: TableColumnAlign;
+
   title?: TableColumnTitle;
 
   width?: number | string;
+
+  // 合并单元格
+  colSpan?: number;
+
+  ellipsis?: TableColumnEllipsis;
+
+  fixed?: boolean | TableColumnFixed;
+
+  customCell?: (record: RowData, rowIndex: number, column: TableColumn) => Record<string, any>;
+
+  customHeaderCell?: (column: TableColumn) => Record<string, any>;
 }

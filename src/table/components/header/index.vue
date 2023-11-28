@@ -6,22 +6,27 @@
     :style="headerStyle"
   >
     <div class="s-table-header__inner">
-      <div 
-        v-if="leftColumnsVisible" 
-        class="s-table-header__inner-fixedLeft" 
-        :style="leftStyle"
+      <div
+        ref="headerCenterRef"
+        class="s-table-header__inner-center"
+        :style="centerStyle"
       >
-        <header-cells :columns="leftColumns" />
-      </div>
-
-      <div class="s-table-header__inner-center" :style="centerStyle">
         <header-cells :columns="centerColumns" />
       </div>
 
       <div 
+        v-if="leftColumnsVisible" 
+        class="s-table-header__inner-fixedLeft" 
+        :style="leftStyle"
+        ref="headerLeftRef"
+      >
+        <header-cells :columns="leftColumns" />
+      </div>
+      <div 
         v-if="rightColumnsVisible" 
         class="s-table-header__inner-fixedRight" 
         :style="rightStyle"
+        ref="headerRightRef"
       >
         <header-cells :columns="rightColumns" />
       </div>
@@ -30,9 +35,9 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, ref } from "vue";
+import { StyleValue, computed, defineComponent, ref, shallowReactive, shallowRef } from "vue";
 import HeaderCells from "./cells.vue"
-import { useStateInject } from "../../hooks";
+import { useScrollInject, useStateInject } from "../../hooks";
 
 export default defineComponent({
   name: "STableHeader",
@@ -44,7 +49,14 @@ export default defineComponent({
   setup() {
     const tableState = useStateInject();
 
-    const headerRef = ref<HTMLElement>();
+    const headerCenterRef = shallowRef<HTMLElement>();
+
+    const headerRef = shallowRef<HTMLElement>();
+    const headerLeftRef = shallowRef<HTMLElement>();
+    const headerRightRef = shallowRef<HTMLElement>();
+
+    useScrollInject(headerCenterRef);
+
     const headerClass = computed(() => {
       return [];
     });
@@ -52,31 +64,39 @@ export default defineComponent({
       return {};
     });
 
-    const leftColumns = computed(() => ([]));
+    const leftColumns = computed(() => tableState?.fixedLeftColumns ?? [])
     const leftColumnsVisible = computed(() => leftColumns.value.length);
-    const leftStyle = computed<StyleValue>(() => ({}));
-
-    const centerColumns = computed(() => {
-      return tableState?.columns ?? [];
-    });
-    const centerStyle = computed(() => {
+    const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      style.gridTemplateColumns = centerColumns.value.map(column => column.width ?? '1fr').join(" ");
+      style.gridTemplateColumns = leftColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
       return style;
     });
 
-    const rightColumns = computed(() => ([]));
+    const centerColumns = computed(() => tableState?.columns ?? []);
+    const centerStyle = computed(() => {
+      const style: StyleValue = {};
+      style.paddingLeft = (headerLeftRef.value?.clientWidth ?? 0) + "px";
+      style.paddingRight = (headerRightRef.value?.clientWidth ?? 0) + "px";
+      style.gridTemplateColumns = centerColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+      return style;
+    });
+
+    const rightColumns = computed(() => tableState?.fixedRightColumns ?? [])
     const rightColumnsVisible = computed(() => leftColumns.value.length);
-    const rightStyle = computed<StyleValue>(() => ({}));
+    const rightStyle = computed<StyleValue>(() => {
+      const style: StyleValue = {}
+      style.gridTemplateColumns = leftColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+      return style;
+    });
 
     return {
       headerRef, headerClass, headerStyle,
 
-      leftColumnsVisible, leftColumns, leftStyle,
+      headerLeftRef, leftColumnsVisible, leftColumns, leftStyle,
 
-      centerColumns, centerStyle,
+      headerCenterRef, centerColumns, centerStyle,
 
-      rightColumnsVisible, rightColumns, rightStyle
+      headerRightRef, rightColumnsVisible, rightColumns, rightStyle
     }
   }
 });
@@ -85,8 +105,28 @@ export default defineComponent({
 <style lang="less" scoped>
 
 .s-table-header__inner {
+  position: relative;
+
+  &-fixedLeft {
+    display: grid;
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+  &-fixedRight {
+    display: grid;
+    position: absolute;
+    right: 0;
+    top: 0
+  }
+
   &-center {
     display: grid;
+    overflow-x: auto;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   }
 }
 </style>
