@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { StyleValue, VNode } from "vue";
-import { PropType, defineComponent, h } from "vue";
+import { PropType, defineComponent, h, ref } from "vue";
 import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
 import Cell from "./cell.vue"
 

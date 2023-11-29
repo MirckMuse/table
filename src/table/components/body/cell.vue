@@ -85,6 +85,10 @@ export default defineComponent({
   display: inline-flex;
   min-width: 0;
   align-items: center;
+
+  &:hover{
+    background-color: #F6F7FA;
+  }
   
   &-hover {
     background-color: #F6F7FA;

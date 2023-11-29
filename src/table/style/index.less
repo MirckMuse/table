@@ -10,8 +10,10 @@
   --table-body-cell-text-color: var(--table-text-color);
   --table-body-cell-padding: 16px;
 
-  --table-scroll-track: #ededed;
-  --table-scroll-thumb: #737779;
+  --table-scroll-size: 6px;
+  --table-scroll-radius: 1.5px;
+  --table-scroll-track-bg: #ededed;
+  --table-scroll-thumb-bg: #737779;
 }
 
 .s-table {
@@ -24,4 +26,40 @@
       border-right: 1px solid var(--table-border-color);
     }
   }
+
+  &-fixedLeft {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+
+  &-fixedRight {
+    position: absolute;
+    right: 0;
+    top: 0
+  }
+
+  &-fixedLeft.shadow::after,
+  &-fixedRight.shadow::after {
+    position: absolute;
+    top: 0;
+    bottom: -1px;
+    width: 30px;
+    transition: box-shadow 0.3s;
+    content: "";
+    pointer-events: none;
+  }
+
+  &-fixedLeft.shadow::after {
+    right: 0;
+    transform: translateX(100%);
+    box-shadow: inset 10px 0 8px -8px rgba(5, 5, 5, 0.06);
+  }
+
+  &-fixedRight.shadow::after {
+    left: 0;
+    transform: translateX(-100%);
+    box-shadow: inset -10px 0 8px -8px rgba(5, 5, 5, 0.06);
+  }
+
 }

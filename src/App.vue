@@ -42,6 +42,9 @@ const columns: TableColumn[] = [
   { dataIndex: 'c', title: "第三列" },
   { dataIndex: 'c', title: "第三列" },
   { dataIndex: 'c', title: "第三列" },
+  { dataIndex: 'c', title: "第三列" },
+  { dataIndex: 'c', title: "第三列" },
+  { dataIndex: 'c', title: "第三列" },
   { dataIndex: 'c', title: "第三列-last", fixed: 'right' },
 ];
 </script>

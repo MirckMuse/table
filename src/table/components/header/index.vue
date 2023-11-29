@@ -16,7 +16,8 @@
 
       <div 
         v-if="leftColumnsVisible" 
-        class="s-table-header__inner-fixedLeft" 
+        class="s-table-header__inner-fixedLeft s-table-fixedLeft" 
+        :class="{ 'shadow': scrollLeft > 0 }"
         :style="leftStyle"
         ref="headerLeftRef"
       >
@@ -24,7 +25,8 @@
       </div>
       <div 
         v-if="rightColumnsVisible" 
-        class="s-table-header__inner-fixedRight" 
+        class="s-table-header__inner-fixedRight s-table-fixedRight" 
+        :class="{ 'shadow': scrollLeft < scrollRange }"
         :style="rightStyle"
         ref="headerRightRef"
       >
@@ -37,7 +39,7 @@
 <script lang="ts">
 import { StyleValue, computed, defineComponent, ref, shallowReactive, shallowRef } from "vue";
 import HeaderCells from "./cells.vue"
-import { useScrollInject, useStateInject } from "../../hooks";
+import { useHorizontalScrollInject, useStateInject } from "../../hooks";
 
 export default defineComponent({
   name: "STableHeader",
@@ -55,7 +57,7 @@ export default defineComponent({
     const headerLeftRef = shallowRef<HTMLElement>();
     const headerRightRef = shallowRef<HTMLElement>();
 
-    useScrollInject(headerCenterRef);
+    const { scrollLeft, scrollRange } = useHorizontalScrollInject(headerCenterRef);
 
     const headerClass = computed(() => {
       return [];
@@ -90,6 +92,8 @@ export default defineComponent({
     });
 
     return {
+      scrollLeft, scrollRange,
+
       headerRef, headerClass, headerStyle,
 
       headerLeftRef, leftColumnsVisible, leftColumns, leftStyle,
@@ -107,21 +111,12 @@ export default defineComponent({
 .s-table-header__inner {
   position: relative;
 
-  &-fixedLeft {
-    display: grid;
-    position: absolute;
-    left: 0;
-    top: 0;
-  }
+  &-fixedLeft,
+  &-center,
   &-fixedRight {
     display: grid;
-    position: absolute;
-    right: 0;
-    top: 0
   }
-
   &-center {
-    display: grid;
     overflow-x: auto;
 
     &::-webkit-scrollbar {

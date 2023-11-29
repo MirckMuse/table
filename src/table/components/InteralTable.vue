@@ -20,13 +20,13 @@ import { usePagination } from "../hooks";
 import { TableProps } from "../typing";
 import TableBody from "./body/index.vue";
 import TableHeader from "./header/index.vue";
-import { useScrollProvide } from "../hooks"
+import { useHorizontalScrollProvide } from "../hooks"
 
 defineOptions({
   name: "SInteralTable",
 });
 
-useScrollProvide();
+useHorizontalScrollProvide();
 
 const props = defineProps<TableProps>()
 

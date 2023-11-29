@@ -1,4 +1,31 @@
-// TODO: 未来这里会处理数据的动态获取、交互逻辑等。代码设计可参考 S2
-fn main() {
-    println!("Hello, world!");
+pub struct BBox {
+  width: i32;
+
+  height: i32;
+
+  scroll_width: i32;
+
+  scroll_height: i32;
+}
+
+// TODO:
+pub struct CollMeta {}
+
+// TODO:
+pub struct RowMeta{}
+
+type RowData = Any;
+
+pub struct TableState {
+  bbox: BBox;
+
+  viewport: BBox;
+
+  col_meta: HashMap<String, CollMeta>; 
+
+  row_meta_indexes: Vec[String];
+
+  row_meta: HashMap<String, RowMeta>;
+
+  data_source: Vec<RowData>;
 }

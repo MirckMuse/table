@@ -1,5 +1,4 @@
 <template>
-
   <div
     v-resize:height
     ref="bodyRef"
@@ -28,7 +27,8 @@
       <div
         v-if="leftColumnsVisible"
         ref="bodyLeftRef"
-        class="s-table-body__inner-fixedLeft"
+        class="s-table-body__inner-fixedLeft s-table-fixedLeft"
+        :class="{ 'shadow': scrollLeft > 0 }"
         :style="leftStyle"
       >
         <body-cells
@@ -40,7 +40,8 @@
       <div
         v-if="rightColumnsVisible"
         ref="bodyRightRef"
-        class="s-table-body__inner-fixedRight"
+        class="s-table-body__inner-fixedRight s-table-fixedRight"
+        :class="{ 'shadow': scrollLeft < scrollRange }"
         :style="rightStyle"
       >
         <body-cells 
@@ -50,16 +51,28 @@
         />
       </div>
     </div>
+    
+    <Scrollbar
+      :client="verticalBBox.height" 
+      :content="verticalBBox.scrollHeight"
+      :scroll="scrollTop"
+      :is-vertical="true"
+    />
+
+    <Scrollbar 
+      :client="bbox.width"
+      :content="bbox.scrollWidth"
+      :scroll="scrollLeft"
+    />
   </div>
 </template>
 
 <script lang="ts">
 import { StyleValue, computed, defineComponent, ref, shallowRef } from "vue";
 import { resize } from "../../directives";
-import { useStateInject } from "../../hooks";
+import { useHorizontalScrollInject, useStateInject, useVerticalScrollState } from "../../hooks";
 import BodyCells from "./cells.vue";
-import HorizontalScrollbar from "../scrollbar/horizontal.vue"
-import { useScrollInject } from "../../hooks";
+import Scrollbar from "../scrollbar/index.vue";
 
 export default defineComponent({
   name: "STableBody",
@@ -70,7 +83,7 @@ export default defineComponent({
 
   components: {
     BodyCells,
-    HorizontalScrollbar
+    Scrollbar,
   },
 
   setup() {
@@ -95,11 +108,15 @@ export default defineComponent({
 
     const bodyRef = ref<HTMLElement>();
     const bodyInnerRef = shallowRef<HTMLElement>();
+
+    const { scrollTop, bbox: verticalBBox } = useVerticalScrollState(bodyInnerRef)
     const bodyClass = computed(() => {
       return [];
     });
     const bodyStyle = computed(() => {
-      return {};
+      return {
+        height: "400px"
+      };
     });
 
     const dataSource = computed(() => {
@@ -110,7 +127,7 @@ export default defineComponent({
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
 
-    useScrollInject(bodyCenterRef);
+    const { scrollLeft, scrollRange, bbox } = useHorizontalScrollInject(bodyCenterRef);
 
     const centerColumns = computed(() => tableState?.columns ?? []);
     const centerStyle = computed(() => {
@@ -142,18 +159,9 @@ export default defineComponent({
       hoverRowIndex.value = -1;
     }
 
-    const horizontalScrollbarVisible = computed(() => {
-      if (!bodyCenterRef.value || !bodyInnerRef.value) return false;
-
-      return bodyCenterRef.value.scrollWidth < bodyInnerRef.value.clientWidth;
-    });
-
-    function handleScroll(...args: any) {
-      console.log(args)
-      console.log('handleScroll')
-    }
-
     return {
+      scrollLeft, scrollRange, bbox, scrollTop, verticalBBox,
+
       dataSource,
 
       bodyRef, bodyInnerRef, bodyClass, bodyStyle,
@@ -165,8 +173,6 @@ export default defineComponent({
       centerColumns, centerStyle, bodyCenterRef,
 
       hoverRowIndex, handleMouseenter, handleMouseleave,
-
-      horizontalScrollbarVisible, handleScroll
     }
   }
 });
@@ -174,30 +180,42 @@ export default defineComponent({
 
 <style lang="less" scoped>
 
-.s-table-body__inner {
-  width: 100%;
-  overflow: hidden;
-  
+.s-table-body {
   position: relative;
   transform: translateZ(0);
-
-  &-fixedLeft {
-    display: grid;
-    position: absolute;
-    left: 0;
+  &__scrollbar-vertical {
+    position: fixed;
+    display: inline-block;
+    height: 100%;
+    width: 4px;
+    background-color: red;
     top: 0;
+    right: 0;
   }
-  
+}
+
+.s-table-body__inner {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  position: relative;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  &-fixedLeft,
+  &-center,
   &-fixedRight {
     display: grid;
-    position: absolute;
-    right: 0;
-    top: 0;
   }
 
   &-center {
-    display: grid;
     overflow-x: auto;
+    &::-webkit-scrollbar {
+    display: none;
+  }
   }
 }
 </style>

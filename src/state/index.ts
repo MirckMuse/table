@@ -73,6 +73,7 @@ export class TableState {
   viewport: BBox = { width: 0, height: 0 };
 
   // 表头的元数据，该元数据依据之后一列的配置
+  //  同一行需要高度一致
   colMeta: Record<string, ColMeta> = {};
 
   rowMetaIndexes: RowMetaKey[] = [];
