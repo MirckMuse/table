@@ -35,4 +35,5 @@ function createRunIdleTask() {
 }
 
 // 闲置时执行任务。用于对正确性没那么强的一些任务。
+// 当个任务尽可能耗时小。
 export const runIdleTask = createRunIdleTask();

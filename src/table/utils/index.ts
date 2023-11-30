@@ -14,5 +14,7 @@ export const optimizeScrollXY = (
   return [deltaX * ratio, deltaY * ratio];
 };
 
-export * from "./optimize"
+export * from "./optimize";
+
+export * from "./addEventListener";
 

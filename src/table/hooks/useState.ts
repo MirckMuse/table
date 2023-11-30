@@ -1,15 +1,22 @@
-import { provide, inject, InjectionKey, reactive } from "vue";
+import { isNil } from "lodash-es";
+import { InjectionKey, Ref, inject, provide, ref } from "vue";
 import { TableState } from "../../state";
+import { ColKeySplitWord } from "../config";
 import { TableColumn, TableColumnFixed, TableProps } from "../typing";
-import { isNil } from "lodash-es"
+
+interface ITableContext {
+  tableState: Ref<TableState>;
+
+  handleResizeColumn: (resizedWidth: number, column: TableColumn) => void;
+}
 
 
-const TableStateKey: InjectionKey<TableState> = Symbol("__TableState__");
+const TableStateKey: InjectionKey<ITableContext> = Symbol("__TableState__");
 
 export function useStateProvide(props: TableProps) {
 
   // 标准化列配置信息
-  function standardizationColumn(column: TableColumn) {
+  function standardizationColumn(column: TableColumn, index: number) {
     let ellipsis = column.ellipsis
     if (column.ellipsis && typeof column.ellipsis === 'boolean') {
       ellipsis = { showTitle: true };
@@ -26,16 +33,14 @@ export function useStateProvide(props: TableProps) {
       width = column.width ?? 120;
     }
 
-    if (typeof width === "number") {
-      width = `${width}px`;
-    }
-
-    return Object.assign<TableColumn, TableColumn>(column, {
+    const standardColumn = Object.assign<TableColumn, TableColumn>(column, {
+      key: column.key ?? [column.dataIndex, index].join(ColKeySplitWord),
       ellipsis,
       fixed: fixed,
       width,
-      colSpan: isNil(column.colSpan) ? 1 : column.colSpan
+      colSpan: isNil(column.colSpan) ? 1 : column.colSpan,
     });
+    return standardColumn
   }
 
   function createTableState() {
@@ -46,13 +51,22 @@ export function useStateProvide(props: TableProps) {
     });
   }
 
-  const state = reactive(createTableState())
+  const state = ref(createTableState())
 
+  function handleResizeColumn(resizedWidth: number, column: TableColumn) {
+    props.onResizeColumn?.(resizedWidth, column);
+  }
 
-  provide(TableStateKey, state)
+  provide(TableStateKey, {
+    tableState: state,
+    handleResizeColumn
+  })
 }
 
 export function useStateInject() {
-  return inject(TableStateKey)
+  return inject(TableStateKey, {
+    tableState: ref(new TableState({})),
+    handleResizeColumn: () => { },
+  });
 }
 

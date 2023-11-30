@@ -1,6 +1,6 @@
 <template>
   <div 
-    v-if="content > client" 
+    v-if="content > client + Pixel_Error_Buffer" 
     class="s-table-scroll__track"
     :class="{ 'is-vertical': isVertical }"
     ref="rootRef"
@@ -11,6 +11,9 @@
 
 <script lang="ts" setup>
 import { computed, ref } from "vue";
+
+// 浏览器是向下取整的，会有 1px 的误差
+const Pixel_Error_Buffer = 1;
 
 const props = defineProps({
   client: { type: Number, default: 0 },

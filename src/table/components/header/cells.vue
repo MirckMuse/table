@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { StyleValue, VNode } from "vue";
-import { PropType, defineComponent, h } from "vue";
+import { PropType, defineComponent, h, watch } from "vue";
 import { TableColumn, TableColumnEllipsisObject } from "../../typing";
 import Cell from "./cell.vue";
 
@@ -32,12 +32,8 @@ export default defineComponent({
     }
 
     return () => {
-      const {
-        columns = [],
-      } = props;
-
       // 渲染列，需要考虑表头嵌套的情况
-      return columns.map(col => renderCell(col))
+      return (props.columns ?? []).map(col => renderCell(col))
     };
   }
 })

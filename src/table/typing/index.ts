@@ -6,6 +6,12 @@ export type TablePaginationProps = {
 
 export type RowData = Record<string, unknown>;
 
+export interface TableScroll {
+  x?: number | 'max-content' | '100%' | boolean;
+
+  y?: number | "100%";
+}
+
 /**
  * 表格的参数，提供给 Table.vue 和 InteralTable.vue 使用
  */
@@ -19,6 +25,10 @@ export interface TableProps {
   columns?: TableColumn[];
 
   bordered?: boolean;
+
+  scroll?: TableScroll;
+
+  onResizeColumn?: Function;
 }
 
 
@@ -44,14 +54,22 @@ export interface TableColumn {
 
   title?: TableColumnTitle;
 
+  minWidth?: number;
+
   width?: number | string;
+
+  maxWidth?: number;
 
   // 合并单元格
   colSpan?: number;
 
+  _origin?: TableColumn;
+
   ellipsis?: TableColumnEllipsis;
 
   fixed?: boolean | TableColumnFixed;
+
+  resizable?: boolean;
 
   customCell?: (record: RowData, rowIndex: number, column: TableColumn) => Record<string, any>;
 

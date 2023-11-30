@@ -1,12 +1,15 @@
 <script lang="ts">
 import { PropType, StyleValue, defineComponent, h } from "vue";
 import { TableColumn, TableColumnEllipsisObject } from "../../typing";
+import ResizeHolder from "./ResizeHolder.vue";
 
 export default defineComponent({
   name: "STableHeaderCell",
 
   props: {
     column: { type: Object as PropType<TableColumn> },
+
+    width: { type: [String, Number] },
 
     ellipsis: { type: Object as PropType<TableColumnEllipsisObject> }
   },
@@ -39,9 +42,11 @@ export default defineComponent({
 
       const inner = h("div", { class: cellInnerClass, style: cellInnerStyle }, cellTitle)
 
-      const cellBind = column?.customHeaderCell?.(column) ?? {}
+      const cellBind = column?.customHeaderCell?.(column) ?? {};
 
-      return h('div', { class: cellClass, title, ...cellBind }, inner);
+      const resizeHolder = column?.resizable ? h(ResizeHolder, { column: column }) : null;
+
+      return h('div', { class: cellClass, title, ...cellBind }, [inner, resizeHolder]);
     };
   }
 })
@@ -64,6 +69,7 @@ export default defineComponent({
   display: inline-flex;
   min-width: 0;
   align-items: center;
+  overflow: visible;
 
   &-inner {
     flex: 1;

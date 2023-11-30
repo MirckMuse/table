@@ -1,7 +1,7 @@
 <script lang="ts">
 import { PropType, StyleValue, defineComponent, h, onMounted, ref } from "vue";
 import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
-import { useStateInject } from "../../hooks";
+import { SelectionState, useStateInject } from "../../hooks";
 import { get } from "lodash-es";
 
 export default defineComponent({
@@ -16,18 +16,22 @@ export default defineComponent({
 
     isHover: { type: Boolean },
 
+    selectionState: { type: Object as PropType<SelectionState>, required: true },
+
     ellipsis: { type: Object as PropType<TableColumnEllipsisObject> }
   },
 
   setup(props) {
 
     const cellRef = ref<HTMLElement>();
-    const tableState = useStateInject();
+    const {
+      tableState
+    } = useStateInject();
 
     onMounted(() => {
       if (!cellRef.value) return;
 
-      tableState?.updateRowMeta(props.rowIndex ?? -1, cellRef.value.getBoundingClientRect().height);
+      tableState.value.updateRowMeta(props.rowIndex ?? -1, cellRef.value.getBoundingClientRect().height);
     })
     function getText(column?: TableColumn, record?: RowData): unknown | null {
       if (!column?.dataIndex) return null;
@@ -37,12 +41,54 @@ export default defineComponent({
 
     const prefixClass = "s-table-body-cell";
 
+    function getSelectionClass() {
+      const {
+        column,
+        selectionState,
+        rowIndex
+      } = props
+
+      const { colKeys, startRowIndex, endRowIndex } = selectionState;
+      if (!colKeys.length || startRowIndex === -1 || endRowIndex === -1) {
+        return {}
+      }
+
+      if (column.key && colKeys.includes(column.key) && startRowIndex <= rowIndex && rowIndex <= endRowIndex) {
+        const clas: Record<string, boolean> = {
+          [`${prefixClass}-selection`]: true,
+        }
+
+        if (colKeys[0] === column.key) {
+          clas[`${prefixClass}-selection__left`] = true
+        }
+        if (colKeys[colKeys.length - 1] === column.key) {
+          clas[`${prefixClass}-selection__right`] = true
+        }
+        if (startRowIndex === rowIndex) {
+          clas[`${prefixClass}-selection__top`] = true
+        }
+        if (endRowIndex === rowIndex) {
+          clas[`${prefixClass}-selection__bottom`] = true
+        }
+        return clas
+      }
+
+      return {}
+    }
+
     return () => {
-      const { record, column, isHover, ellipsis, rowIndex } = props
+      const {
+        record,
+        column,
+        isHover,
+        ellipsis,
+        rowIndex,
+      } = props
 
       const cellClass = {
         [prefixClass]: true,
         [`${prefixClass}-hover`]: isHover,
+        ...getSelectionClass(),
       }
 
       const cellInnerClass = {
@@ -69,8 +115,25 @@ export default defineComponent({
 </script>
 
 <style lang="less" scoped>
+
+.s-table-body-cell-selection.s-table-body-cell-selection {
+  &__left {
+    border-left-color: var(--table-body-cell-border-color-selection);
+  } 
+  &__right {
+    border-right-color: var(--table-body-cell-border-color-selection);
+  }
+  &__top {
+    border-top-color: var(--table-body-cell-border-color-selection);
+  } 
+  &__bottom {
+    border-bottom-color: var(--table-body-cell-border-color-selection);
+  }
+}
+
 .s-table-body-cell {
-  border-bottom: 1px solid var(--table-border-color);
+  border: 1px solid transparent;
+  border-bottom-color: var(--table-border-color);
   font-style: normal;
   font-weight: 400;
   position: relative;
@@ -85,13 +148,14 @@ export default defineComponent({
   display: inline-flex;
   min-width: 0;
   align-items: center;
-
-  &:hover{
-    background-color: #F6F7FA;
-  }
+  user-select: none;
   
   &-hover {
-    background-color: #F6F7FA;
+    background-color: var(--table-body-cell-bg-hover);
+  }
+
+  &-selection {
+    background-color: var(--table-body-cell-bg-selection);
   }
 
   &-inner {

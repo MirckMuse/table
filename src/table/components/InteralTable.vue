@@ -4,7 +4,7 @@
 
     <div ref="tableRef" :class="tableClass" :style="tableStyle">
       <TableHeader ref="tableHeaderRef"></TableHeader>
-      <TableBody ref="tableBodyRef"></TableBody>
+      <TableBody ref="tableBodyRef" style="flex: 1; min-height: 0;"></TableBody>
     </div>
 
     <component v-if="paginationProps.vertical === 'bottom'" :is="InteralPagination" v-bind="paginationBind"></component>
@@ -14,13 +14,15 @@
 <script lang="ts" setup>
 import { Pagination as APagination, Spin as ASpin } from "ant-design-vue";
 
-import { computed, ref } from "vue";
+import { StyleValue, computed, ref } from "vue";
 import { useOverrideInject } from "../context/OverrideContext";
 import { usePagination } from "../hooks";
 import { TableProps } from "../typing";
 import TableBody from "./body/index.vue";
 import TableHeader from "./header/index.vue";
-import { useHorizontalScrollProvide } from "../hooks"
+import { useHorizontalScrollProvide, useSelectionProvide } from "../hooks"
+
+useSelectionProvide();
 
 defineOptions({
   name: "SInteralTable",
@@ -41,12 +43,16 @@ const prefixClass = "s-table";
 const tableRef = ref<HTMLElement>();
 const tableClass = computed(() => {
   return {
+    [`${prefixClass}-interal`]: true,
     [`${prefixClass}-bordered`]: props.bordered
   };
 });
-const tableStyle = computed(() => {
-  // TODO:
-  return "";
+const tableStyle = computed<StyleValue>(() => {
+  const { y } = props.scroll || {};
+
+  return {
+    height: typeof y ? `${y}px` : y,
+  };
 });
 
 const tableHeaderRef = ref<any>();
@@ -76,4 +82,8 @@ const paginationBind = computed(() => {
 </script>
 
 <style lang="less" scoped>
+.s-table-interal {
+  display: flex;
+  flex-direction: column;
+}
 </style>

@@ -37,7 +37,7 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, ref, shallowReactive, shallowRef } from "vue";
+import { StyleValue, computed, defineComponent, ref, shallowReactive, shallowRef, triggerRef, watch } from "vue";
 import HeaderCells from "./cells.vue"
 import { useHorizontalScrollInject, useStateInject } from "../../hooks";
 
@@ -49,7 +49,9 @@ export default defineComponent({
   },
 
   setup() {
-    const tableState = useStateInject();
+    const {
+      tableState
+    } = useStateInject();
 
     const headerCenterRef = shallowRef<HTMLElement>();
 
@@ -66,28 +68,48 @@ export default defineComponent({
       return {};
     });
 
-    const leftColumns = computed(() => tableState?.fixedLeftColumns ?? [])
+    const leftColumns = computed(() => tableState.value.fixedLeftColumns ?? [])
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      style.gridTemplateColumns = leftColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+      style.gridTemplateColumns = leftColumns.value.map(column => {
+        let width = column.width;
+        if (typeof width === "number") {
+          width = `${width}px`;
+        }
+        return width ?? 'minmax(120px, 1fr)'
+      }).join(" ");
       return style;
     });
 
-    const centerColumns = computed(() => tableState?.columns ?? []);
+    const centerColumns = computed(() => tableState.value.columns ?? []);
     const centerStyle = computed(() => {
       const style: StyleValue = {};
       style.paddingLeft = (headerLeftRef.value?.clientWidth ?? 0) + "px";
       style.paddingRight = (headerRightRef.value?.clientWidth ?? 0) + "px";
-      style.gridTemplateColumns = centerColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+
+      style.gridTemplateColumns = centerColumns.value.map(column => {
+        let width = column.width;
+        if (typeof width === "number") {
+          width = `${width}px`;
+        }
+        return width ?? 'minmax(120px, 1fr)'
+      }).join(" ");
       return style;
     });
 
-    const rightColumns = computed(() => tableState?.fixedRightColumns ?? [])
+
+    const rightColumns = computed(() => tableState.value.fixedRightColumns ?? [])
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      style.gridTemplateColumns = leftColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+      style.gridTemplateColumns = rightColumns.value.map(column => {
+        let width = column.width;
+        if (typeof width === "number") {
+          width = `${width}px`;
+        }
+        return width ?? 'minmax(120px, 1fr)'
+      }).join(" ");
       return style;
     });
 

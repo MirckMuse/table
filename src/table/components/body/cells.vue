@@ -1,8 +1,9 @@
 <script lang="ts">
 import type { StyleValue, VNode } from "vue";
-import { PropType, defineComponent, h, ref } from "vue";
+import { PropType, defineComponent, h } from "vue";
 import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
-import Cell from "./cell.vue"
+import Cell from "./cell.vue";
+import { useSelectionInject } from "../../hooks"
 
 export default defineComponent({
   name: "STableBodyCells",
@@ -18,6 +19,8 @@ export default defineComponent({
   },
 
   setup(props) {
+    const { selection_state } = useSelectionInject();
+
     function renderCell(column: TableColumn, record: RowData, rowIndex: number): VNode {
       const isHover = props.hoverRowIndex === rowIndex;
       return h(
@@ -28,6 +31,7 @@ export default defineComponent({
           isHover,
           ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined,
           rowIndex,
+          selectionState: selection_state,
           "data-col-index": column.dataIndex,
           "data-row-index": rowIndex,
           "data-type": "cell"

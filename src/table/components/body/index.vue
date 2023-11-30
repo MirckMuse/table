@@ -87,21 +87,35 @@ export default defineComponent({
   },
 
   setup() {
-    const tableState = useStateInject();
+    const {
+      tableState
+    } = useStateInject();
 
-    const leftColumns = computed(() => tableState?.fixedLeftColumns ?? [])
+    const leftColumns = computed(() => tableState.value.fixedLeftColumns ?? [])
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      style.gridTemplateColumns = leftColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+      style.gridTemplateColumns = leftColumns.value.map(column => {
+        let width = column.width;
+        if (typeof width === "number") {
+          width = `${width}px`;
+        }
+        return width ?? 'minmax(120px, 1fr)'
+      }).join(" ");
       return style;
     });
 
-    const rightColumns = computed(() => tableState?.fixedRightColumns ?? [])
+    const rightColumns = computed(() => tableState.value.fixedRightColumns ?? [])
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      style.gridTemplateColumns = leftColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+      style.gridTemplateColumns = rightColumns.value.map(column => {
+        let width = column.width;
+        if (typeof width === "number") {
+          width = `${width}px`;
+        }
+        return width ?? 'minmax(120px, 1fr)'
+      }).join(" ");
       return style;
     });
 
@@ -115,12 +129,11 @@ export default defineComponent({
     });
     const bodyStyle = computed(() => {
       return {
-        height: "400px"
       };
     });
 
     const dataSource = computed(() => {
-      return tableState?.dataSource ?? [];
+      return tableState.value.dataSource ?? [];
     });
 
     const bodyLeftRef = shallowRef<HTMLElement>();
@@ -129,12 +142,19 @@ export default defineComponent({
 
     const { scrollLeft, scrollRange, bbox } = useHorizontalScrollInject(bodyCenterRef);
 
-    const centerColumns = computed(() => tableState?.columns ?? []);
+    const centerColumns = computed(() => tableState.value.columns ?? []);
     const centerStyle = computed(() => {
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftRef.value?.clientWidth ?? 0) + 'px'
       style.paddingRight = (bodyRightRef.value?.clientWidth ?? 0) + 'px'
-      style.gridTemplateColumns = centerColumns.value.map(column => column.width ?? 'minmax(120px, 1fr)').join(" ");
+
+      style.gridTemplateColumns = centerColumns.value.map(column => {
+        let width = column.width;
+        if (typeof width === "number") {
+          width = `${width}px`;
+        }
+        return width ?? 'minmax(120px, 1fr)'
+      }).join(" ");
       return style;
     });
 
@@ -160,7 +180,8 @@ export default defineComponent({
     }
 
     return {
-      scrollLeft, scrollRange, bbox, scrollTop, verticalBBox,
+      scrollLeft, scrollRange, bbox, verticalBBox,
+      scrollTop: computed(() => scrollTop.value),
 
       dataSource,
 
