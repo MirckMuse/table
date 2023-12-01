@@ -16,19 +16,16 @@ import { Pagination as APagination, Spin as ASpin } from "ant-design-vue";
 
 import { StyleValue, computed, ref } from "vue";
 import { useOverrideInject } from "../context/OverrideContext";
-import { usePagination } from "../hooks";
+import { usePagination, useSelectionProvide } from "../hooks";
 import { TableProps } from "../typing";
 import TableBody from "./body/index.vue";
 import TableHeader from "./header/index.vue";
-import { useHorizontalScrollProvide, useSelectionProvide } from "../hooks"
 
 useSelectionProvide();
 
 defineOptions({
   name: "SInteralTable",
 });
-
-useHorizontalScrollProvide();
 
 const props = defineProps<TableProps>()
 

@@ -11,13 +11,13 @@
         class="s-table-header__inner-center"
         :style="centerStyle"
       >
-        <header-cells :columns="centerColumns" />
+        <header-cells :columns="centerColumns" type="center" />
       </div>
 
       <div 
         v-if="leftColumnsVisible" 
         class="s-table-header__inner-fixedLeft s-table-fixedLeft" 
-        :class="{ 'shadow': scrollLeft > 0 }"
+        :class="{ 'shadow': scroll.left > 0 }"
         :style="leftStyle"
         ref="headerLeftRef"
       >
@@ -26,7 +26,7 @@
       <div 
         v-if="rightColumnsVisible" 
         class="s-table-header__inner-fixedRight s-table-fixedRight" 
-        :class="{ 'shadow': scrollLeft < scrollRange }"
+        :class="{ 'shadow': scroll.left < maxXMove }"
         :style="rightStyle"
         ref="headerRightRef"
       >
@@ -37,9 +37,9 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, ref, shallowReactive, shallowRef, triggerRef, watch } from "vue";
-import HeaderCells from "./cells.vue"
-import { useHorizontalScrollInject, useStateInject } from "../../hooks";
+import { StyleValue, computed, defineComponent, shallowRef } from "vue";
+import { useStateInject, useTableHeaderScroll } from "../../hooks";
+import HeaderCells from "./cells.vue";
 
 export default defineComponent({
   name: "STableHeader",
@@ -59,7 +59,10 @@ export default defineComponent({
     const headerLeftRef = shallowRef<HTMLElement>();
     const headerRightRef = shallowRef<HTMLElement>();
 
-    const { scrollLeft, scrollRange } = useHorizontalScrollInject(headerCenterRef);
+    useTableHeaderScroll(
+      headerCenterRef,
+      tableState
+    );
 
     const headerClass = computed(() => {
       return [];
@@ -113,8 +116,12 @@ export default defineComponent({
       return style;
     });
 
+    const scroll = computed(() => tableState.value.scroll);
+
+    const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);
+
     return {
-      scrollLeft, scrollRange,
+      scroll, maxXMove,
 
       headerRef, headerClass, headerStyle,
 

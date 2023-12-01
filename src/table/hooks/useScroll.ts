@@ -1,17 +1,7 @@
-import { useResizeObserver, useScroll } from "@vueuse/core";
-import { ComponentInternalInstance, InjectionKey, Ref, computed, getCurrentInstance, inject, onMounted, provide, ref, watch } from "vue";
-import { runIdleTask } from "../utils";
-
-interface IScrollContext {
-  // 横向滚动距离
-  scrollLeft: Ref<number>;
-
-  // 注册需要同步滚动的元素
-  registerElement: (instance: ComponentInternalInstance, el: HTMLElement) => void;
-
-  // 同步滚动
-  syncScroll: (instance: ComponentInternalInstance | null) => void;
-}
+import { useResizeObserver } from "@vueuse/core";
+import { Ref, computed, onMounted, ref } from "vue";
+import { TableState } from "../../state";
+import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";
 
 type BBox = {
   width: number;
@@ -23,7 +13,10 @@ type BBox = {
   scrollHeight: number;
 }
 
-export function useBBox(element: Ref<HTMLElement | undefined>) {
+export function useBBox(
+  element: Ref<HTMLElement | undefined>,
+  callback?: (el: HTMLElement) => void
+) {
   const bbox = ref<BBox>({
     width: 0,
     height: 0,
@@ -33,6 +26,7 @@ export function useBBox(element: Ref<HTMLElement | undefined>) {
 
   useResizeObserver(element as any, (entities) => {
     const el = entities[0].target
+    callback?.(el as HTMLElement);
     const {
       clientWidth: width,
       clientHeight: height,
@@ -45,94 +39,105 @@ export function useBBox(element: Ref<HTMLElement | undefined>) {
   return { bbox }
 }
 
-const Horizontal_Scroll_Context_Key: InjectionKey<IScrollContext> = Symbol("__scroll_context_key__");
+export function useTableHeaderScroll(
+  tableCenerHeader: Ref<HTMLElement | undefined>,
+  tableState: Ref<TableState>,
+) {
+  useBBox(tableCenerHeader, (el) => {
+    const { offsetWidth, scrollWidth } = el;
+    tableState.value.viewport.width = offsetWidth;
+    tableState.value.viewport.scrollWidth = scrollWidth;
+  }); // 计算水平方向的宽度和滚动宽度;
 
-export function useHorizontalScrollProvide() {
-  const syncElementWeakMap = new WeakMap<any, HTMLElement>();
-
-  const scrollLeft = ref(0);
-
-  function registerElement(instance: ComponentInternalInstance, el: HTMLElement) {
-    syncElementWeakMap.set(instance, el);
-
-    el.addEventListener("scroll", onScroll)
-  }
-
-  let scrollingElement: HTMLElement | null = null;
-
-  let timer: number | null = null;
-
-  const onScroll = function ($event: Event) {
-    if (timer) {
-      window.clearTimeout(timer);
-    }
-
-    scrollingElement = $event.currentTarget as HTMLElement;
-    scrollLeft.value = scrollingElement.scrollLeft;
-
-    timer = window.setTimeout(() => {
-      scrollingElement = null;
-    });
-  }
-
-  // 同步滚动条
-  function syncScroll(instance: ComponentInternalInstance | null) {
-    if (!instance) return;
-
-    const element = syncElementWeakMap.get(instance)
-    if (!element) return;
-
-    if (scrollingElement && (element === scrollingElement || element.contains(scrollingElement))) {
-      return;
-    };
-    const tempScrollLeft = scrollingElement?.scrollLeft;
-
-    runIdleTask(() => {
-      element.scrollTo({ left: tempScrollLeft ?? scrollLeft.value });
-    });
-  }
-
-
-  provide(Horizontal_Scroll_Context_Key, {
-    scrollLeft,
-    registerElement,
-    syncScroll
-  });
-}
-
-export function useHorizontalScrollInject(syncElement: Ref<HTMLElement | undefined>) {
-  const instance = getCurrentInstance();
-
-  const {
-    scrollLeft,
-    registerElement,
-    syncScroll
-  } = inject(Horizontal_Scroll_Context_Key, { scrollLeft: ref(0), registerElement() { }, syncScroll() { } });
-
-  const { bbox } = useBBox(syncElement);
-
-  const scrollRange = computed(() => {
-    const { scrollWidth, width } = bbox.value;
-    return Math.max(0, scrollWidth - width)
-  });
-
-  watch(scrollLeft, () => syncScroll(instance));
+  const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);
 
   onMounted(() => {
-    if (!instance || !syncElement.value) return;
+    if (!tableCenerHeader.value) return;
 
-    registerElement(instance, syncElement.value);
+    tableCenerHeader.value.addEventListener("wheel", processWheel)
   })
 
-  return {
-    scrollLeft, scrollRange, bbox
+  const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
+    const { deltaX } = $event;
+
+    let { left: scrollLeft } = tableState.value.scroll;
+
+    scrollLeft = Math.max(
+      0,
+      Math.min(scrollLeft + deltaX, maxXMove.value)
+    );
+
+    Object.assign(tableState.value.scroll, { left: scrollLeft });
+  });
+
+  function processWheel($event: WheelEvent) {
+    $event.preventDefault();
+
+    animationWheel($event);
   }
 }
 
-export function useVerticalScrollState(element: Ref<HTMLElement | undefined>) {
-  const { y: scrollTop } = useScroll(element as any);
+export function useTableBodyScroll(
+  tableInnerBody: Ref<HTMLElement | undefined>,
+  tableState: Ref<TableState>,
+) {
+  useBBox(tableInnerBody, (el) => {
+    const { offsetHeight, scrollHeight } = el;
+    tableState.value.viewport.height = offsetHeight;
+    tableState.value.viewport.scrollHeight = scrollHeight;
+  }); // 计算垂直
 
-  const { bbox } = useBBox(element);
+  const maxMove = computed(() => {
+    const {
+      width,
+      height,
+      scrollHeight,
+      scrollWidth
+    } = tableState.value.viewport;
 
-  return { scrollTop, bbox }
+
+    return {
+      x: Math.max(0, scrollWidth - width),
+      y: Math.max(0, scrollHeight - height),
+    }
+  });
+  let wheelLock = false;
+
+  const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
+    const { deltaX, deltaY } = $event;
+
+    const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
+
+    let {
+      left: scrollLeft,
+      top: scrollTop
+    } = tableState.value.scroll;
+
+    scrollTop = Math.max(
+      0,
+      Math.min(scrollTop + optimizeY, maxMove.value.y)
+    );
+    scrollLeft = Math.max(
+      0,
+      Math.min(scrollLeft + optimizeX, maxMove.value.x)
+    );
+
+    Object.assign(tableState.value.scroll, {
+      left: scrollLeft,
+      top: scrollTop
+    });
+  });
+
+  const processWheel = ($event: WheelEvent) => {
+    $event.preventDefault();
+
+    animationWheel($event);
+  }
+
+  onMounted(() => {
+    if (!tableInnerBody.value) return;
+
+    tableInnerBody.value.addEventListener("wheel", processWheel)
+  })
 }
+

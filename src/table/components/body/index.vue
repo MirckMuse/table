@@ -21,6 +21,7 @@
           :columns="centerColumns" 
           :data-source="dataSource" 
           :hover-row-index="hoverRowIndex"
+          type="center"
         />
       </div>
 
@@ -28,7 +29,7 @@
         v-if="leftColumnsVisible"
         ref="bodyLeftRef"
         class="s-table-body__inner-fixedLeft s-table-fixedLeft"
-        :class="{ 'shadow': scrollLeft > 0 }"
+        :class="{ 'shadow': scroll.left > 0 }"
         :style="leftStyle"
       >
         <body-cells
@@ -41,7 +42,7 @@
         v-if="rightColumnsVisible"
         ref="bodyRightRef"
         class="s-table-body__inner-fixedRight s-table-fixedRight"
-        :class="{ 'shadow': scrollLeft < scrollRange }"
+        :class="{ 'shadow': scroll.left < maxXMove }"
         :style="rightStyle"
       >
         <body-cells 
@@ -53,16 +54,16 @@
     </div>
     
     <Scrollbar
-      :client="verticalBBox.height" 
-      :content="verticalBBox.scrollHeight"
-      :scroll="scrollTop"
+      :client="viewport.height" 
+      :content="viewport.scrollHeight"
+      :scroll="scroll.top"
       :is-vertical="true"
     />
 
     <Scrollbar 
-      :client="bbox.width"
-      :content="bbox.scrollWidth"
-      :scroll="scrollLeft"
+      :client="viewport.width"
+      :content="viewport.scrollWidth"
+      :scroll="scroll.left"
     />
   </div>
 </template>
@@ -70,9 +71,9 @@
 <script lang="ts">
 import { StyleValue, computed, defineComponent, ref, shallowRef } from "vue";
 import { resize } from "../../directives";
-import { useHorizontalScrollInject, useStateInject, useVerticalScrollState } from "../../hooks";
-import BodyCells from "./cells.vue";
+import { useStateInject, useTableBodyScroll } from "../../hooks";
 import Scrollbar from "../scrollbar/index.vue";
+import BodyCells from "./cells.vue";
 
 export default defineComponent({
   name: "STableBody",
@@ -87,9 +88,7 @@ export default defineComponent({
   },
 
   setup() {
-    const {
-      tableState
-    } = useStateInject();
+    const { tableState } = useStateInject();
 
     const leftColumns = computed(() => tableState.value.fixedLeftColumns ?? [])
     const leftColumnsVisible = computed(() => leftColumns.value.length);
@@ -123,7 +122,8 @@ export default defineComponent({
     const bodyRef = ref<HTMLElement>();
     const bodyInnerRef = shallowRef<HTMLElement>();
 
-    const { scrollTop, bbox: verticalBBox } = useVerticalScrollState(bodyInnerRef)
+    const viewport = computed(() => tableState.value.viewport)
+    const scroll = computed(() => tableState.value.scroll)
     const bodyClass = computed(() => {
       return [];
     });
@@ -140,14 +140,13 @@ export default defineComponent({
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
 
-    const { scrollLeft, scrollRange, bbox } = useHorizontalScrollInject(bodyCenterRef);
+    useTableBodyScroll(bodyInnerRef, tableState);
 
     const centerColumns = computed(() => tableState.value.columns ?? []);
     const centerStyle = computed(() => {
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftRef.value?.clientWidth ?? 0) + 'px'
       style.paddingRight = (bodyRightRef.value?.clientWidth ?? 0) + 'px'
-
       style.gridTemplateColumns = centerColumns.value.map(column => {
         let width = column.width;
         if (typeof width === "number") {
@@ -179,9 +178,12 @@ export default defineComponent({
       hoverRowIndex.value = -1;
     }
 
+    const maxXMove = computed(() => {
+      return viewport.value.scrollWidth - viewport.value.width;
+    })
+
     return {
-      scrollLeft, scrollRange, bbox, verticalBBox,
-      scrollTop: computed(() => scrollTop.value),
+      scroll, viewport, maxXMove,
 
       dataSource,
 
@@ -218,9 +220,8 @@ export default defineComponent({
 .s-table-body__inner {
   width: 100%;
   height: 100%;
-  overflow-x: hidden;
+  overflow: hidden;
   position: relative;
-  overflow-y: auto;
 
   &::-webkit-scrollbar {
     display: none;
@@ -233,10 +234,7 @@ export default defineComponent({
   }
 
   &-center {
-    overflow-x: auto;
-    &::-webkit-scrollbar {
-    display: none;
-  }
+    overflow: hidden;
   }
 }
 </style>

@@ -27,9 +27,9 @@ export type ColMeta = {
 };
 
 export type Scroll = {
-  x?: number;
+  left: number;
 
-  y?: number,
+  top: number,
 }
 
 export interface ITableStateOption {
@@ -58,19 +58,25 @@ export type BBox = {
   width: number,
 
   height: number,
+
+  scrollWidth: number,
+
+  scrollHeight: number,
 }
 
 export class TableState {
   // 表格的高度和宽度。
   //    宽度：所有列配置的宽度合
   //    高度：所有行的高度之和 + 表头的高度
-  bbox: BBox = { width: 0, height: 0 };
+  bbox: BBox = { width: 0, height: 0, scrollWidth: 0, scrollHeight: 0 };
 
   // 数据可视区域的高度和宽度
   //    宽度：表格容器的可见宽度
   //    高度：如果表头固定：容器高度 - 表头高度。 否则：
   //      容器高度。
-  viewport: BBox = { width: 0, height: 0 };
+  viewport: BBox = { width: 0, height: 0, scrollWidth: 0, scrollHeight: 0 };
+
+  scroll: Scroll = { left: 0, top: 0 };
 
   // 表头的元数据，该元数据依据之后一列的配置
   //  同一行需要高度一致
