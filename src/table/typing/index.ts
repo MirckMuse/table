@@ -63,15 +63,31 @@ export interface TableColumn {
   // 合并单元格
   colSpan?: number;
 
-  _origin?: TableColumn;
-
   ellipsis?: TableColumnEllipsis;
 
   fixed?: boolean | TableColumnFixed;
 
   resizable?: boolean;
 
+  children?: TableColumn[];
+
   customCell?: (record: RowData, rowIndex: number, column: TableColumn) => Record<string, any>;
 
   customHeaderCell?: (column: TableColumn) => Record<string, any>;
+
+  _origin?: TableColumn;
+
+  _s_meta?: TableColumnMeta;
+
+  _s_parent?: TableColumn;
+}
+
+export interface TableColumnMeta {
+  deep?: number;
+
+  colSpan?: number;
+
+  rowSpan?: number;
+
+  isLast?: boolean;
 }

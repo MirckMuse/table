@@ -35,7 +35,7 @@ const columns = ref<TableColumn[]>([
   },
   {
     dataIndex: 'b',
-    title: "第二列很高的肌肤徕卡减肥",
+    title: "一段长文案长文案长文案长文案长文案长文案长文案长文案",
     ellipsis: true,
     fixed: true
   },
@@ -47,15 +47,20 @@ const columns = ref<TableColumn[]>([
       return { style: "color: red" }
     }
   },
-  { dataIndex: 'c', title: "第三列", colSpan: 0 },
-  { dataIndex: 'c', title: "第三列", resizable: true },
-  { dataIndex: 'c', title: "第三列" },
-  { dataIndex: 'c', title: "第三列" },
-  { dataIndex: 'c', title: "第三列" },
-  { dataIndex: 'c', title: "第三列" },
-  { dataIndex: 'c', title: "第三列" },
-  { dataIndex: 'c', title: "第三列" },
-  { dataIndex: 'c', title: "第三列" },
+  { dataIndex: 'c', title: "第三列-1", colSpan: 0 },
+  {
+    title: "分组",
+    children: [
+      { dataIndex: 'c', title: "第三列-2" },
+      { dataIndex: 'c', title: "第三列-3", resizable: true, maxWidth: 200, minWidth: 100 },
+    ]
+  },
+  { dataIndex: 'c', title: "第三列-4" },
+  { dataIndex: 'c', title: "第三列-5" },
+  { dataIndex: 'c', title: "第三列-6" },
+  { dataIndex: 'c', title: "第三列-7" },
+  { dataIndex: 'c', title: "第三列-8" },
+  { dataIndex: 'c', title: "第三列-9" },
   { dataIndex: 'c', title: "第三列-last", fixed: 'right' },
 ]);
 </script>

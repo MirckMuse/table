@@ -1,15 +1,18 @@
 <script lang="ts">
 import type { StyleValue, VNode } from "vue";
-import { PropType, computed, defineComponent, h, watch } from "vue";
-import { TableColumn, TableColumnEllipsisObject } from "../../typing";
-import Cell from "./cell.vue";
+import { PropType, computed, defineComponent, h } from "vue";
 import { useStateInject } from "../../hooks";
+import { TableColumn, TableColumnEllipsisObject, TableColumnMeta } from "../../typing";
+import Cell from "./cell.vue";
+import { isNestColumn } from "../../utils";
 
 export default defineComponent({
   name: "STableHeaderCells",
 
   props: {
-    columns: { type: Array as PropType<TableColumn[]> },
+    columns: { type: Array as PropType<TableColumn[]>, required: true },
+
+    flattenColumns: { type: Array as PropType<TableColumn[]>, required: true },
 
     type: { type: String }
   },
@@ -34,7 +37,12 @@ export default defineComponent({
       }
 
       if (typeof column.colSpan === "number" && column.colSpan > 0) {
-        style.gridColumn = `span ${column.colSpan}`;
+        let colSpan = column.colSpan ?? 1;
+        if ((column._s_meta?.colSpan ?? 1) > 1) {
+          colSpan = column._s_meta?.colSpan ?? 1
+        }
+        style.gridColumn = `span ${colSpan}`;
+        style.gridRow = `span ${column._s_meta?.rowSpan}`;
       }
 
       return h(Cell, {
@@ -45,8 +53,7 @@ export default defineComponent({
     }
 
     return () => {
-      // 渲染列，需要考虑表头嵌套的情况
-      return (props.columns ?? []).map(col => renderCell(col))
+      return props.flattenColumns?.map(renderCell)
     };
   }
 })

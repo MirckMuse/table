@@ -19,3 +19,5 @@ export * from "./optimize";
 export * from "./addEventListener";
 
 export * from "./requestAnimationFrame";
+
+export * from "./shared"
