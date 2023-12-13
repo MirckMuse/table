@@ -26,6 +26,7 @@ export function useBBox(
 
   useResizeObserver(element as any, (entities) => {
     const el = entities[0].target
+
     callback?.(el as HTMLElement);
     const {
       clientWidth: width,
@@ -40,21 +41,28 @@ export function useBBox(
 }
 
 export function useTableHeaderScroll(
-  tableCenerHeader: Ref<HTMLElement | undefined>,
+  tableHeader: Ref<HTMLElement | undefined>,
+  tableCenterHeader: Ref<HTMLElement | undefined>,
   tableState: Ref<TableState>,
 ) {
-  useBBox(tableCenerHeader, (el) => {
-    const { offsetWidth, scrollWidth } = el;
-    tableState.value.viewport.width = offsetWidth;
+  useBBox(tableCenterHeader, (el) => {
+    const { scrollWidth } = el;
     tableState.value.viewport.scrollWidth = scrollWidth;
+    tableState.value.updateScroll();
+  }); // 计算水平方向的宽度和滚动宽度;
+
+  useBBox(tableHeader, (el) => {
+    const { offsetWidth } = el;
+    tableState.value.viewport.width = offsetWidth;
+    tableState.value.updateScroll();
   }); // 计算水平方向的宽度和滚动宽度;
 
   const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);
 
   onMounted(() => {
-    if (!tableCenerHeader.value) return;
+    if (!tableCenterHeader.value) return;
 
-    tableCenerHeader.value.addEventListener("wheel", processWheel)
+    tableCenterHeader.value.addEventListener("wheel", processWheel)
   })
 
   const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
@@ -85,6 +93,7 @@ export function useTableBodyScroll(
     const { offsetHeight, scrollHeight } = el;
     tableState.value.viewport.height = offsetHeight;
     tableState.value.viewport.scrollHeight = scrollHeight;
+    tableState.value.updateScroll();
   }); // 计算垂直
 
   const maxMove = computed(() => {
@@ -101,8 +110,6 @@ export function useTableBodyScroll(
       y: Math.max(0, scrollHeight - height),
     }
   });
-  let wheelLock = false;
-
   const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
     const { deltaX, deltaY } = $event;
 

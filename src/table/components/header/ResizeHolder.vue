@@ -81,7 +81,7 @@ function processDrag($event: DragEvent) {
     maxWidth.value,
   );
 
-  runIdleTask(() => {
+  window.requestAnimationFrame(() => {
     handleResizeColumn(adjustedWidth, props.column)
   })
 }

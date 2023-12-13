@@ -1,6 +1,9 @@
 // FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rust 实现，以确保更小的内存和更快的逻辑。
 
-import { RowData, TableColumn } from "../table/typing";
+import { isNil } from "lodash-es";
+import { ColKeySplitWord } from "../table/config";
+import { RowData, TableColumn, TableColumnFixed } from "../table/typing";
+import { getDFSLastColumns, isNestColumn } from "../table/utils";
 
 export type Viewport = {
   width: number,
@@ -19,11 +22,13 @@ export type ColMeta = {
   // 根据 column 的 dataIndex 和 index 生成唯一 key。当存在嵌套时，则添加深度作为条件。
   key: string;
 
-  // 配置的默认宽度
-  defaultWidth?: number;
+  deep?: number;
 
-  // 调整过后的宽度
-  resizedWidth?: number;
+  colSpan?: number;
+
+  rowSpan?: number;
+
+  isLast?: boolean;
 };
 
 export type Scroll = {
@@ -64,6 +69,58 @@ export type BBox = {
   scrollHeight: number,
 }
 
+function bfsFlattenColumns<T = any>(columns: TableColumn[], callback?: (column: TableColumn) => T): T[] {
+  let stack = ([] as TableColumn[]).concat(columns);
+
+  callback = callback ?? (col => col as T);
+
+  const result: T[] = [];
+  while (stack.length) {
+    const column = stack.shift()!;
+
+    if (isNestColumn(column)) {
+      stack = stack.concat(column.children ?? []);
+    } else {
+      column._s_meta = column._s_meta || {};
+      column._s_meta.isLast = true;
+    }
+
+    result.push(callback!(column));
+  }
+
+  return result;
+}
+
+function getMaxDeep(columns: TableColumn[]) {
+  return columns.reduce((maxDeep, column) => Math.max(maxDeep, column._s_meta?.deep ?? -Infinity), -Infinity);
+}
+
+function updateFlattenColumnsMeta(columns: TableColumn[], maxDeep: number = 1) {
+  function _updateMeta(column: TableColumn) {
+    column._s_meta = column._s_meta || {};
+    if (column._s_meta?.isLast) {
+      column._s_meta.rowSpan = maxDeep - (column._s_meta?.deep ?? 1) + 1;
+      column._s_meta.colSpan = column._s_meta.colSpan ?? 1;
+
+      let parent = column._s_parent;
+
+      while (parent) {
+        parent._s_meta = parent._s_meta || {};
+        parent._s_meta.colSpan = parent.children?.reduce((colSpan, col) => colSpan + (col._s_meta?.colSpan ?? 1), 0);
+        parent = parent._s_parent;
+      }
+    } else {
+      column._s_meta.rowSpan = 1;
+    }
+  }
+
+  for (const column of columns) {
+    _updateMeta(column);
+  }
+
+  return columns;
+}
+
 export class TableState {
   // 表格的高度和宽度。
   //    宽度：所有列配置的宽度合
@@ -88,8 +145,15 @@ export class TableState {
   dataSource: RowData[] = [];
 
   fixedLeftColumns: TableColumn[] = [];
+  fixedLeftFlattenColumns: TableColumn[] = [];
+  dfsFixedLeftFlattenColumns: TableColumn[] = [];
   columns: TableColumn[] = [];
+  centerFlattenColumns: TableColumn[] = [];
+  dfsCenterFlattenColumns: TableColumn[] = [];
   fixedRightColumns: TableColumn[] = [];
+  fixedRightFlattenColumns: TableColumn[] = [];
+  dfsFixedRightFlattenColumns: TableColumn[] = [];
+  maxTableHeaderDeep = 1;
 
   // TODO: 缓冲行数
   buffer = 10;
@@ -109,25 +173,78 @@ export class TableState {
   }
 
   updateColumns(columns: TableColumn[]) {
-    const { left, center, right } = columns.reduce<{ left: TableColumn[], right: TableColumn[], center: TableColumn[] }>(
-      (result, column) => {
-        if (column.fixed === true || column.fixed === "left") {
-          result.left.push(column);
-        } else if (column.fixed === "right") {
-          result.right.push(column);
+    function _standardizationColumn(column: TableColumn, index: number, deep = 1) {
+      let ellipsis = column.ellipsis
+      if (column.ellipsis && typeof column.ellipsis === 'boolean') {
+        ellipsis = { showTitle: true };
+      }
+
+      let fixed: TableColumnFixed | undefined = undefined;
+      let width = column.width;
+      if (column.fixed) {
+        if (typeof column.fixed === "boolean") {
+          fixed = "left";
         } else {
-          result.center.push(column);
+          fixed = column.fixed;
         }
-        return result;
-      },
-      { left: [], right: [], center: [] }
-    )
+        width = column.width ?? 120;
 
+        // 同步固定逻辑
+        let parent = column._s_parent
+        while (parent) {
+          parent.fixed = column.fixed;
+          parent = parent._s_parent;
+        }
+      }
+
+      const standardColumn = Object.assign<TableColumn, TableColumn>(column, {
+        key: column.key ?? [column.dataIndex, index, deep].join(ColKeySplitWord),
+        ellipsis,
+        fixed: fixed,
+        width,
+        colSpan: isNil(column.colSpan) ? 1 : column.colSpan,
+      });
+      standardColumn._s_meta = standardColumn._s_meta || {};
+      if (isNestColumn(standardColumn)) {
+        standardColumn.children = standardColumn.children!.map((child, index) => {
+          child._s_parent = column;
+          return _standardizationColumn(child, index, deep + 1)
+        })
+      }
+      standardColumn._s_meta.deep = deep;
+      return standardColumn
+    }
+
+    const { left, center, right } = columns
+      .map((column, index) => _standardizationColumn(column, index))
+      .reduce<{ left: TableColumn[], right: TableColumn[], center: TableColumn[] }>(
+        (result, column) => {
+          if (column.fixed === true || column.fixed === "left") {
+            result.left.push(column);
+          } else if (column.fixed === "right") {
+            result.right.push(column);
+          } else {
+            result.center.push(column);
+          }
+          return result;
+        },
+        { left: [], right: [], center: [] }
+      )
+    const leftFlattenColumns = bfsFlattenColumns(left);
+    const centerFlattenColumns = bfsFlattenColumns(center);
+    const rightFlattenColumns = bfsFlattenColumns(right);
+
+    this.maxTableHeaderDeep = getMaxDeep([...leftFlattenColumns, ...centerFlattenColumns, ...rightFlattenColumns])
     this.fixedLeftColumns = left;
+    this.fixedLeftFlattenColumns = updateFlattenColumnsMeta(leftFlattenColumns, this.maxTableHeaderDeep);
+    this.dfsFixedLeftFlattenColumns = getDFSLastColumns(left);
     this.columns = center;
+    this.dfsCenterFlattenColumns = getDFSLastColumns(center);
+    this.centerFlattenColumns = updateFlattenColumnsMeta(centerFlattenColumns, this.maxTableHeaderDeep);
     this.fixedRightColumns = right;
+    this.dfsFixedRightFlattenColumns = getDFSLastColumns(right);
+    this.fixedRightFlattenColumns = updateFlattenColumnsMeta(rightFlattenColumns, this.maxTableHeaderDeep);
   }
-
 
   // 初始化元数据
   initMeta(columns: TableColumn[], dataSource: RowData[]) {
@@ -161,6 +278,15 @@ export class TableState {
     this.viewport = Object.assign({}, this.viewport ?? {}, {
       width, height
     });
+  }
+
+  updateScroll() {
+    const { scrollHeight, scrollWidth, width, height } = this.viewport;
+
+    const maxXMove = scrollWidth - width;
+    const maxYMove = scrollHeight - height;
+    this.scroll.left = Math.min(this.scroll.left, maxXMove);
+    this.scroll.top = Math.min(this.scroll.top, maxYMove);
   }
 
   // 更新 table 的 bbox。

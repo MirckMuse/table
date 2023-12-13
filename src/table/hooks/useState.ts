@@ -1,9 +1,7 @@
-import { isNil } from "lodash-es";
 import { InjectionKey, Ref, inject, provide, ref } from "vue";
 import { TableState } from "../../state";
-import { ColKeySplitWord } from "../config";
-import { TableColumn, TableColumnFixed, TableProps } from "../typing";
-import { isNestColumn } from "../utils";
+import { TableColumn, TableProps } from "../typing";
+import { debounce } from "lodash-es";
 
 interface ITableContext {
   tableState: Ref<TableState>;
@@ -14,59 +12,36 @@ interface ITableContext {
 
 const TableStateKey: InjectionKey<ITableContext> = Symbol("__TableState__");
 
-export function useStateProvide(props: TableProps) {
-
-  // 标准化列配置信息
-  function standardizationColumn(column: TableColumn, index: number, deep = 1) {
-    let ellipsis = column.ellipsis
-    if (column.ellipsis && typeof column.ellipsis === 'boolean') {
-      ellipsis = { showTitle: true };
-    }
-
-    let fixed: TableColumnFixed | undefined = undefined;
-    let width = column.width;
-    if (column.fixed) {
-      if (typeof column.fixed === "boolean") {
-        fixed = "left";
-      } else {
-        fixed = column.fixed;
-      }
-      width = column.width ?? 120;
-    }
-
-    const standardColumn = Object.assign<TableColumn, TableColumn>(column, {
-      key: column.key ?? [column.dataIndex, index, deep].join(ColKeySplitWord),
-      ellipsis,
-      fixed: fixed,
-      width,
-      colSpan: isNil(column.colSpan) ? 1 : column.colSpan,
-    });
-    standardColumn._s_meta = standardColumn._s_meta || {};
-    if (isNestColumn(standardColumn)) {
-      standardColumn.children = standardColumn.children!.map((child, index) => {
-        child._s_parent = column;
-        return standardizationColumn(child, index, deep + 1)
-      })
-    }
-    standardColumn._s_meta.deep = deep;
-    return standardColumn
-  }
+export function useStateProvide(props: TableProps, tableRef: Ref<HTMLElement | undefined>) {
 
   function createTableState() {
     return new TableState({
-      columns: (props.columns ?? []).map((column, index) => {
-        return standardizationColumn(column, index)
-      }),
-
-
+      columns: props.columns ?? [],
       dataSource: props.dataSource ?? []
     });
   }
 
-  const state = ref(createTableState())
+  const state = ref(createTableState());
+
+  let userSelectState = {
+    pre: "",
+    isSet: false,
+  };
+  const revertTableUserSelect = debounce(() => {
+    userSelectState.isSet = false;
+    if (!tableRef.value) return;
+    tableRef.value.style.userSelect = userSelectState.pre;
+  }, 60);
 
   function handleResizeColumn(resizedWidth: number, column: TableColumn) {
+    if (!userSelectState.isSet && tableRef.value) {
+      userSelectState.pre = tableRef.value.style.userSelect ?? "";
+      userSelectState.isSet = true;
+      tableRef.value.style.userSelect = "none";
+    }
+
     props.onResizeColumn?.(resizedWidth, column);
+    revertTableUserSelect();
   }
 
   provide(TableStateKey, {
@@ -77,7 +52,7 @@ export function useStateProvide(props: TableProps) {
 
 export function useStateInject() {
   return inject(TableStateKey, {
-    tableState: ref(new TableState({})),
+    tableState: ref(),
     handleResizeColumn: () => { },
   });
 }

@@ -15,7 +15,7 @@ import { TableColumn, RowData } from "./table/typing"
 import { ref } from "vue";
 
 const dataSource: RowData[] = Array(10).fill(null).map((_, index) => {
-  return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index }
+  return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index, d: index + 1 }
 })
 
 function handleResizeColumn(width: number, col: TableColumn) {
@@ -51,8 +51,8 @@ const columns = ref<TableColumn[]>([
   {
     title: "分组",
     children: [
-      { dataIndex: 'c', title: "第三列-2" },
-      { dataIndex: 'c', title: "第三列-3", resizable: true, maxWidth: 200, minWidth: 100 },
+      { dataIndex: 'd', title: "第三列-2" },
+      { dataIndex: 'c', title: "第三列-3", resizable: true, minWidth: 100 },
     ]
   },
   { dataIndex: 'c', title: "第三列-4" },

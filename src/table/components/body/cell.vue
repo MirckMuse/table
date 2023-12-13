@@ -148,7 +148,6 @@ export default defineComponent({
   display: inline-flex;
   min-width: 0;
   align-items: center;
-  user-select: none;
   
   &-hover {
     background-color: var(--table-body-cell-bg-hover);

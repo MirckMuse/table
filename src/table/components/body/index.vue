@@ -12,18 +12,6 @@
       @mouseover="handleMouseenter"
       @mouseout="handleMouseleave"
     >
-      <div 
-        ref="bodyCenterRef"
-        class="s-table-body__inner-center" 
-        :style="centerStyle"
-      >
-        <body-cells
-          :columns="centerColumns" 
-          :data-source="dataSource" 
-          :hover-row-index="hoverRowIndex"
-          type="center"
-        />
-      </div>
 
       <div
         v-if="leftColumnsVisible"
@@ -38,6 +26,21 @@
           :hover-row-index="hoverRowIndex"
         />
       </div>
+
+      <div 
+        ref="bodyCenterRef"
+        class="s-table-body__inner-center" 
+        :style="centerStyle"
+      >
+        <body-cells
+          :columns="centerColumns" 
+          :data-source="dataSource" 
+          :hover-row-index="hoverRowIndex"
+          type="center"
+        />
+      </div>
+
+      
       <div
         v-if="rightColumnsVisible"
         ref="bodyRightRef"
@@ -90,7 +93,7 @@ export default defineComponent({
   setup() {
     const { tableState } = useStateInject();
 
-    const leftColumns = computed(() => tableState.value.fixedLeftColumns ?? [])
+    const leftColumns = computed(() => tableState.value.dfsFixedLeftFlattenColumns)
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
@@ -104,7 +107,7 @@ export default defineComponent({
       return style;
     });
 
-    const rightColumns = computed(() => tableState.value.fixedRightColumns ?? [])
+    const rightColumns = computed(() => tableState.value.dfsFixedRightFlattenColumns);
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
@@ -142,7 +145,7 @@ export default defineComponent({
 
     useTableBodyScroll(bodyInnerRef, tableState);
 
-    const centerColumns = computed(() => tableState.value.columns ?? []);
+    const centerColumns = computed(() => tableState.value.dfsCenterFlattenColumns);
     const centerStyle = computed(() => {
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftRef.value?.clientWidth ?? 0) + 'px'
@@ -225,6 +228,10 @@ export default defineComponent({
 
   &::-webkit-scrollbar {
     display: none;
+  }
+
+  &-fixedLeft{
+    z-index: 1;
   }
 
   &-fixedLeft,

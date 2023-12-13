@@ -21,9 +21,9 @@ defineOptions({
 
 const props = defineProps<TableProps>();
 
-useStateProvide(props);
-
 const rootRef = ref<HTMLElement>();
+useStateProvide(props, rootRef);
+
 const interalTableRef = ref<HTMLElement>();
 
 const rootClass = computed(() => {
