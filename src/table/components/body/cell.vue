@@ -1,7 +1,15 @@
+<template>
+  <div :class="cellClass" ref="cellRef" :title="title" v-bind="cellBind">
+    <div :class="cellInnerClass" :style="cellInnerStyle">
+      {{ text }}
+    </div>
+  </div>
+</template>
+
 <script lang="ts">
-import { PropType, StyleValue, defineComponent, h, onMounted, ref } from "vue";
+import { PropType, StyleValue, computed, defineComponent, h, onMounted, ref } from "vue";
 import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
-import { SelectionState, useStateInject } from "../../hooks";
+import { useSelectionInject, useStateInject } from "../../hooks";
 import { get } from "lodash-es";
 
 export default defineComponent({
@@ -16,17 +24,15 @@ export default defineComponent({
 
     isHover: { type: Boolean },
 
-    selectionState: { type: Object as PropType<SelectionState>, required: true },
-
     ellipsis: { type: Object as PropType<TableColumnEllipsisObject> }
   },
 
   setup(props) {
-
     const cellRef = ref<HTMLElement>();
-    const {
-      tableState
-    } = useStateInject();
+
+    const { selection_state } = useSelectionInject();
+
+    const { tableState } = useStateInject();
 
     onMounted(() => {
       if (!cellRef.value) return;
@@ -44,11 +50,10 @@ export default defineComponent({
     function getSelectionClass() {
       const {
         column,
-        selectionState,
         rowIndex
       } = props
 
-      const { colKeys, startRowIndex, endRowIndex } = selectionState;
+      const { colKeys = [], startRowIndex, endRowIndex } = selection_state || {};
       if (!colKeys.length || startRowIndex === -1 || endRowIndex === -1) {
         return {}
       }
@@ -76,40 +81,49 @@ export default defineComponent({
       return {}
     }
 
-    return () => {
-      const {
-        record,
-        column,
-        isHover,
-        ellipsis,
-        rowIndex,
-      } = props
+    const isHover = computed(() => tableState.value.hoverState.rowIndex === props.rowIndex)
 
-      const cellClass = {
+    const cellClass = computed(() => {
+      return {
         [prefixClass]: true,
-        [`${prefixClass}-hover`]: isHover,
+        [`${prefixClass}-hover`]: isHover.value,
         ...getSelectionClass(),
       }
+    });
 
-      const cellInnerClass = {
+    const cellInnerClass = computed(() => {
+      return {
         [`${prefixClass}-inner`]: true,
-        [`${prefixClass}-inner-ellipsis`]: !!ellipsis
+        [`${prefixClass}-inner-ellipsis`]: !!props.ellipsis
       }
+    })
 
-      const cellInnerStyle: StyleValue = {
-        textAlign: column?.align,
-      };
+    const cellInnerStyle = computed<StyleValue>(() => {
+      return {
+        textAlign: props.column?.align,
+      }
+    });
 
-      const text = getText(column, record);
+    const text = computed(() => {
+      const { column, record } = props;
 
-      const title = ellipsis?.showTitle ? text : undefined;
+      return getText(column, record)?.toString() ?? undefined;
+    })
 
-      const inner = h("div", { class: cellInnerClass, style: cellInnerStyle }, [text?.toString() ?? null]);
+    const title = computed(() => {
+      return props.ellipsis?.showTitle ? text.value : undefined
+    });
 
-      const cellBind = column.customCell?.(record, rowIndex, column) ?? {};
+    const cellBind = computed(() => {
+      const { column, record, rowIndex } = props;
+      return column.customCell?.(record, rowIndex, column) ?? {}
+    });
 
-      return h('div', { class: cellClass, ref: cellRef, title, ...cellBind }, inner);
-    };
+    return {
+      cellRef, cellClass, cellBind, title,
+
+      cellInnerClass, cellInnerStyle, text
+    }
   }
 })
 </script>

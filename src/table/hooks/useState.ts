@@ -6,13 +6,27 @@ import { debounce } from "lodash-es";
 interface ITableContext {
   tableState: Ref<TableState>;
 
+  slots: Record<string, any>;
+
   handleResizeColumn: (resizedWidth: number, column: TableColumn) => void;
 }
 
 
 const TableStateKey: InjectionKey<ITableContext> = Symbol("__TableState__");
 
-export function useStateProvide(props: TableProps, tableRef: Ref<HTMLElement | undefined>) {
+interface IStateOption {
+  props: TableProps;
+
+  slots: Record<string, any>;
+
+  tableRef: Ref<HTMLElement | undefined>
+}
+
+export function useStateProvide({
+  props,
+  tableRef,
+  slots
+}: IStateOption) {
 
   function createTableState() {
     return new TableState({
@@ -46,6 +60,7 @@ export function useStateProvide(props: TableProps, tableRef: Ref<HTMLElement | u
 
   provide(TableStateKey, {
     tableState: state,
+    slots,
     handleResizeColumn
   })
 }
@@ -53,6 +68,7 @@ export function useStateProvide(props: TableProps, tableRef: Ref<HTMLElement | u
 export function useStateInject() {
   return inject(TableStateKey, {
     tableState: ref(),
+    slots: {},
     handleResizeColumn: () => { },
   });
 }

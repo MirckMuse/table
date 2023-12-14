@@ -23,7 +23,6 @@
         <body-cells
           :columns="leftColumns" 
           :data-source="dataSource" 
-          :hover-row-index="hoverRowIndex"
         />
       </div>
 
@@ -35,7 +34,6 @@
         <body-cells
           :columns="centerColumns" 
           :data-source="dataSource" 
-          :hover-row-index="hoverRowIndex"
           type="center"
         />
       </div>
@@ -51,7 +49,6 @@
         <body-cells 
           :columns="rightColumns" 
           :data-source="dataSource" 
-          :hover-row-index="hoverRowIndex"
         />
       </div>
     </div>
@@ -97,6 +94,8 @@ export default defineComponent({
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
+      const { top: scrollTop } = scroll.value;
+      style.transform = `translateY(${-scrollTop}px)`
       style.gridTemplateColumns = leftColumns.value.map(column => {
         let width = column.width;
         if (typeof width === "number") {
@@ -110,7 +109,9 @@ export default defineComponent({
     const rightColumns = computed(() => tableState.value.dfsFixedRightFlattenColumns);
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
-      const style: StyleValue = {}
+      const style: StyleValue = {};
+      const { top: scrollTop } = scroll.value;
+      style.transform = `translateY(${-scrollTop}px)`
       style.gridTemplateColumns = rightColumns.value.map(column => {
         let width = column.width;
         if (typeof width === "number") {
@@ -150,6 +151,8 @@ export default defineComponent({
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftRef.value?.clientWidth ?? 0) + 'px'
       style.paddingRight = (bodyRightRef.value?.clientWidth ?? 0) + 'px'
+      const { left: scrollLeft, top: scrollTop } = scroll.value;
+      style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
       style.gridTemplateColumns = centerColumns.value.map(column => {
         let width = column.width;
         if (typeof width === "number") {
@@ -160,25 +163,23 @@ export default defineComponent({
       return style;
     });
 
-
-    // 悬浮的行号
-    const hoverRowIndex = ref(-1);
-
     function handleMouseenter($event: MouseEvent) {
       let target: HTMLElement | null = $event.target as HTMLElement;
 
       while (target) {
         if (target.dataset.type === "cell") {
-          hoverRowIndex.value = Number(target.dataset.rowIndex)
+          tableState.value.hoverState = {
+            rowIndex: Number(target.dataset.rowIndex),
+            colKey: target.dataset.colKey ?? ""
+          }
           return;
         }
         target = target.parentElement;
       }
-      hoverRowIndex.value = -1;
     }
 
     function handleMouseleave($event: MouseEvent) {
-      hoverRowIndex.value = -1;
+      tableState.value.hoverState = { rowIndex: -1, colKey: "" }
     }
 
     const maxXMove = computed(() => {
@@ -198,7 +199,7 @@ export default defineComponent({
 
       centerColumns, centerStyle, bodyCenterRef,
 
-      hoverRowIndex, handleMouseenter, handleMouseleave,
+      handleMouseenter, handleMouseleave,
     }
   }
 });
@@ -230,7 +231,7 @@ export default defineComponent({
     display: none;
   }
 
-  &-fixedLeft{
+  &-fixedLeft {
     z-index: 1;
   }
 
@@ -242,6 +243,7 @@ export default defineComponent({
 
   &-center {
     overflow: hidden;
+    width: max-content;
   }
 }
 </style>

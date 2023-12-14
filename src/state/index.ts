@@ -121,6 +121,12 @@ function updateFlattenColumnsMeta(columns: TableColumn[], maxDeep: number = 1) {
   return columns;
 }
 
+export type HoverState = {
+  rowIndex: number;
+
+  colKey: string;
+}
+
 export class TableState {
   // 表格的高度和宽度。
   //    宽度：所有列配置的宽度合
@@ -154,6 +160,11 @@ export class TableState {
   fixedRightFlattenColumns: TableColumn[] = [];
   dfsFixedRightFlattenColumns: TableColumn[] = [];
   maxTableHeaderDeep = 1;
+
+  hoverState: HoverState = {
+    rowIndex: -1,
+    colKey: ""
+  }
 
   // TODO: 缓冲行数
   buffer = 10;

@@ -6,13 +6,20 @@
       :bordered="true" 
       :scroll="{ y: 400 }"
       @resizeColumn="handleResizeColumn"
-    />
+    >
+    </s-table>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { TableColumn, RowData } from "./table/typing"
-import { ref } from "vue";
+import { ref, defineComponent, h } from "vue";
+
+const TextComponent = defineComponent({
+  render() {
+    return h('label', { style: "color: blue" }, "123b")
+  }
+})
 
 const dataSource: RowData[] = Array(10).fill(null).map((_, index) => {
   return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index, d: index + 1 }

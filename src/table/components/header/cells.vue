@@ -2,9 +2,8 @@
 import type { StyleValue, VNode } from "vue";
 import { PropType, computed, defineComponent, h } from "vue";
 import { useStateInject } from "../../hooks";
-import { TableColumn, TableColumnEllipsisObject, TableColumnMeta } from "../../typing";
+import { TableColumn, TableColumnEllipsisObject } from "../../typing";
 import Cell from "./cell.vue";
-import { isNestColumn } from "../../utils";
 
 export default defineComponent({
   name: "STableHeaderCells",
@@ -17,12 +16,10 @@ export default defineComponent({
     type: { type: String }
   },
 
-  setup(props) {
+  setup(props, { slots }) {
     const {
       tableState
     } = useStateInject();
-
-    const scroll = computed(() => tableState.value.scroll);
 
     // TODO: 可以考虑做个检测列检测，colSpan 相加和 大于展示行数，提示开发者
     function renderCell(column: TableColumn): VNode | null {
@@ -31,10 +28,6 @@ export default defineComponent({
       }
 
       const style: StyleValue = {};
-      if (props.type === 'center') {
-        const { left: scrollLeft } = scroll.value;
-        style.transform = `translateX(${-scrollLeft}px)`
-      }
 
       if (typeof column.colSpan === "number" && column.colSpan > 0) {
         let colSpan = column.colSpan ?? 1;
@@ -45,11 +38,14 @@ export default defineComponent({
         style.gridRow = `span ${column._s_meta?.rowSpan}`;
       }
 
-      return h(Cell, {
-        column,
-        style,
-        ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined
-      })
+      return h(
+        Cell,
+        {
+          column,
+          style,
+          ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined
+        }
+      )
     }
 
     return () => {

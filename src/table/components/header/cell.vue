@@ -1,7 +1,8 @@
 <script lang="ts">
-import { PropType, StyleValue, defineComponent, h } from "vue";
+import { PropType, StyleValue, defineComponent, h, Comment, VNode } from "vue";
 import { TableColumn, TableColumnEllipsisObject } from "../../typing";
 import ResizeHolder from "./ResizeHolder.vue";
+import { useStateInject } from "../../hooks";
 
 export default defineComponent({
   name: "STableHeaderCell",
@@ -16,6 +17,8 @@ export default defineComponent({
 
   setup(props) {
     const prefixClass = "s-table-header-cell";
+
+    const { slots: slotsTable } = useStateInject();
 
     return () => {
       const {
@@ -40,7 +43,9 @@ export default defineComponent({
 
       const title = ellipsis?.showTitle ? cellTitle : undefined;
 
-      const inner = h("div", { class: cellInnerClass, style: cellInnerStyle }, cellTitle)
+      const slotCell = slotsTable?.headerCell?.({ title: cellTitle, column }).filter((item: VNode) => item.type !== Comment) ?? null
+
+      const inner = h("div", { class: cellInnerClass, style: cellInnerStyle }, slotCell?.length ? slotCell : cellTitle)
 
       const cellBind = column?.customHeaderCell?.(column) ?? {};
 
