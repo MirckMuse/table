@@ -1,5 +1,6 @@
 import { useResizeObserver } from "@vueuse/core";
-import { Ref, computed, onMounted, ref } from "vue";
+import { throttle } from "lodash-es";
+import { Ref, computed, onMounted, ref, watch } from "vue";
 import { TableState } from "../../state";
 import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";
 
@@ -42,27 +43,44 @@ export function useBBox(
 
 export function useTableHeaderScroll(
   tableHeader: Ref<HTMLElement | undefined>,
+  headerLeftRef: Ref<HTMLElement | undefined>,
   tableCenterHeader: Ref<HTMLElement | undefined>,
+  headerRightRef: Ref<HTMLElement | undefined>,
   tableState: Ref<TableState>,
 ) {
-  useBBox(tableCenterHeader, (el) => {
+
+  // 更新可是窗口的滚动宽度
+  function immediateUpdateScrollWidth() {
+    const el = tableCenterHeader.value
+    if (!el) return;
+
     const { scrollWidth } = el;
     tableState.value.viewport.scrollWidth = scrollWidth;
     tableState.value.updateScroll();
-  }); // 计算水平方向的宽度和滚动宽度;
+  }
 
-  useBBox(tableHeader, (el) => {
+  function immediateUpdateClientWidth() {
+    const el = tableHeader.value;
+    if (!el) return;
+
     const { offsetWidth } = el;
+
     tableState.value.viewport.width = offsetWidth;
     tableState.value.updateScroll();
-  }); // 计算水平方向的宽度和滚动宽度;
+  }
+
+  const { bbox: headerLeftBBox } = useBBox(headerLeftRef);
+  const { bbox: headerRightBBox } = useBBox(headerRightRef);
+
+  useBBox(tableCenterHeader, throttle(immediateUpdateScrollWidth, 16)); // 计算水平方向的宽度和滚动宽度;
+  useBBox(tableHeader, throttle(immediateUpdateClientWidth, 16)); // 计算水平方向的宽度和滚动宽度;
 
   const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);
 
   onMounted(() => {
     if (!tableCenterHeader.value) return;
 
-    tableCenterHeader.value.addEventListener("wheel", processWheel)
+    tableCenterHeader.value.addEventListener("wheel", processWheel);
   })
 
   const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
@@ -82,6 +100,11 @@ export function useTableHeaderScroll(
     $event.preventDefault();
 
     animationWheel($event);
+  }
+
+  return {
+    headerLeftBBox,
+    headerRightBBox
   }
 }
 

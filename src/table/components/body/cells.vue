@@ -47,8 +47,8 @@ export default defineComponent({
         dataSource = []
       } = props;
 
-      return dataSource.reduce<VNode[]>((cells, rowData, rowIndex) => {
-        return cells.concat(columns.map(col => renderCell(col, rowData, rowIndex)));
+      return dataSource.reduce<VNode[]>((cells, rowData) => {
+        return cells.concat(columns.map(col => renderCell(col, rowData, Number(rowData._s_row_index) ?? -1)));
       }, [])
     };
   }

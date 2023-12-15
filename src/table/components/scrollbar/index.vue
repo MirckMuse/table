@@ -27,19 +27,29 @@ const props = defineProps({
 
 const rootRef = ref<HTMLElement>();
 
+const thunmSize = computed(() => {
+  const { client, content } = props;
+  let ratio = client / content;
+  const thumnSize = ratio * client;
+  return Math.max(thumnSize, 1);
+})
+
+const sizeKey = props.isVertical ? 'height' : "width"
+const marginKey = props.isVertical ? 'marginTop' : "marginLeft"
+
 const thumbStyle = computed(() => {
-  const { client, content, scroll, isVertical } = props;
-  const sizeKey = isVertical ? 'height' : "width"
-  const marginKey = isVertical ? 'marginTop' : "marginLeft"
+  const { client, content, scroll } = props;
 
   if (client === content) {
     return { [sizeKey]: "0px", [marginKey]: "0px" };
   }
 
-  const ratio = client / content;
+  let ratio = thunmSize.value / client;
+  let offset = Math.max(ratio * scroll, 0);
+  offset = Math.min(offset, client - thunmSize.value);
   return {
-    [sizeKey]: Math.floor(ratio * client) + "px",
-    [marginKey]: Math.floor(ratio * scroll) + "px",
+    [sizeKey]: thunmSize.value + "px",
+    [marginKey]: offset + "px",
   }
 })
 </script>

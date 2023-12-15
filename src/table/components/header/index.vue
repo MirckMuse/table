@@ -59,9 +59,11 @@ const headerRef = shallowRef<HTMLElement>();
 const headerLeftRef = shallowRef<HTMLElement>();
 const headerRightRef = shallowRef<HTMLElement>();
 
-useTableHeaderScroll(
+const { headerLeftBBox, headerRightBBox } = useTableHeaderScroll(
   headerRef,
+  headerLeftRef,
   headerCenterRef,
+  headerRightRef,
   tableState
 );
 
@@ -99,8 +101,8 @@ const centerFlattenColumns = computed(() => tableState.value.centerFlattenColumn
 
 const centerStyle = computed(() => {
   const style: StyleValue = {};
-  style.paddingLeft = (headerLeftRef.value?.clientWidth ?? 0) + "px";
-  style.paddingRight = (headerRightRef.value?.clientWidth ?? 0) + "px";
+  style.paddingLeft = (headerLeftBBox.value.width ?? 0) + "px";
+  style.paddingRight = (headerRightBBox.value?.width ?? 0) + "px";
   const { left: scrollLeft } = scroll.value;
   style.transform = `translateX(${-scrollLeft}px)`
   const lastColumns = tableState.value.dfsCenterFlattenColumns;
@@ -155,7 +157,6 @@ const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableSta
   }
 
   &-center {
-    width: max-content;
     &::-webkit-scrollbar {
       display: none;
     }

@@ -69,11 +69,13 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, ref, shallowRef } from "vue";
+import { StyleValue, computed, defineComponent, ref, shallowRef, watch } from "vue";
 import { resize } from "../../directives";
-import { useStateInject, useTableBodyScroll } from "../../hooks";
+import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
 import Scrollbar from "../scrollbar/index.vue";
 import BodyCells from "./cells.vue";
+import { RowData } from "../../typing";
+import { throttle } from "lodash-es";
 
 export default defineComponent({
   name: "STableBody",
@@ -95,6 +97,8 @@ export default defineComponent({
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
       const { top: scrollTop } = scroll.value;
+      style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
+      style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.transform = `translateY(${-scrollTop}px)`
       style.gridTemplateColumns = leftColumns.value.map(column => {
         let width = column.width;
@@ -112,6 +116,8 @@ export default defineComponent({
       const style: StyleValue = {};
       const { top: scrollTop } = scroll.value;
       style.transform = `translateY(${-scrollTop}px)`
+      style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
+      style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.gridTemplateColumns = rightColumns.value.map(column => {
         let width = column.width;
         if (typeof width === "number") {
@@ -136,21 +142,31 @@ export default defineComponent({
       };
     });
 
-    const dataSource = computed(() => {
-      return tableState.value.dataSource ?? [];
-    });
+    const dataSource = ref<RowData[]>([]);
 
+    dataSource.value = tableState.value.getViewportDataSource();
+    watch(
+      () => tableState.value.scroll.top,
+      throttle(() => {
+        dataSource.value = tableState.value.getViewportDataSource();
+      }, 60),
+    )
     const bodyLeftRef = shallowRef<HTMLElement>();
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
+
+    const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
+    const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
 
     useTableBodyScroll(bodyInnerRef, tableState);
 
     const centerColumns = computed(() => tableState.value.dfsCenterFlattenColumns);
     const centerStyle = computed(() => {
       const style: StyleValue = {}
-      style.paddingLeft = (bodyLeftRef.value?.clientWidth ?? 0) + 'px'
-      style.paddingRight = (bodyRightRef.value?.clientWidth ?? 0) + 'px'
+      style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
+      style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
+      style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
+      style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       const { left: scrollLeft, top: scrollTop } = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
       style.gridTemplateColumns = centerColumns.value.map(column => {

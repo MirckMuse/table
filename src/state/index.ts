@@ -3,7 +3,8 @@
 import { isNil } from "lodash-es";
 import { ColKeySplitWord } from "../table/config";
 import { RowData, TableColumn, TableColumnFixed } from "../table/typing";
-import { getDFSLastColumns, isNestColumn } from "../table/utils";
+import { getDFSLastColumns, isNestColumn, runIdleTask } from "../table/utils";
+import { chunk } from "lodash-es"
 
 export type Viewport = {
   width: number,
@@ -178,9 +179,26 @@ export class TableState {
     this.initMeta(columns ?? [], dataSource ?? []);
   }
 
+  dataSourceMeta: Record<string, RowData> = {};
+  dataSourceLength = 0;
+
   // 覆盖数据源
   coverDataSource(dataSource: RowData[]) {
-    this.dataSource = dataSource;
+    this.dataSourceLength = dataSource.length;
+    const chunkSize = 100;
+    const chunks = chunk(dataSource, chunkSize);
+
+    const _update = (singleChunk: RowData[], chunkIndex: number) => {
+      singleChunk.forEach((row, index) => {
+        const rowIndex = index + chunkIndex * chunkSize;
+        this.dataSourceMeta[rowIndex] = row;
+      })
+    }
+
+    _update(chunks[0], 0);
+    for (let i = 1; i < chunks.length; i++) {
+      runIdleTask(() => _update(chunks[i], i));
+    }
   }
 
   updateColumns(columns: TableColumn[]) {
@@ -341,6 +359,8 @@ export class TableState {
 
   dynamicUpdateCellMeta() {
     // TODO: 动态更新单元格的元数据
+    // 行高需要实时计算
+
   }
 
 
@@ -349,9 +369,30 @@ export class TableState {
     return [];
   }
 
-  getViewportDataSource(scrollY: number): RowData[] {
+  rowOffset = {
+    top: 0,
+    bottom: 0
+  };
+
+  getViewportDataSource(): RowData[] {
     // 1. 表头固定。
-    // TODO: 根据可视窗口获取数据
-    return [];
+    const rowHeight = 57;
+    let startIndex = Math.floor(this.scroll.top / rowHeight);
+    startIndex = Math.max(startIndex - this.buffer, 0)
+    let endIndex = Math.floor((this.viewport.height + this.scroll.top) / rowHeight);
+
+    const dataSourceLength = this.dataSourceLength;
+    endIndex = Math.min(dataSourceLength - 1, endIndex + this.buffer);
+
+    this.rowOffset.top = startIndex * rowHeight;
+    this.rowOffset.bottom = (dataSourceLength - endIndex - 1) * rowHeight;
+
+
+    return Array(endIndex - startIndex + 1).fill(null).map((_, index) => {
+      const rowIndex = startIndex + index;
+      return Object.assign({}, this.dataSourceMeta[rowIndex], {
+        _s_row_index: rowIndex
+      })
+    })
   }
 }

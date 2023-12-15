@@ -10,6 +10,10 @@ export interface TableScroll {
   x?: number | 'max-content' | '100%' | boolean;
 
   y?: number | "100%";
+
+  position?: "inner" | "outer";
+
+  mode?: "always" | "hover";
 }
 
 /**

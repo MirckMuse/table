@@ -13,15 +13,9 @@
 
 <script lang="ts" setup>
 import { TableColumn, RowData } from "./table/typing"
-import { ref, defineComponent, h } from "vue";
+import { ref } from "vue";
 
-const TextComponent = defineComponent({
-  render() {
-    return h('label', { style: "color: blue" }, "123b")
-  }
-})
-
-const dataSource: RowData[] = Array(10).fill(null).map((_, index) => {
+const dataSource: RowData[] = Array(1000).fill(null).map((_, index) => {
   return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index, d: index + 1 }
 })
 
@@ -34,6 +28,7 @@ const columns = ref<TableColumn[]>([
     dataIndex: 'a',
     title: "第一列",
     width: 100,
+    resizable: true,
     customHeaderCell() {
       return {
         style: "color: red"
@@ -44,7 +39,8 @@ const columns = ref<TableColumn[]>([
     dataIndex: 'b',
     title: "一段长文案长文案长文案长文案长文案长文案长文案长文案",
     ellipsis: true,
-    fixed: true
+    fixed: true,
+    resizable: true,
   },
   {
     dataIndex: 'c',
