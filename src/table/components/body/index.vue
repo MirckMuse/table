@@ -76,6 +76,7 @@ import Scrollbar from "../scrollbar/index.vue";
 import BodyCells from "./cells.vue";
 import { RowData } from "../../typing";
 import { throttle } from "lodash-es";
+import { table } from "console";
 
 export default defineComponent({
   name: "STableBody",
@@ -92,6 +93,11 @@ export default defineComponent({
   setup() {
     const { tableState } = useStateInject();
 
+    const dataSource = ref<RowData[]>([]);
+    const gridTemplateRows = computed(() => {
+      return tableState.value.getViewportHeightList(dataSource.value).map(height => height + 'px').join(" ");
+    })
+
     const leftColumns = computed(() => tableState.value.dfsFixedLeftFlattenColumns)
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
@@ -100,6 +106,7 @@ export default defineComponent({
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.transform = `translateY(${-scrollTop}px)`
+      style.gridTemplateRows = gridTemplateRows.value;
       style.gridTemplateColumns = leftColumns.value.map(column => {
         let width = column.width;
         if (typeof width === "number") {
@@ -115,7 +122,8 @@ export default defineComponent({
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {};
       const { top: scrollTop } = scroll.value;
-      style.transform = `translateY(${-scrollTop}px)`
+      style.transform = `translateY(${-scrollTop}px)`;
+      style.gridTemplateRows = gridTemplateRows.value;
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.gridTemplateColumns = rightColumns.value.map(column => {
@@ -142,14 +150,14 @@ export default defineComponent({
       };
     });
 
-    const dataSource = ref<RowData[]>([]);
-
-    dataSource.value = tableState.value.getViewportDataSource();
     watch(
       () => tableState.value.scroll.top,
-      throttle(() => {
+      () => {
         dataSource.value = tableState.value.getViewportDataSource();
-      }, 60),
+      },
+      {
+        immediate: true
+      }
     )
     const bodyLeftRef = shallowRef<HTMLElement>();
     const bodyRightRef = shallowRef<HTMLElement>();
@@ -166,6 +174,7 @@ export default defineComponent({
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
       style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
+      style.gridTemplateRows = gridTemplateRows.value;
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       const { left: scrollLeft, top: scrollTop } = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`

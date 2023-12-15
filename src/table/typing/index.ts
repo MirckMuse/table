@@ -1,10 +1,14 @@
+import { VNode } from "vue";
+
 export type TablePaginationProps = {
   vertical: 'top' | 'bottom';
 
   horizontal: 'left' | 'right';
 };
 
-export type RowData = Record<string, unknown>;
+export type RowData = Record<string, unknown> & {
+  _s_row_index?: number;
+};
 
 export interface TableScroll {
   x?: number | 'max-content' | '100%' | boolean;
@@ -46,6 +50,22 @@ export type TableColumnAlign = 'left' | 'right' | 'center';
 
 export type TableColumnFixed = 'left' | 'right';
 
+export type BaseValue = string | number | boolean | undefined | null;
+
+export type CustomRenderResult = BaseValue | VNode;
+
+export type CustomRenderOption = {
+  text: BaseValue | BaseValue[];
+
+  record: RowData;
+
+  index: number;
+
+  column: Readonly<TableColumn>;
+}
+
+export type CustomRender = (option: CustomRenderOption) => CustomRenderResult | CustomRenderResult[] | undefined | void;
+
 /**
  * 表格列配置，key 和dataIndex 至少有一个必填
  */
@@ -78,6 +98,8 @@ export interface TableColumn {
   customCell?: (record: RowData, rowIndex: number, column: TableColumn) => Record<string, any>;
 
   customHeaderCell?: (column: TableColumn) => Record<string, any>;
+
+  customRender?: CustomRender;
 
   _origin?: TableColumn;
 

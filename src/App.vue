@@ -4,7 +4,7 @@
       :data-source="dataSource" 
       :columns="columns"
       :bordered="true" 
-      :scroll="{ y: 400 }"
+      :scroll="{ y: 700 }"
       @resizeColumn="handleResizeColumn"
     >
     </s-table>
@@ -13,10 +13,10 @@
 
 <script lang="ts" setup>
 import { TableColumn, RowData } from "./table/typing"
-import { ref } from "vue";
+import { h, ref } from "vue";
 
-const dataSource: RowData[] = Array(1000).fill(null).map((_, index) => {
-  return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index, d: index + 1 }
+const dataSource: RowData[] = Array(100).fill(null).map((_, index) => {
+  return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index, d: index }
 })
 
 function handleResizeColumn(width: number, col: TableColumn) {
@@ -33,6 +33,9 @@ const columns = ref<TableColumn[]>([
       return {
         style: "color: red"
       }
+    },
+    customRender({ text }) {
+      return text + "01"
     }
   },
   {
@@ -64,6 +67,13 @@ const columns = ref<TableColumn[]>([
   { dataIndex: 'c', title: "第三列-7" },
   { dataIndex: 'c', title: "第三列-8" },
   { dataIndex: 'c', title: "第三列-9" },
-  { dataIndex: 'c', title: "第三列-last", fixed: 'right' },
+  {
+    dataIndex: 'c',
+    title: "操作",
+    fixed: 'right',
+    customRender() {
+      return h('button', "按钮")
+    }
+  },
 ]);
 </script>

@@ -5,6 +5,7 @@ import { ColKeySplitWord } from "../table/config";
 import { RowData, TableColumn, TableColumnFixed } from "../table/typing";
 import { getDFSLastColumns, isNestColumn, runIdleTask } from "../table/utils";
 import { chunk } from "lodash-es"
+import { objectEntries } from "@vueuse/core";
 
 export type Viewport = {
   width: number,
@@ -56,6 +57,8 @@ export type RowMeta = {
   rowIndex: number;
 
   height: number;
+
+  heightMap: Record<string, number>;
 
   y: number;
 }
@@ -128,12 +131,9 @@ export type HoverState = {
   colKey: string;
 }
 
-export class TableState {
-  // 表格的高度和宽度。
-  //    宽度：所有列配置的宽度合
-  //    高度：所有行的高度之和 + 表头的高度
-  bbox: BBox = { width: 0, height: 0, scrollWidth: 0, scrollHeight: 0 };
+const Row_Height = 57;
 
+export class TableState {
   // 数据可视区域的高度和宽度
   //    宽度：表格容器的可见宽度
   //    高度：如果表头固定：容器高度 - 表头高度。 否则：
@@ -286,8 +286,20 @@ export class TableState {
   }
 
   initRowMeta(dataSource: RowData[]) {
-    // TODO: 根据数据源计算行的元数据
-    const Row_Height = 52;
+    const lastColumnKeys: string[] = ([] as TableColumn[]).concat(this.dfsFixedLeftFlattenColumns, this.dfsCenterFlattenColumns, this.dfsFixedRightFlattenColumns)
+      .filter(col => col._s_meta?.isLast && col.key)
+      .map(col => {
+        return col.key!
+      });
+
+    // 创建高度映射
+    function _createHeightMap(keys: string[]) {
+      return keys.reduce<Record<string, number>>((map, key) => {
+        map[key] = Row_Height;
+        return map;
+      }, {})
+    }
+
     for (let rowIndex = 0; rowIndex < dataSource.length; rowIndex++) {
       this.rowMetaIndexes.push(rowIndex);
       // TODO: 需要考虑树状结构
@@ -295,11 +307,10 @@ export class TableState {
         key: rowIndex,
         rowIndex,
         height: Row_Height,
-        y: rowIndex * Row_Height,
+        heightMap: _createHeightMap(lastColumnKeys),
+        y: rowIndex * Row_Height
       }
     }
-
-    this.updateBBox(0, dataSource.length * Row_Height)
   }
 
   // 更新 viewport，当可视窗口更新后，用户需要调用 getViewportDataSource 重新获取数据。
@@ -318,43 +329,30 @@ export class TableState {
     this.scroll.top = Math.min(this.scroll.top, maxYMove);
   }
 
-  // 更新 table 的 bbox。
-  updateBBox(width: number, height: number) {
-    this.bbox = Object.assign({}, this.bbox ?? {}, {
-      width, height
-    });
-  }
-
   // 更新行的元数据
-  // TODO: 需要考虑当拖动行数据时，这个元数据应该怎么变更会比较快
-  updateRowMeta(key: RowMetaKey, height: number) {
+  updateRowMeta(rowIndex: number, column: TableColumn, height: number) {
+    const key = this.rowMetaIndexes[rowIndex];
+
     const rowMeta = this.rowMeta[key];
     if (!rowMeta) return;
+    if (!column.key || isNil(rowMeta.heightMap[column.key])) return;
 
-    const originRowHeight = rowMeta.height ?? 0;
-    rowMeta.height = height;
-    // 如果实际的高度值和预估的高度值偏差为 0，则不做处理。
-    if (height === originRowHeight) return;
+    const previewMeta = this.rowMeta[this.rowMetaIndexes[rowIndex - 1]] ?? null;
 
-    const offsetHeight = height - originRowHeight;
-    const rowIndex = rowMeta.rowIndex;
+    rowMeta.heightMap[column.key] = height;
+    const rowHeight = Math.max(...Object.values(rowMeta.heightMap));
 
-    for (let i = rowIndex + 1; i < this.rowMetaIndexes.length; i++) {
-      const nextRowMeta = this.rowMeta[this.rowMetaIndexes[i]]
-      if (nextRowMeta) {
-        nextRowMeta.y += offsetHeight;
-      }
-    }
-
-    const lastRowMeta = this.rowMeta[this.rowMetaIndexes[this.rowMetaIndexes.length - 1]];
-    lastRowMeta && this.updateBBox(this.bbox.width ?? 0, lastRowMeta.height + lastRowMeta.y)
+    Object.assign(rowMeta, {
+      height: rowHeight,
+      y: (previewMeta?.height ?? 0) + (previewMeta?.y ?? 0),
+    });
   }
 
   // 执行交换两行数据
   processExchangeRowData(modifiedRowIndex: number, originRowIndex: number) {
     if (modifiedRowIndex === originRowIndex) return;
 
-    // TODO: 交换两行数据, 两个行数据索引之间的 Y 坐标会发生改变。
+    // 需要交换 rowIndex 对应的key 值
   }
 
   dynamicUpdateCellMeta() {
@@ -374,25 +372,71 @@ export class TableState {
     bottom: 0
   };
 
+  _calculateRowOffset(rowIndex: number) {
+    const rowKey = this.rowMetaIndexes[rowIndex];
+    const meta = this.rowMeta[rowKey];
+
+    if (meta) {
+      return meta.y + meta.height;
+    }
+    return 0;
+  }
+
   getViewportDataSource(): RowData[] {
-    // 1. 表头固定。
-    const rowHeight = 57;
-    let startIndex = Math.floor(this.scroll.top / rowHeight);
-    startIndex = Math.max(startIndex - this.buffer, 0)
-    let endIndex = Math.floor((this.viewport.height + this.scroll.top) / rowHeight);
-
     const dataSourceLength = this.dataSourceLength;
-    endIndex = Math.min(dataSourceLength - 1, endIndex + this.buffer);
-
-    this.rowOffset.top = startIndex * rowHeight;
-    this.rowOffset.bottom = (dataSourceLength - endIndex - 1) * rowHeight;
 
 
-    return Array(endIndex - startIndex + 1).fill(null).map((_, index) => {
-      const rowIndex = startIndex + index;
+    const range = {
+      startIndex: 0,
+      endIndex: 0
+    }
+
+    for (let i = 0; i < dataSourceLength; i++) {
+      const rowKey = this.rowMetaIndexes[i];
+      const meta = this.rowMeta[rowKey];
+
+      if (meta.y > this.scroll.top) {
+        range.startIndex = meta.rowIndex;
+        break;
+      }
+    }
+    let height = this.scroll.top + this.viewport.height;
+    for (let i = range.startIndex; i < dataSourceLength; i++) {
+      const rowKey = this.rowMetaIndexes[i];
+      const meta = this.rowMeta[rowKey];
+
+      if (meta.y > height) {
+        range.endIndex = meta.rowIndex;
+        break;
+      }
+    }
+
+    if (range.endIndex === 0) {
+      range.endIndex = dataSourceLength - 1;
+    }
+
+    range.startIndex = Math.max(0, range.startIndex - this.buffer);
+    range.endIndex = Math.min(dataSourceLength - 1, range.endIndex + this.buffer);
+
+    this.rowOffset.top = this._calculateRowOffset(range.startIndex - 1);
+    this.rowOffset.bottom = this._calculateRowOffset(dataSourceLength - 1) - this._calculateRowOffset(range.endIndex);
+    console.log(this.rowOffset)
+
+    return Array(range.endIndex - range.startIndex + 1).fill(null).map((_, index) => {
+      const rowIndex = range.startIndex + index;
       return Object.assign({}, this.dataSourceMeta[rowIndex], {
         _s_row_index: rowIndex
       })
     })
+  }
+
+  getViewportHeightList(viewportDataSource: RowData[]): number[] {
+    return viewportDataSource.map(item => {
+      if (isNil(item._s_row_index)) return 0;
+
+      const key = this.rowMetaIndexes[item._s_row_index];
+      return this.rowMeta[key].height ?? 0;
+    })
+
   }
 }

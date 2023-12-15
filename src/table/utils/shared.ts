@@ -13,3 +13,7 @@ export function getDFSLastColumns(columns: TableColumn[]): TableColumn[] {
     return cols.concat(col);
   }, []);
 }
+
+export function px2Number(target: string): number {
+  return Number(target.replace("px", ""));
+}
