@@ -69,7 +69,7 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, onUpdated, ref, shallowRef, watch } from "vue";
+import { StyleValue, computed, defineComponent, onMounted, onUpdated, ref, shallowRef, watch } from "vue";
 import { CellMeta } from "../../../state";
 import { resize } from "../../directives";
 import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
@@ -78,6 +78,8 @@ import { px2Number, runIdleTask } from "../../utils";
 import Scrollbar from "../scrollbar/index.vue";
 import BodyCells from "./cells.vue";
 import { nextTick } from "process";
+import { table } from "console";
+import { throttle } from "lodash-es";
 
 export default defineComponent({
   name: "STableBody",
@@ -230,6 +232,14 @@ export default defineComponent({
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
 
+    const updateViewportWidth = throttle(function () {
+      tableState.value.viewport.width = bodyInnerRef.value?.offsetWidth ?? 0;
+      tableState.value.viewport.scrollWidth = bodyCenterRef.value?.scrollWidth ?? 0;
+      tableState.value.updateScroll();
+    }, 16)
+
+    onUpdated(updateViewportWidth)
+
     const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
     const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
 
@@ -338,7 +348,7 @@ export default defineComponent({
 
   &-center {
     overflow: hidden;
-    width: max-content;
+    width: fit-content;
   }
 }
 </style>

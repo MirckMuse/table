@@ -41,23 +41,32 @@
 </template>
 
 <script lang="ts" setup>
-import { StyleValue, computed, shallowRef } from "vue";
+import { throttle } from "lodash-es";
+import { StyleValue, computed, onUpdated, shallowRef } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";
+import { genGridTemplateColumns } from "../../utils";
 import HeaderCells from "./cells.vue";
 
 defineOptions({
   name: "STableHeader",
 });
 
-const {
-  tableState
-} = useStateInject();
+const { tableState } = useStateInject();
 
 const headerCenterRef = shallowRef<HTMLElement>();
 
 const headerRef = shallowRef<HTMLElement>();
 const headerLeftRef = shallowRef<HTMLElement>();
 const headerRightRef = shallowRef<HTMLElement>();
+const updateViewportWidth = throttle(function () {
+  Object.assign(tableState.value.viewport, {
+    width: headerRef.value?.offsetWidth ?? 0,
+    scrollWidth: headerCenterRef.value?.scrollWidth ?? 0 
+  })
+  tableState.value.updateScroll();
+}, 16)
+
+onUpdated(updateViewportWidth)
 
 const { headerLeftBBox, headerRightBBox } = useTableHeaderScroll(
   headerRef,
@@ -79,21 +88,12 @@ const leftFlattenColumns = computed(() => tableState.value.fixedLeftFlattenColum
 const leftColumnsVisible = computed(() => leftColumns.value.length);
 const leftStyle = computed<StyleValue>(() => {
   const style: StyleValue = {}
-  const lastColumns = tableState.value.dfsFixedLeftFlattenColumns;
   const maxDeep = tableState.value.maxTableHeaderDeep;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
-  style.gridTemplateColumns = lastColumns.map(column => {
-    let width = column.width;
-    if (typeof width === "number") {
-      width = `${width}px`;
-    }
-    return width ?? 'minmax(120px, 1fr)'
-  }).join(" ");
+  style.gridTemplateColumns = genGridTemplateColumns(tableState.value.dfsFixedLeftFlattenColumns);
   return style;
 });
-const centerColumns = computed(() => {
-  return tableState.value.columns ?? []
-});
+const centerColumns = computed(() => tableState.value.columns ?? []);
 
 const scroll = computed(() => tableState.value.scroll);
 
@@ -101,20 +101,13 @@ const centerFlattenColumns = computed(() => tableState.value.centerFlattenColumn
 
 const centerStyle = computed(() => {
   const style: StyleValue = {};
-  style.paddingLeft = (headerLeftBBox.value.width ?? 0) + "px";
-  style.paddingRight = (headerRightBBox.value?.width ?? 0) + "px";
   const { left: scrollLeft } = scroll.value;
+  style.paddingLeft = `${headerLeftBBox.value.width}px`;
+  style.paddingRight = `${headerRightBBox.value.width}px`;
   style.transform = `translateX(${-scrollLeft}px)`
-  const lastColumns = tableState.value.dfsCenterFlattenColumns;
   const maxDeep = tableState.value.maxTableHeaderDeep;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
-  style.gridTemplateColumns = lastColumns.map(column => {
-    let width = column.width;
-    if (typeof width === "number") {
-      width = `${width}px`;
-    }
-    return width ?? 'minmax(120px, 1fr)'
-  }).join(" ");
+  style.gridTemplateColumns = genGridTemplateColumns(tableState.value.dfsCenterFlattenColumns);
   return style;
 });
 
@@ -124,16 +117,9 @@ const rightFlattenColumns = computed(() => tableState.value.fixedRightFlattenCol
 const rightColumnsVisible = computed(() => leftColumns.value.length);
 const rightStyle = computed<StyleValue>(() => {
   const style: StyleValue = {}
-  const lastColumns = tableState.value.dfsFixedRightFlattenColumns;
   const maxDeep = tableState.value.maxTableHeaderDeep;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
-  style.gridTemplateColumns = lastColumns.map(column => {
-    let width = column.width;
-    if (typeof width === "number") {
-      width = `${width}px`;
-    }
-    return width ?? 'minmax(120px, 1fr)'
-  }).join(" ");
+  style.gridTemplateColumns = genGridTemplateColumns(tableState.value.dfsFixedRightFlattenColumns);
   return style;
 });
 
@@ -144,7 +130,10 @@ const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableSta
 
 .s-table-header__inner {
   position: relative;
-  overflow: hidden;
+  overflow: auto;
+  &::-webkit-scrollbar {
+      display: none;
+  }
 
   &-fixedLeft,
   &-center,
@@ -157,6 +146,8 @@ const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableSta
   }
 
   &-center {
+    overflow: auto;
+    width: fit-content;
     &::-webkit-scrollbar {
       display: none;
     }

@@ -19,3 +19,13 @@ export function px2Number(target: string): number {
 }
 
 export function noop() { }
+
+export function genGridTemplateColumns(lastColumns: TableColumn[]) {
+  return lastColumns.map(column => {
+    let width = column.width;
+    if (typeof width === "number") {
+      width = `${width}px`;
+    }
+    return width ?? 'minmax(120px, 1fr)'
+  }).join(" ");
+}

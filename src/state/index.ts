@@ -135,6 +135,10 @@ export type HoverState = {
 
 const Row_Height = 55;
 
+function adjustScrollOffset(offset: number, maxMove: number) {
+  return Math.max(0, Math.min(maxMove, offset))
+}
+
 export class TableState {
   // 数据可视区域的高度和宽度
   //    宽度：表格容器的可见宽度
@@ -335,11 +339,12 @@ export class TableState {
 
   updateScroll() {
     const { scrollHeight, scrollWidth, width, height } = this.viewport;
-
-    const maxXMove = scrollWidth - width;
-    const maxYMove = scrollHeight - height;
-    this.scroll.left = Math.min(this.scroll.left, maxXMove);
-    this.scroll.top = Math.min(this.scroll.top, maxYMove);
+    const maxXMove = Math.max(0, scrollWidth - width);
+    const maxYMove = Math.max(0, scrollHeight - height);
+    Object.assign(this.scroll, {
+      left: adjustScrollOffset(this.scroll.left, maxXMove),
+      top: adjustScrollOffset(this.scroll.top, maxYMove)
+    })
   }
 
   // 更新行的元数据

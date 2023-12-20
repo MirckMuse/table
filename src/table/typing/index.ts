@@ -1,4 +1,5 @@
 import { VNode } from "vue";
+import type { TooltipProps } from "ant-design-vue";
 
 export type TablePaginationProps = {
   vertical: 'top' | 'bottom';
@@ -72,6 +73,10 @@ export type CustomRenderOption = {
 
 export type CustomRender = (option: CustomRenderOption) => CustomRenderResult | CustomRenderResult[] | undefined | void;
 
+export type TableColumnSorter = boolean | ((a: RowData, b: RowData) => number);
+
+export type TableColumnSorterTooltip = boolean | TooltipProps;
+
 /**
  * 表格列配置，key 和dataIndex 至少有一个必填
  */
@@ -106,6 +111,13 @@ export interface TableColumn {
   customHeaderCell?: (column: TableColumn) => Record<string, any>;
 
   customRender?: CustomRender;
+
+  // 排序相关
+  sorter?: TableColumnSorter;
+
+  sortOrder?: string | null;
+  sortDirections?: [string, string];
+  showSorterTooltip?: boolean;
 
   _origin?: TableColumn;
 

@@ -2,7 +2,7 @@ import { useResizeObserver } from "@vueuse/core";
 import { throttle } from "lodash-es";
 import { Ref, computed, onMounted, ref } from "vue";
 import { TableState } from "../../state";
-import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";
+import { createLockedRequestAnimationFrame, optimizeScrollXY, px2Number } from "../utils";
 
 type BBox = {
   width: number;
@@ -48,17 +48,6 @@ export function useTableHeaderScroll(
   headerRightRef: Ref<HTMLElement | undefined>,
   tableState: Ref<TableState>,
 ) {
-
-  // 更新可是窗口的滚动宽度
-  function immediateUpdateScrollWidth() {
-    const el = tableCenterHeader.value
-    if (!el) return;
-
-    const { scrollWidth } = el;
-    tableState.value.viewport.scrollWidth = scrollWidth;
-    tableState.value.updateScroll();
-  }
-
   function immediateUpdateClientWidth() {
     const el = tableHeader.value;
     if (!el) return;
@@ -72,7 +61,6 @@ export function useTableHeaderScroll(
   const { bbox: headerLeftBBox } = useBBox(headerLeftRef);
   const { bbox: headerRightBBox } = useBBox(headerRightRef);
 
-  useBBox(tableCenterHeader, throttle(immediateUpdateScrollWidth, 16)); // 计算水平方向的宽度和滚动宽度;
   useBBox(tableHeader, throttle(immediateUpdateClientWidth, 16)); // 计算水平方向的宽度和滚动宽度;
 
   const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);

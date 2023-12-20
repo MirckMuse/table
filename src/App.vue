@@ -19,12 +19,12 @@ function handleResizeColumn(width: number, col: TableColumn) {
   col.width = width;
 }
 
-const data_source = ref<any[]>(Array(1000).fill(null).map((_, index) => {
+const data_source = ref<any[]>(Array(100).fill(null).map((_, index) => {
   return {
     "a": index,
     "b": "很长很长的一段文本很长很长的一段文本",
     "c": index,
-    "d": index
+    "d": index + 1
   }
 }));
 
@@ -60,7 +60,7 @@ const columns = ref<TableColumn[]>([
       return { style: "color: red" }
     }
   },
-  { dataIndex: 'c', title: "第三列-1", colSpan: 0 },
+  { dataIndex: 'd', title: "第三列-1", colSpan: 0 },
   {
     title: "分组",
     children: [
@@ -73,7 +73,7 @@ const columns = ref<TableColumn[]>([
   { dataIndex: 'c', title: "第三列-6" },
   { dataIndex: 'c', title: "第三列-7" },
   { dataIndex: 'c', title: "第三列-8" },
-  { dataIndex: 'c', title: "第三列-9" },
+  { dataIndex: 'd', title: "第三列-9" },
   {
     dataIndex: 'c',
     title: "操作",
