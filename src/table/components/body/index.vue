@@ -12,7 +12,6 @@
       @mouseover="handleMouseenter"
       @mouseout="handleMouseleave"
     >
-
       <div
         v-if="leftColumnsVisible"
         ref="bodyLeftRef"
@@ -38,7 +37,6 @@
         />
       </div>
 
-      
       <div
         v-if="rightColumnsVisible"
         ref="bodyRightRef"
@@ -54,6 +52,7 @@
     </div>
     
     <Scrollbar
+      :state="scrollState"
       :client="viewport.height" 
       :content="viewport.scrollHeight"
       :scroll="scroll.top"
@@ -61,6 +60,7 @@
     />
 
     <Scrollbar 
+      :state="scrollState"
       :client="viewport.width"
       :content="viewport.scrollWidth"
       :scroll="scroll.left"
@@ -69,14 +69,15 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, ref, shallowRef, watch } from "vue";
+import { StyleValue, computed, defineComponent, onUpdated, ref, shallowRef, watch } from "vue";
+import { CellMeta } from "../../../state";
 import { resize } from "../../directives";
 import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
+import { RowData } from "../../typing";
+import { px2Number, runIdleTask } from "../../utils";
 import Scrollbar from "../scrollbar/index.vue";
 import BodyCells from "./cells.vue";
-import { RowData } from "../../typing";
-import { throttle } from "lodash-es";
-import { table } from "console";
+import { nextTick } from "process";
 
 export default defineComponent({
   name: "STableBody",
@@ -91,7 +92,25 @@ export default defineComponent({
   },
 
   setup() {
-    const { tableState } = useStateInject();
+    const {
+      tableState,
+      tableProps,
+      handleTooltipEnter,
+      handleTooltipLeave
+    } = useStateInject();
+
+    const scrollState = computed(() => {
+      const {
+        mode = "always",
+        position = "outer",
+        size = 6
+      } = tableProps.scroll ?? {};
+      return {
+        mode,
+        position,
+        size
+      }
+    })
 
     const dataSource = ref<RowData[]>([]);
     const gridTemplateRows = computed(() => {
@@ -115,6 +134,45 @@ export default defineComponent({
         return width ?? 'minmax(120px, 1fr)'
       }).join(" ");
       return style;
+    });
+
+    function createGetCellPadding() {
+      const padding = {
+        top: -1,
+        bottom: -1
+      }
+
+      return function (el: HTMLElement) {
+        if (padding.top >= 0 && padding.bottom >= 0) {
+          return padding;
+        }
+        const { paddingTop, paddingBottom } = window.getComputedStyle(el)
+        padding.top = px2Number(paddingTop);
+        padding.bottom = px2Number(paddingBottom);
+        return padding;
+      }
+    }
+
+    const getCellPadding = createGetCellPadding();
+
+
+    onUpdated(() => {
+      const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
+      const metas: CellMeta[] = [];
+      for (const element of innserElements) {
+        const cellElement = element.parentElement as HTMLElement;
+        const { top, bottom } = getCellPadding(cellElement)
+        const { colKey, rowIndex } = cellElement.dataset
+        metas.push({
+          // 以行的索引作为 key 值。
+          colKey: colKey ?? "",
+          rowIndex: rowIndex ? Number(rowIndex) : -1,
+          height: Math.floor(element.getBoundingClientRect().height) + top + bottom
+        })
+      }
+      runIdleTask(() => {
+        tableState.value.updateCellMetas(metas);
+      })
     });
 
     const rightColumns = computed(() => tableState.value.dfsFixedRightFlattenColumns);
@@ -143,7 +201,11 @@ export default defineComponent({
     const viewport = computed(() => tableState.value.viewport)
     const scroll = computed(() => tableState.value.scroll)
     const bodyClass = computed(() => {
-      return [];
+      const clas: string[] = [];
+      if (scrollState.value.mode === "hover") {
+        clas.push("s-table-body__scrollbar-hover")
+      }
+      return clas;
     });
     const bodyStyle = computed(() => {
       return {
@@ -151,14 +213,19 @@ export default defineComponent({
     });
 
     watch(
-      () => tableState.value.scroll.top,
+      () => [
+        tableState.value.scroll.top,
+        tableState.value.dataSourceLength
+      ],
       () => {
-        dataSource.value = tableState.value.getViewportDataSource();
-      },
-      {
-        immediate: true
+        dataSource.value = tableState.value.getViewportDataSource()
       }
-    )
+    );
+
+    nextTick(() => {
+      dataSource.value = tableState.value.getViewportDataSource()
+    })
+
     const bodyLeftRef = shallowRef<HTMLElement>();
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
@@ -174,8 +241,8 @@ export default defineComponent({
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
       style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
-      style.gridTemplateRows = gridTemplateRows.value;
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
+      style.gridTemplateRows = gridTemplateRows.value;
       const { left: scrollLeft, top: scrollTop } = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
       style.gridTemplateColumns = centerColumns.value.map(column => {
@@ -197,6 +264,8 @@ export default defineComponent({
             rowIndex: Number(target.dataset.rowIndex),
             colKey: target.dataset.colKey ?? ""
           }
+
+          handleTooltipEnter(target)
           return;
         }
         target = target.parentElement;
@@ -205,6 +274,7 @@ export default defineComponent({
 
     function handleMouseleave($event: MouseEvent) {
       tableState.value.hoverState = { rowIndex: -1, colKey: "" }
+      handleTooltipLeave($event)
     }
 
     const maxXMove = computed(() => {
@@ -212,7 +282,7 @@ export default defineComponent({
     })
 
     return {
-      scroll, viewport, maxXMove,
+      scroll, scrollState, viewport, maxXMove,
 
       dataSource,
 
@@ -272,3 +342,17 @@ export default defineComponent({
   }
 }
 </style>
+
+<style lang="less">
+.s-table-body {
+
+  &__scrollbar-hover {
+    &:hover > .s-table-scroll__track {
+      opacity: 1;
+    }
+    > .s-table-scroll__track {
+      opacity: 0;
+      transition: opacity .16s cubic-bezier(0, .5, 1, .5);
+    }
+  }
+}</style>

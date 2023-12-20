@@ -18,6 +18,8 @@ export interface TableScroll {
   position?: "inner" | "outer";
 
   mode?: "always" | "hover";
+
+  size?: number;
 }
 
 /**
@@ -42,7 +44,11 @@ export interface TableProps {
 
 export type TableColumnTitle = string | (() => string);
 
-export type TableColumnEllipsisObject = { showTitle?: boolean };
+export type TableColumnEllipsisObject = {
+  showTitle?: boolean;
+
+  showTooltip?: boolean;
+};
 
 export type TableColumnEllipsis = boolean | TableColumnEllipsisObject;
 

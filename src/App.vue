@@ -1,7 +1,7 @@
 <template>
   <div style="padding: 10px;">
     <s-table 
-      :data-source="dataSource" 
+      :data-source="data_source" 
       :columns="columns"
       :bordered="true" 
       :scroll="{ y: 700 }"
@@ -12,16 +12,21 @@
 </template>
 
 <script lang="ts" setup>
-import { TableColumn, RowData } from "./table/typing"
 import { h, ref } from "vue";
-
-const dataSource: RowData[] = Array(100).fill(null).map((_, index) => {
-  return { a: index, b: "很长很长的一段文本很长很长的一段文本", c: index, d: index }
-})
+import { TableColumn } from "./table/typing";
 
 function handleResizeColumn(width: number, col: TableColumn) {
   col.width = width;
 }
+
+const data_source = ref<any[]>(Array(1000).fill(null).map((_, index) => {
+  return {
+    "a": index,
+    "b": "很长很长的一段文本很长很长的一段文本",
+    "c": index,
+    "d": index
+  }
+}));
 
 const columns = ref<TableColumn[]>([
   {
@@ -41,7 +46,9 @@ const columns = ref<TableColumn[]>([
   {
     dataIndex: 'b',
     title: "一段长文案长文案长文案长文案长文案长文案长文案长文案",
-    ellipsis: true,
+    ellipsis: {
+      showTooltip: true
+    },
     fixed: true,
     resizable: true,
   },
@@ -71,6 +78,9 @@ const columns = ref<TableColumn[]>([
     dataIndex: 'c',
     title: "操作",
     fixed: 'right',
+    ellipsis: {
+      showTooltip: true
+    },
     customRender() {
       return h('button', "按钮")
     }

@@ -1,17 +1,18 @@
 <template>
   <div :class="cellClass" ref="cellRef" :title="title" v-bind="cellBind">
     <div :class="cellInnerClass" :style="cellInnerStyle" ref="cellInnerRef">
-      <component :is="customRender"></component>
+      
+      <component v-if="isCustomRenderVNode" :is="customRenderResult"></component>
+      <template v-else>{{ customRenderResult ?? text }}</template>
     </div>
   </div>
 </template>
 
 <script lang="ts">
-import { PropType, StyleValue, computed, defineComponent, h, onMounted, ref, isVNode } from "vue";
-import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
-import { useSelectionInject, useStateInject } from "../../hooks";
 import { get } from "lodash-es";
-import { px2Number, runIdleTask } from "../../utils";
+import { Fragment, PropType, StyleValue, computed, defineComponent, h, isVNode, ref } from "vue";
+import { useSelectionInject, useStateInject } from "../../hooks";
+import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
 
 export default defineComponent({
   name: "STableBodyCell",
@@ -36,18 +37,6 @@ export default defineComponent({
 
     const { tableState } = useStateInject();
 
-    onMounted(() => {
-      if (!cellRef.value || !cellInnerRef.value) return;
-
-      const { column, record } = props;
-
-      let { paddingTop, paddingBottom } = window.getComputedStyle(cellRef.value);
-      const innerHeight = cellInnerRef.value?.getBoundingClientRect().height ?? 0;
-
-      runIdleTask(() => {
-        tableState.value.updateRowMeta(record._s_row_index ?? -1, column, innerHeight + px2Number(paddingTop) + px2Number(paddingBottom));
-      })
-    })
     function getText(column?: TableColumn, record?: RowData): unknown | null {
       if (!column?.dataIndex) return null;
 
@@ -128,26 +117,24 @@ export default defineComponent({
       return column.customCell?.(record, rowIndex, column) ?? {}
     });
 
-    const customRender = computed(() => {
+    const customRenderResult = computed(() => {
       const { column, rowIndex, record } = props;
-      const result = column.customRender?.({
+      return column.customRender?.({
         text: text.value,
         record,
         column,
         index: rowIndex
       }) ?? undefined;
-
-      return isVNode(result)
-        ? result
-        : h('span', result ?? text.value)
     })
+
+    const isCustomRenderVNode = computed(() => isVNode(customRenderResult.value))
 
     return {
       cellRef, cellClass, cellBind, title,
 
       cellInnerRef, cellInnerClass, cellInnerStyle, text,
 
-      customRender
+      customRenderResult, isCustomRenderVNode
     }
   }
 })
@@ -198,6 +185,7 @@ export default defineComponent({
 
   &-inner {
     flex: 1;
+    height: fit-content;
     
     &-ellipsis {
       overflow: hidden;

@@ -29,18 +29,6 @@ defineOptions({
 
 const slots = defineSlots();
 
-const headerSlots = computed(() => {
-  const slotKeys = ["headerCell"];
-
-  return slotKeys.reduce<Record<string, any>>((slot, key) => {
-
-    if (slots[key]) {
-      slot[key] = slots[key]
-    }
-    return slot;
-  }, {})
-})
-
 const props = defineProps<TableProps>()
 
 const {

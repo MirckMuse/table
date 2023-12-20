@@ -18,7 +18,6 @@
   --table-body-cell-border-color-selection: #1677ff;
   --table-body-cell-bg-selection: #e6f4ff;
 
-  --table-scroll-size: 6px;
   --table-scroll-radius: 1.5px;
   --table-scroll-track-bg: #ededed;
   --table-scroll-thumb-bg: #737779;
@@ -72,4 +71,94 @@
     box-shadow: inset -10px 0 8px -8px rgba(5, 5, 5, 0.06);
   }
 
+}
+
+.s-table-tooltip {
+  &-wrapper {
+    --antd-arrow-background-color: rgba(0, 0, 0, 0.85);
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: rgba(0, 0, 0, 0.88);
+    font-size: 14px;
+    line-height: 1.5714285714285714;
+    list-style: none;
+    position: absolute;
+    z-index: 1070;
+    display: block;
+    max-width: 250px;
+    visibility: visible;
+  }
+
+  &-inner {
+    min-width: 32px;
+    min-height: 32px;
+    padding: 6px 8px;
+    color: #fff;
+    text-align: start;
+    text-decoration: none;
+    word-wrap: break-word;
+    background-color: rgba(0, 0, 0, 0.85);
+    border-radius: 6px;
+    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+  }
+
+  &-inner-content {
+    position: relative;
+    animation: zoom-big-fast 60ms ease-in-out;
+    animation-direction: alternate;
+  }
+
+  &-arrow {
+    position: relative;
+    left: 6px;
+    bottom: 0;
+    transform: translateY(100%) rotate(180deg);
+    position: absolute;
+    z-index: 1;
+    display: block;
+    pointer-events: none;
+    width: 16px;
+    height: 16px;
+    overflow: hidden;
+
+    &::before {
+      position: absolute;
+      bottom: 0;
+      inset-inline-start: 0;
+      width: 16px;
+      height: 8px;
+      background: var(--antd-arrow-background-color);
+      clip-path: polygon(1.6568542494923806px 100%, 50% 1.6568542494923806px, 14.34314575050762px 100%, 1.6568542494923806px 100%);
+      clip-path: path('M 0 8 A 4 4 0 0 0 2.82842712474619 6.82842712474619 L 6.585786437626905 3.0710678118654755 A 2 2 0 0 1 9.414213562373096 3.0710678118654755 L 13.17157287525381 6.82842712474619 A 4 4 0 0 0 16 8 Z');
+      content: "";
+    }
+  }
+
+  &-arrow-content::after {
+    content: "";
+    position: absolute;
+    width: 8.970562748477143px;
+    height: 8.970562748477143px;
+    bottom: 0;
+    inset-inline: 0;
+    margin: auto;
+    border-radius: 0 0 2px 0;
+    transform: translateY(50%) rotate(-135deg);
+    box-shadow: 3px 3px 7px rgba(0, 0, 0, 0.1);
+    z-index: 0;
+    background: transparent;
+  }
+}
+
+@keyframes zoom-big-fast {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }

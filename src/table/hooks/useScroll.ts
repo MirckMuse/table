@@ -1,6 +1,6 @@
 import { useResizeObserver } from "@vueuse/core";
 import { throttle } from "lodash-es";
-import { Ref, computed, onMounted, ref, watch } from "vue";
+import { Ref, computed, onMounted, ref } from "vue";
 import { TableState } from "../../state";
 import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";
 
@@ -80,7 +80,7 @@ export function useTableHeaderScroll(
   onMounted(() => {
     if (!tableCenterHeader.value) return;
 
-    tableCenterHeader.value.addEventListener("wheel", processWheel);
+    tableCenterHeader.value.addEventListener("wheel", processWheel, { passive: false });
   })
 
   const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
@@ -113,9 +113,8 @@ export function useTableBodyScroll(
   tableState: Ref<TableState>,
 ) {
   useBBox(tableInnerBody, (el) => {
-    const { offsetHeight, scrollHeight } = el;
+    const { offsetHeight } = el;
     tableState.value.viewport.height = offsetHeight;
-    tableState.value.viewport.scrollHeight = scrollHeight;
     tableState.value.updateScroll();
   }); // 计算垂直
 
@@ -158,16 +157,38 @@ export function useTableBodyScroll(
     });
   });
 
+  const throttleUpdateScroll = throttle((deltaX: number, deltaY) => {
+    const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
+    let {
+      left: scrollLeft,
+      top: scrollTop
+    } = tableState.value.scroll;
+
+    scrollTop = Math.max(
+      0,
+      Math.min(scrollTop + optimizeY, maxMove.value.y)
+    );
+    scrollLeft = Math.max(
+      0,
+      Math.min(scrollLeft + optimizeX, maxMove.value.x)
+    );
+
+    Object.assign(tableState.value.scroll, {
+      left: scrollLeft,
+      top: scrollTop
+    });
+  }, 16);
+
   const processWheel = ($event: WheelEvent) => {
     $event.preventDefault();
-
-    animationWheel($event);
+    const { deltaX, deltaY } = $event;
+    throttleUpdateScroll(deltaX, deltaY)
   }
 
   onMounted(() => {
     if (!tableInnerBody.value) return;
 
-    tableInnerBody.value.addEventListener("wheel", processWheel)
+    tableInnerBody.value.addEventListener("wheel", processWheel, { passive: false })
   })
 }
 

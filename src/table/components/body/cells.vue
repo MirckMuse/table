@@ -1,7 +1,6 @@
 <script lang="ts">
 import type { StyleValue, VNode } from "vue";
 import { PropType, defineComponent, h } from "vue";
-import { useSelectionInject } from "../../hooks";
 import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
 import Cell from "./cell.vue";
 

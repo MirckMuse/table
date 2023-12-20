@@ -9,11 +9,11 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, computed, ref, shallowRef } from "vue";
-import { TableColumn } from "../../typing";
-import { AddEventListenerHandle, addEventListener, runIdleTask } from "../../utils";
 import { isNaN } from "lodash-es";
+import { PropType, computed, ref, shallowRef } from "vue";
 import { useStateInject } from "../../hooks";
+import { TableColumn } from "../../typing";
+import { AddEventListenerHandle, addEventListener } from "../../utils";
 
 const props = defineProps({
   column: { type: Object as PropType<TableColumn>, required: true }

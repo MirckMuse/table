@@ -17,3 +17,5 @@ export function getDFSLastColumns(columns: TableColumn[]): TableColumn[] {
 export function px2Number(target: string): number {
   return Number(target.replace("px", ""));
 }
+
+export function noop() { }

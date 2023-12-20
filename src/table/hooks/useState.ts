@@ -1,14 +1,22 @@
-import { InjectionKey, Ref, inject, provide, ref } from "vue";
+import { InjectionKey, Ref, inject, provide, ref, watch } from "vue";
 import { TableState } from "../../state";
 import { TableColumn, TableProps } from "../typing";
-import { debounce } from "lodash-es";
+import { debounce, isObject } from "lodash-es";
+import { noop } from "../utils/shared";
+import { useCellTooltip } from "./useCellTooltip";
 
 interface ITableContext {
   tableState: Ref<TableState>;
 
+  tableProps: TableProps;
+
   slots: Record<string, any>;
 
   handleResizeColumn: (resizedWidth: number, column: TableColumn) => void;
+
+  // cell 的移入和移出逻辑
+  handleTooltipEnter: (cellEl: HTMLElement) => void;
+  handleTooltipLeave: ($event: MouseEvent) => void;
 }
 
 
@@ -37,6 +45,13 @@ export function useStateProvide({
 
   const state = ref(createTableState());
 
+  watch(
+    () => props.dataSource ?? [],
+    (dataSource) => {
+      state.value.coverDataSource(dataSource)
+    }
+  )
+
   let userSelectState = {
     pre: "",
     isSet: false,
@@ -58,10 +73,21 @@ export function useStateProvide({
     revertTableUserSelect();
   }
 
+  const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({
+    tooltipVisible(cellEl: HTMLElement) {
+      const colKey = cellEl.dataset.colKey ?? "";
+      const column = state.value.columnMap[colKey];
+      return !!(isObject(column.ellipsis) && column.ellipsis.showTooltip)
+    }
+  })
+
   provide(TableStateKey, {
     tableState: state,
     slots,
-    handleResizeColumn
+    handleResizeColumn,
+    tableProps: props,
+    handleTooltipEnter,
+    handleTooltipLeave
   })
 }
 
@@ -69,7 +95,10 @@ export function useStateInject() {
   return inject(TableStateKey, {
     tableState: ref(),
     slots: {},
-    handleResizeColumn: () => { },
+    handleResizeColumn: noop,
+    tableProps: {},
+    handleTooltipEnter: noop,
+    handleTooltipLeave: noop
   });
 }
 

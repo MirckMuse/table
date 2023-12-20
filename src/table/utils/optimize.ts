@@ -15,7 +15,7 @@ function createRunIdleTask() {
 
       while (taskList.length) {
         if (deadline.timeRemaining() > 0) {
-          const _task = taskList.pop();
+          const _task = taskList.shift();
           _task?.();
         } else {
           break;
@@ -29,7 +29,6 @@ function createRunIdleTask() {
     taskList.push(task);
 
     if (isRuning) return;
-
     _run();
   }
 }
