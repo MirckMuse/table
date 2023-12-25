@@ -26,7 +26,7 @@ export default defineComponent({
 
     const { selection_state } = useSelectionInject();
 
-    const { tableState, slots: slotsTable } = useStateInject();
+    const { tableState, slots: slotsTable, tableProps } = useStateInject();
 
     function getText(column?: TableColumn, record?: RowData): unknown | null {
       if (!column?.dataIndex) return null;
@@ -131,10 +131,15 @@ export default defineComponent({
     return () => {
       const contentVNodes = renderCustomCell();
 
+      const children = contentVNodes ?? text.value;
+
+      const { column, record, rowIndex } = props;
+
       const inner = h(
         "div",
         { class: cellInnerClass.value, style: cellInnerStyle.value, ref: cellInnerRef },
-        contentVNodes ?? text.value
+
+        tableProps.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children
       )
 
       const cell = h(

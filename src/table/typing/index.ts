@@ -40,6 +40,8 @@ export interface TableProps {
   scroll?: TableScroll;
 
   onResizeColumn?: Function;
+
+  transformCellText?: (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;
 }
 
 
