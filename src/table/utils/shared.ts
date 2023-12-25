@@ -29,3 +29,7 @@ export function genGridTemplateColumns(lastColumns: TableColumn[]) {
     return width ?? 'minmax(120px, 1fr)'
   }).join(" ");
 }
+
+export function toArray(target: any): any[] {
+  return Array.isArray(target) ? target : [target];
+}

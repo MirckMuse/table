@@ -1,18 +1,9 @@
-<template>
-  <div :class="cellClass" ref="cellRef" :title="title" v-bind="cellBind">
-    <div :class="cellInnerClass" :style="cellInnerStyle" ref="cellInnerRef">
-      
-      <component v-if="isCustomRenderVNode" :is="customRenderResult"></component>
-      <template v-else>{{ customRenderResult ?? text }}</template>
-    </div>
-  </div>
-</template>
-
 <script lang="ts">
 import { get } from "lodash-es";
-import { Fragment, PropType, StyleValue, computed, defineComponent, h, isVNode, ref } from "vue";
+import { PropType, StyleValue, VNode, computed, defineComponent, isVNode, ref, h, mergeProps, Comment } from "vue";
 import { useSelectionInject, useStateInject } from "../../hooks";
 import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
+import { toArray } from "../../utils";
 
 export default defineComponent({
   name: "STableBodyCell",
@@ -35,7 +26,7 @@ export default defineComponent({
 
     const { selection_state } = useSelectionInject();
 
-    const { tableState } = useStateInject();
+    const { tableState, slots: slotsTable } = useStateInject();
 
     function getText(column?: TableColumn, record?: RowData): unknown | null {
       if (!column?.dataIndex) return null;
@@ -117,24 +108,46 @@ export default defineComponent({
       return column.customCell?.(record, rowIndex, column) ?? {}
     });
 
-    const customRenderResult = computed(() => {
+    function isValidVNode(targer: unknown): boolean {
+      if (isVNode(targer)) {
+        return targer.type !== Comment
+      }
+      return true
+    }
+
+    function renderCustomCell(): any[] | null {
       const { column, rowIndex, record } = props;
-      return column.customRender?.({
-        text: text.value,
-        record,
-        column,
-        index: rowIndex
-      }) ?? undefined;
-    })
 
-    const isCustomRenderVNode = computed(() => isVNode(customRenderResult.value))
+      const params = { text: text.value, record, column, index: rowIndex }
 
-    return {
-      cellRef, cellClass, cellBind, title,
+      if (column.customRender) {
+        return toArray(column.customRender(params)).filter(isValidVNode)
+      }
 
-      cellInnerRef, cellInnerClass, cellInnerStyle, text,
+      const tableSlotsVNode = slotsTable.bodyCell?.(params).filter(isValidVNode)
+      return tableSlotsVNode.length ? tableSlotsVNode : null;
+    }
 
-      customRenderResult, isCustomRenderVNode
+    return () => {
+      const contentVNodes = renderCustomCell();
+
+      const inner = h(
+        "div",
+        { class: cellInnerClass.value, style: cellInnerStyle.value, ref: cellInnerRef },
+        contentVNodes ?? text.value
+      )
+
+      const cell = h(
+        "div",
+        mergeProps({
+          class: cellClass.value,
+          ref: cellRef,
+          title: title.value
+        }, cellBind.value),
+        inner
+      )
+
+      return cell;
     }
   }
 })

@@ -7,6 +7,9 @@
       :scroll="{ y: 700 }"
       @resizeColumn="handleResizeColumn"
     >
+      <template v-slot:bodyCell="{ text, column }">
+         <span v-if="column.dataIndex === 'a'">{{ text + "011" }}</span>
+      </template>
     </s-table>
   </div>
 </template>
@@ -38,9 +41,6 @@ const columns = ref<TableColumn[]>([
       return {
         style: "color: red"
       }
-    },
-    customRender({ text }) {
-      return text + "01"
     }
   },
   {

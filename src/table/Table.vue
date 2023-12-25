@@ -18,7 +18,9 @@ defineOptions({
 
 // 定义插槽
 const slots = defineSlots<{
-  headerCell?: { title: any; column: TableColumn; }
+  headerCell?: { title: any; column: TableColumn; },
+  // 格式化单元格
+  bodyCell?: { title: any; column: TableColumn; text: unknown; index: number }
 }>()
 
 const props = defineProps<TableProps>();
