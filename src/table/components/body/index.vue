@@ -6,52 +6,58 @@
     :class="bodyClass"
     :style="bodyStyle"
   >
-    <div 
+    <div
       class="s-table-body__inner"
       ref="bodyInnerRef"
       @mouseover="handleMouseenter"
       @mouseout="handleMouseleave"
     >
-      <div
-        v-if="leftColumnsVisible"
-        ref="bodyLeftRef"
-        class="s-table-body__inner-fixedLeft s-table-fixedLeft"
-        :class="{ 'shadow': scroll.left > 0 }"
-        :style="leftStyle"
-      >
-        <body-cells
-          :columns="leftColumns" 
-          :data-source="dataSource" 
-        />
-      </div>
+      <template v-if="!isEmpty">
+        <div
+          v-if="leftColumnsVisible"
+          ref="bodyLeftRef"
+          class="s-table-body__inner-fixedLeft s-table-fixedLeft"
+          :class="{ 'shadow': scroll.left > 0 }"
+          :style="leftStyle"
+        >
+          <body-rows
+            :columns="leftColumns" 
+            v-bind="commonRowProps"
+          />
+        </div>
 
-      <div 
-        ref="bodyCenterRef"
-        class="s-table-body__inner-center" 
-        :style="centerStyle"
-      >
-        <body-cells
-          :columns="centerColumns" 
-          :data-source="dataSource" 
-          type="center"
-        />
-      </div>
+        <div 
+          ref="bodyCenterRef"
+          class="s-table-body__inner-center" 
+          :style="centerStyle"
+        >
+          <body-rows
+            :columns="centerColumns" 
+            v-bind="commonRowProps"
+          />
+        </div>
 
-      <div
-        v-if="rightColumnsVisible"
-        ref="bodyRightRef"
-        class="s-table-body__inner-fixedRight s-table-fixedRight"
-        :class="{ 'shadow': scroll.left < maxXMove }"
-        :style="rightStyle"
-      >
-        <body-cells 
-          :columns="rightColumns" 
-          :data-source="dataSource" 
-        />
+        <div
+          v-if="rightColumnsVisible"
+          ref="bodyRightRef"
+          class="s-table-body__inner-fixedRight s-table-fixedRight"
+          :class="{ 'shadow': scroll.left < maxXMove }"
+          :style="rightStyle"
+        >
+          <body-rows
+            :columns="rightColumns" 
+            v-bind="commonRowProps"
+          />
+        </div>
+      </template> 
+
+      <div v-else class="s-table-body__empty">
+        <AEmpty></AEmpty>
       </div>
     </div>
     
     <Scrollbar
+      v-if="!isEmpty"
       :state="scrollState"
       :client="viewport.height" 
       :content="viewport.scrollHeight"
@@ -69,17 +75,16 @@
 </template>
 
 <script lang="ts">
-import { StyleValue, computed, defineComponent, onMounted, onUpdated, ref, shallowRef, watch } from "vue";
-import { CellMeta } from "../../../state";
+import { nextTick } from "process";
+import { StyleValue, computed, defineComponent, onUpdated, reactive, ref, shallowRef, watch } from "vue";
+import { OuterRowMeta } from "../../../state";
 import { resize } from "../../directives";
 import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
 import { RowData } from "../../typing";
-import { px2Number, runIdleTask } from "../../utils";
+import { px2Number } from "../../utils";
 import Scrollbar from "../scrollbar/index.vue";
-import BodyCells from "./cells.vue";
-import { nextTick } from "process";
-import { table } from "console";
-import { throttle } from "lodash-es";
+import BodyRows from "./rows.vue";
+import { Empty as AEmpty } from "ant-design-vue"
 
 export default defineComponent({
   name: "STableBody",
@@ -89,16 +94,19 @@ export default defineComponent({
   },
 
   components: {
-    BodyCells,
+    BodyRows,
     Scrollbar,
+    AEmpty
   },
 
   setup() {
     const {
       tableState,
       tableProps,
+      slots: tableSlots,
       handleTooltipEnter,
-      handleTooltipLeave
+      handleTooltipLeave,
+      getRowKey
     } = useStateInject();
 
     const scrollState = computed(() => {
@@ -128,13 +136,6 @@ export default defineComponent({
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.transform = `translateY(${-scrollTop}px)`
       style.gridTemplateRows = gridTemplateRows.value;
-      style.gridTemplateColumns = leftColumns.value.map(column => {
-        let width = column.width;
-        if (typeof width === "number") {
-          width = `${width}px`;
-        }
-        return width ?? 'minmax(120px, 1fr)'
-      }).join(" ");
       return style;
     });
 
@@ -160,21 +161,19 @@ export default defineComponent({
 
     onUpdated(() => {
       const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
-      const metas: CellMeta[] = [];
+      const metas: OuterRowMeta[] = [];
       for (const element of innserElements) {
         const cellElement = element.parentElement as HTMLElement;
         const { top, bottom } = getCellPadding(cellElement)
-        const { colKey, rowIndex } = cellElement.dataset
+        const { rowKey } = cellElement.dataset
         metas.push({
           // 以行的索引作为 key 值。
-          colKey: colKey ?? "",
-          rowIndex: rowIndex ? Number(rowIndex) : -1,
+          rowKey: rowKey!,
           height: Math.floor(element.getBoundingClientRect().height) + top + bottom
         })
       }
-      runIdleTask(() => {
-        tableState.value.updateCellMetas(metas);
-      })
+
+      tableState.value.updateRowMetas(metas);
     });
 
     const rightColumns = computed(() => tableState.value.dfsFixedRightFlattenColumns);
@@ -186,13 +185,6 @@ export default defineComponent({
       style.gridTemplateRows = gridTemplateRows.value;
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
-      style.gridTemplateColumns = rightColumns.value.map(column => {
-        let width = column.width;
-        if (typeof width === "number") {
-          width = `${width}px`;
-        }
-        return width ?? 'minmax(120px, 1fr)'
-      }).join(" ");
       return style;
     });
 
@@ -217,7 +209,8 @@ export default defineComponent({
     watch(
       () => [
         tableState.value.scroll.top,
-        tableState.value.dataSourceLength
+        tableState.value.dataSourceLength,
+        tableState.value.rowKeys
       ],
       () => {
         dataSource.value = tableState.value.getViewportDataSource()
@@ -231,14 +224,6 @@ export default defineComponent({
     const bodyLeftRef = shallowRef<HTMLElement>();
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
-
-    const updateViewportWidth = throttle(function () {
-      tableState.value.viewport.width = bodyInnerRef.value?.offsetWidth ?? 0;
-      tableState.value.viewport.scrollWidth = bodyCenterRef.value?.scrollWidth ?? 0;
-      tableState.value.updateScroll();
-    }, 16)
-
-    onUpdated(updateViewportWidth)
 
     const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
     const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
@@ -255,13 +240,6 @@ export default defineComponent({
       style.gridTemplateRows = gridTemplateRows.value;
       const { left: scrollLeft, top: scrollTop } = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
-      style.gridTemplateColumns = centerColumns.value.map(column => {
-        let width = column.width;
-        if (typeof width === "number") {
-          width = `${width}px`;
-        }
-        return width ?? 'minmax(120px, 1fr)'
-      }).join(" ");
       return style;
     });
 
@@ -287,8 +265,14 @@ export default defineComponent({
       handleTooltipLeave($event)
     }
 
-    const maxXMove = computed(() => {
-      return viewport.value.scrollWidth - viewport.value.width;
+    const maxXMove = computed(() => viewport.value.scrollWidth - viewport.value.width);
+
+    // 通用，需要向下传递的属性
+    const commonRowProps = reactive({
+      dataSource: dataSource,
+      getRowKey: getRowKey,
+      transformCellText: tableProps.transformCellText,
+      bodyCell: tableSlots.bodyCell
     })
 
     return {
@@ -305,6 +289,12 @@ export default defineComponent({
       centerColumns, centerStyle, bodyCenterRef,
 
       handleMouseenter, handleMouseleave,
+
+      isEmpty: computed(() => {
+        return !tableState.value.dataSourceLength
+      }),
+
+      commonRowProps
     }
   }
 });
@@ -364,5 +354,13 @@ export default defineComponent({
       opacity: 0;
       transition: opacity .16s cubic-bezier(0, .5, 1, .5);
     }
+  }
+
+  &__empty {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }</style>

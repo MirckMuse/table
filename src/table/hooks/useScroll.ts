@@ -120,31 +120,6 @@ export function useTableBodyScroll(
       y: Math.max(0, scrollHeight - height),
     }
   });
-  const animationWheel = createLockedRequestAnimationFrame(($event: WheelEvent) => {
-    const { deltaX, deltaY } = $event;
-
-    const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
-
-    let {
-      left: scrollLeft,
-      top: scrollTop
-    } = tableState.value.scroll;
-
-    scrollTop = Math.max(
-      0,
-      Math.min(scrollTop + optimizeY, maxMove.value.y)
-    );
-    scrollLeft = Math.max(
-      0,
-      Math.min(scrollLeft + optimizeX, maxMove.value.x)
-    );
-
-    Object.assign(tableState.value.scroll, {
-      left: scrollLeft,
-      top: scrollTop
-    });
-  });
-
   const throttleUpdateScroll = throttle((deltaX: number, deltaY) => {
     const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
     let {

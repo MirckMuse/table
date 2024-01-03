@@ -13,7 +13,10 @@
 
   --table-body-cell-text-color: var(--table-text-color);
   --table-body-cell-padding: 16px;
+  --table-body-cell-bg: #FFF;
   --table-body-cell-bg-hover: #F6F7FA;
+  --table-body-expand-icon-size: 16px;
+  --table-body-expand-icon-gap: 4px;
 
   --table-body-cell-border-color-selection: #1677ff;
   --table-body-cell-bg-selection: #e6f4ff;
@@ -160,5 +163,82 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+// s-table-body-cell
+
+.s-table-body-cell {
+  border: 1px solid transparent;
+  border-bottom-color: var(--table-border-color);
+  font-style: normal;
+  font-weight: 400;
+  position: relative;
+  padding: var(--table-body-cell-padding);
+  font-size: 14px;
+  line-height: 1.642857;
+  overflow-wrap: break-word;
+  color: var(--table-body-cell-text-color);
+  transition: background-color .2s ease-in-out;
+  background-color: initial;
+  min-height: 0;
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+
+  &-selection {
+    background-color: var(--table-body-cell-bg-selection);
+  }
+
+  &-inner {
+    flex: 1;
+    height: fit-content;
+
+    &-ellipsis {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      word-break: keep-all;
+    }
+  }
+}
+
+.s-table-body-cell-selection.s-table-body-cell-selection {
+  &__left {
+    border-left-color: var(--table-body-cell-border-color-selection);
+  }
+
+  &__right {
+    border-right-color: var(--table-body-cell-border-color-selection);
+  }
+
+  &__top {
+    border-top-color: var(--table-body-cell-border-color-selection);
+  }
+
+  &__bottom {
+    border-bottom-color: var(--table-body-cell-border-color-selection);
+  }
+}
+
+.s-table-row-expand-icon {
+  cursor: pointer;
+
+  &-space {
+    width: var(--table-body-expand-icon-size);
+    margin-right: var(--table-body-expand-icon-gap);
+  }
+
+  &__expand,
+  &__shrink {
+    background-color: #FFF;
+    border-radius: 2px;
+    width: var(--table-body-expand-icon-size);
+    height: var(--table-body-expand-icon-size);
+    margin-right: var(--table-body-expand-icon-gap);
+
+    &:hover {
+      box-shadow: 0 3px 6px -4px #0000001f, 0 6px 16px #00000014, 0 9px 28px 8px #0000000d;
+    }
   }
 }

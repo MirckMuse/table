@@ -1,34 +1,30 @@
 type TaskCallback = () => void;
 
 function createRunIdleTask() {
-  const taskList: TaskCallback[] = [];
-  let isRuning = false;
+  const tasks: TaskCallback[] = [];
+  let isRunning = false;
 
   function _run() {
-    isRuning = true;
+    isRunning = true;
 
     globalThis.requestIdleCallback((deadline) => {
-      if (!taskList.length) {
-        isRuning = false;
+      if (!tasks.length) {
+        isRunning = false;
         return;
       }
 
-      while (taskList.length) {
-        if (deadline.timeRemaining() > 0) {
-          const _task = taskList.shift();
-          _task?.();
-        } else {
-          break;
-        }
+      while (tasks.length && (performance.now() + deadline.timeRemaining()) > performance.now()) {
+        const _task = tasks.shift();
+        _task?.();
       }
       _run();
     })
   }
 
   return function (task: TaskCallback) {
-    taskList.push(task);
+    tasks.push(task);
 
-    if (isRuning) return;
+    if (isRunning) return;
     _run();
   }
 }

@@ -1,4 +1,13 @@
 import { VNode } from "vue";
+
+// 插槽相关
+export * from "./slot";
+
+// 组件继承的一些属性
+export * from "./inherit";
+
+export * from "./emit";
+
 import type { TooltipProps } from "ant-design-vue";
 
 export type TablePaginationProps = {
@@ -9,6 +18,10 @@ export type TablePaginationProps = {
 
 export type RowData = Record<string, unknown> & {
   _s_row_index?: number;
+
+  _s_row_deep?: number;
+
+  _s_row_key?: RowKey;
 };
 
 export interface TableScroll {
@@ -22,6 +35,14 @@ export interface TableScroll {
 
   size?: number;
 }
+
+export interface Selection {
+  colKey: string;
+
+  rowKey: string;
+}
+
+export type CustomRow = (record: RowData, index: number) => any;
 
 /**
  * 表格的参数，提供给 Table.vue 和 InteralTable.vue 使用
@@ -41,8 +62,16 @@ export interface TableProps {
 
   onResizeColumn?: Function;
 
-  transformCellText?: (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;
+  rowKey?: string | ((record: RowData) => RowKey);
+
+  expandedRowKeys?: RowKey[];
+
+  customRow?: CustomRow;
+
+  transformCellText?: TransformCellText;
 }
+
+export type TransformCellText = (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;
 
 
 export type TableColumnTitle = string | (() => string);
@@ -61,11 +90,11 @@ export type TableColumnFixed = 'left' | 'right';
 
 export type BaseValue = string | number | boolean | undefined | null;
 
+export * from "./slot";
+
 export type CustomRenderResult = BaseValue | VNode;
 
-export type CustomRenderOption = {
-  text: BaseValue | BaseValue[];
-
+interface CustomOption {
   record: RowData;
 
   index: number;
@@ -73,7 +102,16 @@ export type CustomRenderOption = {
   column: Readonly<TableColumn>;
 }
 
+export interface CustomCellOption extends CustomOption {
+}
+
+export interface CustomRenderOption extends CustomOption {
+  text: BaseValue | BaseValue[];
+}
+
 export type CustomRender = (option: CustomRenderOption) => CustomRenderResult | CustomRenderResult[] | undefined | void;
+
+export type CustomCell = (option: CustomCellOption) => Record<string, any>;
 
 export type TableColumnSorter = boolean | ((a: RowData, b: RowData) => number);
 
@@ -108,7 +146,7 @@ export interface TableColumn {
 
   children?: TableColumn[];
 
-  customCell?: (record: RowData, rowIndex: number, column: TableColumn) => Record<string, any>;
+  customCell?: CustomCell;
 
   customHeaderCell?: (column: TableColumn) => Record<string, any>;
 
@@ -137,3 +175,5 @@ export interface TableColumnMeta {
 
   isLast?: boolean;
 }
+
+export type RowKey = string | number;

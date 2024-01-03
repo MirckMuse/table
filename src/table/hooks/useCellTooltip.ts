@@ -130,7 +130,6 @@ export function useCellTooltip(option: ICellTooltipOption) {
   let openTooltipTimeout: number | null = null;
   let closeTooltipTimeout: number | null = null;
   wrapper.addEventListener("mouseenter", () => {
-    console.log(closeTooltipTimeout)
     if (closeTooltipTimeout) {
       window.clearTimeout(closeTooltipTimeout)
     }

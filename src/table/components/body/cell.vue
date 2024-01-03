@@ -1,9 +1,9 @@
 <script lang="ts">
 import { get } from "lodash-es";
-import { PropType, StyleValue, VNode, computed, defineComponent, isVNode, ref, h, mergeProps, Comment } from "vue";
-import { useSelectionInject, useStateInject } from "../../hooks";
-import { RowData, TableColumn, TableColumnEllipsisObject } from "../../typing";
-import { toArray } from "../../utils";
+import { Comment, PropType, StyleValue, computed, defineComponent, h, isVNode, mergeProps, ref } from "vue";
+import { useSelectionInject } from "../../hooks";
+import { BodyCellInheritProps, RowData, TableColumn } from "../../typing";
+import { isShowTitle, toArray } from "../../utils";
 
 export default defineComponent({
   name: "STableBodyCell",
@@ -15,18 +15,16 @@ export default defineComponent({
 
     rowIndex: { type: Number, required: true },
 
-    isHover: { type: Boolean },
+    selection: {},
 
-    ellipsis: { type: Object as PropType<TableColumnEllipsisObject> }
+    ...BodyCellInheritProps,
   },
 
-  setup(props) {
+  setup(props, { slots }) {
     const cellRef = ref<HTMLElement>();
     const cellInnerRef = ref<HTMLElement>();
 
     const { selection_state } = useSelectionInject();
-
-    const { tableState, slots: slotsTable, tableProps } = useStateInject();
 
     function getText(column?: TableColumn, record?: RowData): unknown | null {
       if (!column?.dataIndex) return null;
@@ -70,20 +68,18 @@ export default defineComponent({
       return {}
     }
 
-    const isHover = computed(() => tableState.value.hoverState.rowIndex === props.rowIndex)
-
     const cellClass = computed(() => {
       return {
         [prefixClass]: true,
-        [`${prefixClass}-hover`]: isHover.value,
         ...getSelectionClass(),
       }
     });
 
     const cellInnerClass = computed(() => {
+      const { column } = props;
       return {
         [`${prefixClass}-inner`]: true,
-        [`${prefixClass}-inner-ellipsis`]: !!props.ellipsis
+        [`${prefixClass}-inner-ellipsis`]: !!column.ellipsis
       }
     })
 
@@ -97,35 +93,37 @@ export default defineComponent({
       const { column, record } = props;
 
       return getText(column, record)?.toString() ?? undefined;
-    })
-
-    const title = computed(() => {
-      return props.ellipsis?.showTitle ? text.value : undefined
     });
+
+    // 判断是否需要在单元格上显示 title。
+    const showTitle = computed(() => isShowTitle(props.column));
+    const title = computed(() => showTitle.value ? text.value : undefined);
 
     const cellBind = computed(() => {
       const { column, record, rowIndex } = props;
-      return column.customCell?.(record, rowIndex, column) ?? {}
+      return column.customCell?.({ record, index: rowIndex, column }) ?? {}
     });
 
-    function isValidVNode(targer: unknown): boolean {
-      if (isVNode(targer)) {
-        return targer.type !== Comment
-      }
-      return true
+    function isValidVNode(target: unknown): boolean {
+      if (!isVNode(target)) return true;
+
+      return target.type !== Comment
     }
 
     function renderCustomCell(): any[] | null {
       const { column, rowIndex, record } = props;
 
-      const params = { text: text.value, record, column, index: rowIndex }
+      const params = { text: text.value, record, column, index: rowIndex, title: title.value }
 
       if (column.customRender) {
-        return toArray(column.customRender(params)).filter(isValidVNode)
+        return toArray(column.customRender(params))
       }
 
-      const tableSlotsVNode = slotsTable.bodyCell?.(params).filter(isValidVNode)
-      return tableSlotsVNode.length ? tableSlotsVNode : null;
+      const bodyCellVNodes = props.bodyCell?.(params)
+
+      const validVNodes = toArray(bodyCellVNodes).filter(isValidVNode)
+
+      return validVNodes.length ? validVNodes : null;
     }
 
     return () => {
@@ -139,7 +137,7 @@ export default defineComponent({
         "div",
         { class: cellInnerClass.value, style: cellInnerStyle.value, ref: cellInnerRef },
 
-        tableProps.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children
+        props.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children
       )
 
       const cell = h(
@@ -149,7 +147,10 @@ export default defineComponent({
           ref: cellRef,
           title: title.value
         }, cellBind.value),
-        inner
+        [
+          slots.expandIcon ? slots.expandIcon() : null,
+          inner
+        ]
       )
 
       return cell;
@@ -157,60 +158,3 @@ export default defineComponent({
   }
 })
 </script>
-
-<style lang="less" scoped>
-
-.s-table-body-cell-selection.s-table-body-cell-selection {
-  &__left {
-    border-left-color: var(--table-body-cell-border-color-selection);
-  } 
-  &__right {
-    border-right-color: var(--table-body-cell-border-color-selection);
-  }
-  &__top {
-    border-top-color: var(--table-body-cell-border-color-selection);
-  } 
-  &__bottom {
-    border-bottom-color: var(--table-body-cell-border-color-selection);
-  }
-}
-
-.s-table-body-cell {
-  border: 1px solid transparent;
-  border-bottom-color: var(--table-border-color);
-  font-style: normal;
-  font-weight: 400;
-  position: relative;
-  padding: var(--table-body-cell-padding);
-  font-size: 14px;
-  line-height: 1.642857;
-  overflow-wrap: break-word;
-  color: var(--table-body-cell-text-color);
-  transition: background-color .2s ease-in-out;
-  background-color: #FFF;
-
-  display: inline-flex;
-  min-width: 0;
-  align-items: center;
-  
-  &-hover {
-    background-color: var(--table-body-cell-bg-hover);
-  }
-
-  &-selection {
-    background-color: var(--table-body-cell-bg-selection);
-  }
-
-  &-inner {
-    flex: 1;
-    height: fit-content;
-    
-    &-ellipsis {
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      word-break: keep-all;
-    }
-  }
-}
-</style>

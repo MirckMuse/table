@@ -2,8 +2,9 @@
 
 import { chunk, groupBy, isNil } from "lodash-es";
 import { ColKeySplitWord } from "../table/config";
-import { RowData, TableColumn, TableColumnFixed } from "../table/typing";
-import { getDFSLastColumns, isNestColumn, runIdleTask } from "../table/utils";
+import { RowData, RowKey, TableColumn, TableColumnFixed } from "../table/typing";
+import { binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn, runIdleTask } from "../table/utils";
+import { EXPAND_COLUMN } from "../table/utils/constant";
 
 // TODO:
 // 1. 树形结构的元数据怎么存储？
@@ -33,6 +34,8 @@ export type Scroll = {
 export interface ITableStateOption {
   dataSource?: RowData[];
 
+  getRowKey: (rowData: RowData) => RowKey;
+
   columns?: TableColumn[];
 
   viewport?: BBox;
@@ -42,6 +45,11 @@ export interface ITableStateOption {
 
 export type RowMetaKey = number | string;
 
+export type OuterRowMeta = {
+  rowKey: RowKey;
+
+  height: number;
+}
 
 export type RowMeta = {
   // 以行的索引作为 key 值。
@@ -50,8 +58,6 @@ export type RowMeta = {
   rowIndex: number;
 
   height: number;
-
-  heightMap: Record<string, number>;
 
   y: number;
 }
@@ -153,6 +159,108 @@ export class TableState {
   colMeta: Record<string, ColMeta> = {};
 
   rowMetaIndexes: RowMetaKey[] = [];
+
+  // 原始行的 key 值
+  rawRowKeys: RowKey[] = [];
+
+  private rowDataMap = new Map<RowKey, RowData>;
+
+  getRowData(key: RowKey) {
+    return this.rowDataMap.get(key);
+  }
+
+  updateRowDataMap(record: RowData) {
+    if (isNil(record._s_row_key)) return;
+
+    this.rowDataMap.set(record._s_row_key, record)
+  }
+
+  getRowMetaByRowData(rowData?: RowData): RowMeta | null {
+    if (!rowData || isNil(rowData._s_row_key)) return null;
+
+    return this.rowMeta[rowData._s_row_key]
+  }
+
+
+  getRowMetaByRowKey(rowKey?: RowKey): RowMeta | null {
+    if (isNil(rowKey)) return null;
+
+    return this.rowMeta[rowKey]
+  }
+
+  // 更新数据行的元数据
+  updateRowMeta(record: RowData, preRecord?: RowData) {
+    const rowKey = record._s_row_key;
+
+    if (isNil(rowKey)) return;
+
+    const preRowMeta = this.getRowMetaByRowData(preRecord);
+
+    this.rowMeta[rowKey] = {
+      key: rowKey,
+      rowIndex: record._s_row_index ?? -1,
+      height: this.roughRowHeight,
+      y: preRowMeta ? (preRowMeta.height + preRowMeta.y) : 0,
+    }
+  }
+
+  private expandedRowKeys: RowKey[] = [];
+
+  updateExpandedRowKeys(expandedRowKeys: RowKey[]) {
+    const expandedRowKeySet = new Set<RowKey>(expandedRowKeys);
+
+    while (expandedRowKeySet.size) {
+      const rowKey = Array.from(expandedRowKeySet).find(key => this.rowDataMap.has(key));
+      if (!isNil(rowKey)) {
+        expandedRowKeySet.delete(rowKey);
+        const record = this.rowDataMap.get(rowKey)!;
+
+        const children = record.children as RowData[];
+
+        if (children.length) {
+          children.forEach((row, rowIndex) => {
+            this.updateInternalProperty(row, rowIndex, (record._s_row_deep ?? 0) + 1);
+            this.updateRowDataMap(row);
+            this.updateRowMeta(row, children[rowIndex - 1] ?? record)
+          })
+        }
+      }
+    }
+
+    // FIXME: 展开和收缩后 y 的变化
+
+    // 最后才更新展开列
+    this.expandedRowKeys = expandedRowKeys;
+
+    const set = new Set<RowKey>(this.expandedRowKeys);
+
+    // FIXME: 这里的性能比较差，需要考虑怎么优化比较好
+    let targetRowKeys = ([] as RowKey[]).concat(this.rawRowKeys);
+
+    const result: RowKey[] = [];
+
+    while (targetRowKeys.length && set.size) {
+      const rowKey = targetRowKeys.shift();
+
+      if (!isNil(rowKey)) {
+        result.push(rowKey);
+
+        if (set.size && set.has(rowKey)) {
+          set.delete(rowKey);
+          const record = this.getRowData(rowKey);
+          const childrenRowKeys = ((record?.children ?? []) as RowData[]).map(item => item._s_row_key).filter(rowKey => !isNil(rowKey)) as RowKey[];
+          targetRowKeys = [...childrenRowKeys, ...targetRowKeys];
+        }
+      }
+    }
+
+    this.rowKeys = [...result, ...targetRowKeys];
+
+    this.reCalculateY();
+  }
+
+  rowKeys: RowKey[] = [];
+
   rowMeta: Record<RowMetaKey, RowMeta> = {};
 
   dataSource: RowData[] = [];
@@ -177,8 +285,14 @@ export class TableState {
   }
 
   constructor(option: ITableStateOption) {
-    const { dataSource, columns, viewport, rowHeight } = option;
-    this.roughRowHeight = rowHeight ? rowHeight : Row_Height;
+    this.init(option);
+  }
+
+
+  init(option: ITableStateOption) {
+    this.initPreParameter(option);
+
+    const { dataSource, columns, viewport } = option;
     // 更新可视视图。
     viewport && this.updateViewport(viewport.width, viewport.height);
     this.updateColumns(columns ?? []);
@@ -186,8 +300,24 @@ export class TableState {
     this.initMeta(columns ?? [], dataSource ?? []);
   }
 
+  getRowKey: (rowData: RowData) => RowKey = () => -1;
+
+  // 初始化前置参数
+  initPreParameter(option: ITableStateOption) {
+    const { rowHeight, getRowKey } = option;
+    this.roughRowHeight = rowHeight ? rowHeight : Row_Height;
+    this.getRowKey = getRowKey;
+  }
+
   dataSourceMeta: Record<string, RowData> = {};
   dataSourceLength = 0;
+
+  // 更新内部属性
+  updateInternalProperty(record: RowData, index: number, deep: number) {
+    record._s_row_index = index;
+    record._s_row_deep = deep;
+    record._s_row_key = this.getRowKey(record);
+  }
 
   // 覆盖数据源
   coverDataSource(dataSource: RowData[]) {
@@ -202,18 +332,44 @@ export class TableState {
     const _update = (singleChunk: RowData[], chunkIndex: number) => {
       singleChunk.forEach((row, index) => {
         const rowIndex = index + chunkIndex * chunkSize;
-        this.dataSourceMeta[rowIndex] = row;
-      })
+        this.updateInternalProperty(row, rowIndex, 0);
+        if (!isNil(row._s_row_key)) {
+          this.rawRowKeys.push(row._s_row_key);
+          this.rowKeys.push(row._s_row_key);
+        }
+        this.updateRowDataMap(row);
+        this.updateRowMeta(row, this.getRowData(this.rawRowKeys[rowIndex - 1]));
+      });
+
+      const lastRowMeta = this.getRowMetaByRowData(this.getRowData(this.rawRowKeys[this.rawRowKeys.length - 1]))
+      this.viewport.scrollHeight = (lastRowMeta?.y ?? 0) + (lastRowMeta?.height ?? 0);
     }
 
     _update(chunks[0], 0);
     for (let i = 1; i < chunks.length; i++) {
-      runIdleTask(() => _update(chunks[i], i));
+      runIdleTask(() => {
+        _update(chunks[i], i)
+      });
     }
   }
 
+  // 特殊列映射
+  specialColumnMap = new Map<TableColumn, any[]>();
+
+  initSpecialColumnMap() {
+    this.specialColumnMap.clear();
+  }
+
+  updateSpecialColumnMap(column: TableColumn, specialColumns: any[]) {
+    this.specialColumnMap.set(column, specialColumns)
+  }
+
   updateColumns(columns: TableColumn[]) {
+    this.initSpecialColumnMap();
+
     const _standardizationColumn = (column: TableColumn, index: number, deep = 1) => {
+      if (isSpecialColumn(column)) return column;
+
       let ellipsis = column.ellipsis
       if (column.ellipsis && typeof column.ellipsis === 'boolean') {
         ellipsis = { showTitle: true };
@@ -230,7 +386,7 @@ export class TableState {
         width = column.width ?? 120;
 
         // 同步固定逻辑
-        let parent = column._s_parent
+        let parent = column._s_parent;
         while (parent) {
           parent.fixed = column.fixed;
           parent = parent._s_parent;
@@ -258,10 +414,21 @@ export class TableState {
       return standardColumn
     }
 
+    let nextMap2SpecialColumn: any[] = [];
     const { left, center, right } = columns
       .map((column, index) => _standardizationColumn(column, index))
       .reduce<{ left: TableColumn[], right: TableColumn[], center: TableColumn[] }>(
         (result, column) => {
+          // 特殊列的逻辑
+          if (isSpecialColumn(column)) {
+            nextMap2SpecialColumn.push(column);
+            return result;
+          }
+          if (nextMap2SpecialColumn.length) {
+            this.updateSpecialColumnMap(column, nextMap2SpecialColumn)
+          }
+
+          nextMap2SpecialColumn = [];
           if (column.fixed === true || column.fixed === "left") {
             result.left.push(column);
           } else if (column.fixed === "right") {
@@ -287,12 +454,15 @@ export class TableState {
     this.fixedRightColumns = right;
     this.dfsFixedRightFlattenColumns = getDFSLastColumns(right);
     this.fixedRightFlattenColumns = updateFlattenColumnsMeta(rightFlattenColumns, this.maxTableHeaderDeep);
+
+    if (this.specialColumnMap.size === 0) {
+      this.specialColumnMap.set(this.dfsFixedLeftFlattenColumns[0] ?? this.dfsCenterFlattenColumns[0], [EXPAND_COLUMN])
+    }
   }
 
   // 初始化元数据
   initMeta(columns: TableColumn[], dataSource: RowData[]) {
     this.initColMeta(columns);
-    this.initRowMeta(dataSource);
   }
 
   initColMeta(columns: TableColumn[]) {
@@ -300,20 +470,6 @@ export class TableState {
   }
 
   initRowMeta(dataSource: RowData[]) {
-    const lastColumnKeys: string[] = ([] as TableColumn[]).concat(this.dfsFixedLeftFlattenColumns, this.dfsCenterFlattenColumns, this.dfsFixedRightFlattenColumns)
-      .filter(col => col._s_meta?.isLast && col.key)
-      .map(col => {
-        return col.key!
-      });
-
-    // 创建高度映射
-    const _createHeightMap = (keys: string[]) => {
-      return keys.reduce<Record<string, number>>((map, key) => {
-        map[key] = this.roughRowHeight;
-        return map;
-      }, {})
-    }
-
     for (let rowIndex = 0; rowIndex < dataSource.length; rowIndex++) {
       this.rowMetaIndexes.push(rowIndex);
       // TODO: 需要考虑树状结构
@@ -321,7 +477,6 @@ export class TableState {
         key: rowIndex,
         rowIndex,
         height: this.roughRowHeight,
-        heightMap: _createHeightMap(lastColumnKeys),
         y: rowIndex * this.roughRowHeight
       }
     }
@@ -347,72 +502,70 @@ export class TableState {
     })
   }
 
-  // 更新行的元数据
-  updateRowMeta(rowIndex: number, column: TableColumn, height: number) {
-    const rowMeta = this.getRowMetaByRowIndex(rowIndex)
-    if (!rowMeta) return;
-    if (!column.key || isNil(rowMeta.heightMap[column.key])) return;
-
-    const previewMeta = this.getRowMetaByRowIndex(rowIndex - 1);
-
-    rowMeta.heightMap[column.key] = height;
-    const rowHeight = Math.max(...Object.values(rowMeta.heightMap));
-
-    Object.assign(rowMeta, {
-      height: rowHeight,
-      y: (previewMeta?.height ?? 0) + (previewMeta?.y ?? 0),
-    });
-  }
-
   getRowMetaByRowIndex(rowIndex: number): RowMeta | null {
-    const key = this.rowMetaIndexes[rowIndex];
+    const key = this.rowKeys[rowIndex];
     return this.rowMeta[key] ?? null;
   }
 
-  updateCellMetas(cellMetas: CellMeta[]) {
-    const groupedCellMetas = groupBy(cellMetas, "rowIndex");
+  // 更新数据行元数据
+  updateRowMetas(rowMetas: OuterRowMeta[]) {
+    const groupedCellMetas = groupBy(rowMetas, "rowKey");
 
-    let endRowIndex = 0;
-    const rowIndexKeys = Object.keys(groupedCellMetas)
-      .map(key => Number(key) ?? -1)
-      .sort((a, b) => a - b);
+    let needReCalculateY = false;
 
-    let offsetHeight = 0;
+    for (const rowKey of Object.keys(groupedCellMetas)) {
 
-    for (const rowIndexKey of rowIndexKeys) {
-      const rowIndex = Number(rowIndexKey) ?? -1;
-      endRowIndex = rowIndex;
-      const rowMeta = this.getRowMetaByRowIndex(rowIndex);
-      if (rowMeta) {
-        const cellMetas = groupedCellMetas[rowIndex];
-        const rowHeightMap = cellMetas.reduce<Record<string, number>>((map, meta) => {
-          if (!isNil(rowMeta.heightMap[meta.colKey])) {
-            rowMeta.heightMap[meta.colKey] = meta.height;
-          }
-          return map;
-        }, {});
-        const newRowHeightMap = Object.assign({}, rowMeta.heightMap, rowHeightMap);
-        const rowHeight = Math.max(...Object.values(newRowHeightMap));
-        const preRowMeta = this.getRowMetaByRowIndex(rowIndex - 1);
-        offsetHeight = offsetHeight + rowHeight - rowMeta.height;
-        Object.assign(rowMeta, {
+      const meta = this.rowMeta[rowKey];
+      if (meta) {
+        const outerRowMetas = groupedCellMetas[rowKey];
+        const rowHeight = Math.max(...outerRowMetas.map(meta => meta.height));
+
+        if (!needReCalculateY && meta.height !== rowHeight) {
+          needReCalculateY = true
+        }
+
+        Object.assign(meta, {
           height: rowHeight,
-          rowHeightMap: newRowHeightMap,
-          y: (preRowMeta?.height ?? 0) + (preRowMeta?.y ?? 0),
         });
       }
     }
 
-    if (offsetHeight === 0) return;
+    if (needReCalculateY) {
+      this.reCalculateY();
+    }
+  }
 
-    for (let rowIndex = endRowIndex + 1; rowIndex < Math.min(endRowIndex + 100, this.dataSourceLength); rowIndex++) {
-      const rowMeta = this.getRowMetaByRowIndex(rowIndex);
-      if (!rowMeta) return;
+  reCalculateY() {
+    const chunkSize = 100;
+    const chunks = chunk(this.rowKeys, chunkSize);
 
-      rowMeta.y = rowMeta.y + offsetHeight;
+    const _update = (singleChunk: RowKey[], chunkIndex: number) => {
+      singleChunk.forEach((rowKey, index) => {
+        const rowIndex = index + chunkIndex * chunkSize;
+
+        const meta = this.getRowMetaByRowKey(rowKey);
+        if (!meta) return;
+
+        const preMeta = this.getRowMetaByRowIndex(rowIndex - 1);
+        meta.y = (preMeta?.height ?? 0) + (preMeta?.y ?? 0);
+      });
+
+      const lastRowMeta = this.getRowMetaByRowData(this.getRowData(this.rawRowKeys[this.rawRowKeys.length - 1]))
+      this.viewport.scrollHeight = (lastRowMeta?.y ?? 0) + (lastRowMeta?.height ?? 0);
     }
 
-    this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
+    _update(chunks[0], 0);
+    for (let i = 1; i < chunks.length; i++) {
+      runIdleTask(() => {
+        _update(chunks[i], i)
+      });
+    }
+  }
+
+
+
+  lazyUpdateRowMetaY() {
+
   }
 
   // 执行交换两行数据
@@ -425,7 +578,6 @@ export class TableState {
   dynamicUpdateCellMeta() {
     // TODO: 动态更新单元格的元数据
     // 行高需要实时计算
-
   }
 
 
@@ -440,7 +592,7 @@ export class TableState {
   };
 
   _calculateRowOffset(rowIndex: number) {
-    const rowKey = this.rowMetaIndexes[rowIndex];
+    const rowKey = this.rowKeys[rowIndex];
     const meta = this.rowMeta[rowKey];
 
     if (meta) {
@@ -449,86 +601,55 @@ export class TableState {
     return 0;
   }
 
-  _findStartIndex() {
-    const target = this.scroll.top;
-    let left = 0;
-    let right = this.dataSourceLength - 1;
-    let startIndex = null;
-    let time = 0;
-    while (left <= right) {
-      time++;
-      const midIndex = Math.floor((left + right) / 2);
-      const rowMeta = this.getRowMetaByRowIndex(midIndex);
-      let midVal = (rowMeta?.y ?? 0) + (rowMeta?.height ?? 0);
-
-      if (midVal === target) {
-        return midIndex
-      } else if (midVal < target) {
-        left = midIndex + 1
-      } else {
-        if (startIndex === null || startIndex > midIndex) {
-          startIndex = midIndex
-        }
-        right = midIndex - 1;
-      }
-    }
-    return startIndex;
-  }
-
   getViewportDataSource(): RowData[] {
-    const dataSourceLength = this.dataSourceLength;
+    const range = { startIndex: 0, endIndex: 0 };
 
-    const range = {
-      startIndex: this._findStartIndex() ?? 0,
-      endIndex: 0
-    }
+    const _createCompare = (targetY: number) => {
+      return (key: RowKey) => {
+        const meta = this.rowMeta[key] ?? null;
 
-    const endY = this.scroll.top + this.viewport.height;
-    let reduceY = this.getRowMetaByRowIndex(range.startIndex)?.y ?? 0;
-    for (let i = range.startIndex; i < dataSourceLength; i++) {
+        if (!meta) return -1;
 
-      const meta = this.getRowMetaByRowIndex(i);
-      if (!meta) break;
-
-      if (reduceY > endY) {
-        range.endIndex = meta.rowIndex;
-        break;
+        return targetY - meta.y;
       }
-
-      reduceY = reduceY + meta.height
     }
+    range.startIndex = binaryFindIndexRange(this.rowKeys, _createCompare(this.scroll.top));
+    const endY = this.scroll.top + this.viewport.height;
+    range.endIndex = binaryFindIndexRange(this.rowKeys, _createCompare(endY));
 
-
+    range.endIndex = Math.max(range.endIndex, 0)
+    const dataSourceLength = this.rowKeys.length;
     if (range.endIndex === 0) {
       range.endIndex = dataSourceLength - 1;
     }
-    const buffer = Math.ceil(range.endIndex - range.startIndex + 1 / 2);
 
+    const buffer = Math.ceil((range.endIndex - range.startIndex + 1) / 2);
     range.startIndex = Math.max(0, range.startIndex - buffer);
     range.endIndex = Math.min(dataSourceLength - 1, range.endIndex + buffer);
 
+    // 这里计算获取的时候同时计算行偏移量，有点不够干净
     Object.assign(this.rowOffset, {
       top: this._calculateRowOffset(range.startIndex - 1),
       bottom: this._calculateRowOffset(dataSourceLength - 1) - this._calculateRowOffset(range.endIndex)
     });
 
-
-
-    const dataSource = Array(range.endIndex - range.startIndex + 1).fill(null).map((_, index) => {
+    return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
       const rowIndex = range.startIndex + index;
-      return Object.assign({}, this.dataSourceMeta[rowIndex], {
-        _s_row_index: rowIndex
-      })
-    })
 
-    return dataSource;
+      const rowData = this.getRowData(this.rowKeys[rowIndex]);
+
+      if (rowData) {
+        result.push(rowData);
+      }
+
+      return result;
+    }, []);
   }
 
+  // 根据可视数据获取高度数据
   getViewportHeightList(viewportDataSource: RowData[]): number[] {
-    return viewportDataSource.map(item => {
-      if (isNil(item._s_row_index)) return 0;
-
-      return this.getRowMetaByRowIndex(item._s_row_index)?.height ?? 0;
+    return viewportDataSource.map(rowData => {
+      return this.getRowMetaByRowData(rowData)?.height ?? 0;
     })
   }
 }

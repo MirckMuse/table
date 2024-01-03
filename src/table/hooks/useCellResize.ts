@@ -15,10 +15,6 @@ export function useBodyCellResiseProvide() {
       const { paddingTop, paddingBottom } = getComputedStyle(cell);
       const { colKey, rowIndex } = cell.dataset
 
-      if (Math.floor(contentRect.height) === 0) {
-        console.log(target)
-      }
-
       metas.push({
         // 以行的索引作为 key 值。
         colKey: colKey ?? "",
@@ -29,7 +25,8 @@ export function useBodyCellResiseProvide() {
       return metas;
     }, []);
 
-    tableState.value.updateCellMetas(cellMetas)
+    
+    // TODO: 单元格调整后，这里需要更行列宽和行高
   });
 
 

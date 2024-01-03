@@ -1,12 +1,20 @@
 import type { App, Plugin } from "vue";
 
-import Table from "./Table.vue";
+import STable from "./Table.vue";
+import { EXPAND_COLUMN } from "./utils/constant";
 
 const install: Plugin = (app: App) => {
-  app.component(Table.name, Table);
+  app.component(STable.name, STable);
 }
 
+export const Table = Object.assign(STable, {
+  EXPAND_COLUMN,
+  install
+});
+
 export default {
-  install,
-  Table
+  install
 }
+
+
+

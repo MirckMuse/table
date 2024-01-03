@@ -42,10 +42,11 @@
 
 <script lang="ts" setup>
 import { throttle } from "lodash-es";
-import { StyleValue, computed, onUpdated, shallowRef } from "vue";
+import { StyleValue, computed, onMounted, shallowRef, watch } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";
-import { genGridTemplateColumns } from "../../utils";
+import { genGridTemplateColumns, runIdleTask } from "../../utils";
 import HeaderCells from "./cells.vue";
+import { nextTick } from "process";
 
 defineOptions({
   name: "STableHeader",
@@ -59,14 +60,23 @@ const headerRef = shallowRef<HTMLElement>();
 const headerLeftRef = shallowRef<HTMLElement>();
 const headerRightRef = shallowRef<HTMLElement>();
 const updateViewportWidth = throttle(function () {
-  Object.assign(tableState.value.viewport, {
+  const viewport = {
     width: headerRef.value?.offsetWidth ?? 0,
-    scrollWidth: headerCenterRef.value?.scrollWidth ?? 0 
+    scrollWidth: headerCenterRef.value?.scrollWidth ?? 0
+  }
+
+
+  runIdleTask(() => {
+    Object.assign(tableState.value.viewport, viewport)
+    tableState.value.updateScroll();
   })
-  tableState.value.updateScroll();
 }, 16)
 
-onUpdated(updateViewportWidth)
+onMounted(() => {
+  nextTick(() => {
+    updateViewportWidth()
+  })
+})
 
 const { headerLeftBBox, headerRightBBox } = useTableHeaderScroll(
   headerRef,
@@ -123,7 +133,17 @@ const rightStyle = computed<StyleValue>(() => {
   return style;
 });
 
-const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);
+const maxXMove = computed(() => {
+  return tableState.value.viewport.scrollWidth - tableState.value.viewport.width
+});
+
+
+// TODO: 最好是监听 colmetas 来触发 viewport 的改变
+watch(
+  () => tableState.value.columns,
+  updateViewportWidth,
+  { deep: true }
+)
 </script>
 
 <style lang="less" scoped>
