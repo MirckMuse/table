@@ -5,6 +5,7 @@ import { ColKeySplitWord } from "../table/config";
 import { RowData, RowKey, TableColumn, TableColumnFixed } from "../table/typing";
 import { binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn, runIdleTask } from "../table/utils";
 import { EXPAND_COLUMN } from "../table/utils/constant";
+import { RuntimeLog } from "../decorators"
 
 // TODO:
 // 1. 树形结构的元数据怎么存储？
@@ -31,6 +32,7 @@ export type Scroll = {
   top: number,
 }
 
+// 表格状态的入参
 export interface ITableStateOption {
   dataSource?: RowData[];
 
@@ -80,6 +82,12 @@ export type BBox = {
 
   scrollHeight: number,
 }
+
+export type RowDataRange = {
+  startIndex: number;
+
+  endIndex: number;
+};
 
 function bfsFlattenColumns<T = any>(columns: TableColumn[], callback?: (column: TableColumn) => T): T[] {
   let stack = ([] as TableColumn[]).concat(columns);
@@ -135,6 +143,8 @@ function updateFlattenColumnsMeta(columns: TableColumn[], maxDeep: number = 1) {
 
 export type HoverState = {
   rowIndex: number;
+  
+  rowKey: RowKey;
 
   colKey: string;
 }
@@ -158,12 +168,15 @@ export class TableState {
   //  同一行需要高度一致
   colMeta: Record<string, ColMeta> = {};
 
-  rowMetaIndexes: RowMetaKey[] = [];
+  // 最外层数据行的 key 值
+  private rawRowKeys: RowKey[] = [];
 
-  // 原始行的 key 值
-  rawRowKeys: RowKey[] = [];
-
+  // 行数据的映射值
   private rowDataMap = new Map<RowKey, RowData>;
+
+  rowKeys: RowKey[] = [];
+
+  rowMeta: Record<RowMetaKey, RowMeta> = {};
 
   getRowData(key: RowKey) {
     return this.rowDataMap.get(key);
@@ -179,6 +192,13 @@ export class TableState {
     if (!rowData || isNil(rowData._s_row_key)) return null;
 
     return this.rowMeta[rowData._s_row_key]
+  }
+
+  // 初始化数据行相关的属性
+  private clearRowPropties() {
+    this.rawRowKeys = [];
+    this.rowKeys = [];
+    this.rowMeta = {}
   }
 
 
@@ -259,12 +279,6 @@ export class TableState {
     this.reCalculateY();
   }
 
-  rowKeys: RowKey[] = [];
-
-  rowMeta: Record<RowMetaKey, RowMeta> = {};
-
-  dataSource: RowData[] = [];
-
   roughRowHeight = Row_Height;
 
   fixedLeftColumns: TableColumn[] = [];
@@ -288,7 +302,6 @@ export class TableState {
     this.init(option);
   }
 
-
   init(option: ITableStateOption) {
     this.initPreParameter(option);
 
@@ -309,9 +322,6 @@ export class TableState {
     this.getRowKey = getRowKey;
   }
 
-  dataSourceMeta: Record<string, RowData> = {};
-  dataSourceLength = 0;
-
   // 更新内部属性
   updateInternalProperty(record: RowData, index: number, deep: number) {
     record._s_row_index = index;
@@ -321,9 +331,8 @@ export class TableState {
 
   // 覆盖数据源
   coverDataSource(dataSource: RowData[]) {
-    this.dataSourceLength = dataSource.length;
-
-    if (this.dataSourceLength === 0) {
+    this.clearRowPropties();
+    if (dataSource.length === 0) {
       return;
     }
 
@@ -364,6 +373,7 @@ export class TableState {
     this.specialColumnMap.set(column, specialColumns)
   }
 
+  @RuntimeLog()
   updateColumns(columns: TableColumn[]) {
     this.initSpecialColumnMap();
 
@@ -462,27 +472,6 @@ export class TableState {
 
   // 初始化元数据
   initMeta(columns: TableColumn[], dataSource: RowData[]) {
-    this.initColMeta(columns);
-  }
-
-  initColMeta(columns: TableColumn[]) {
-    // TODO: 根据列的配置计算列的元数据
-  }
-
-  initRowMeta(dataSource: RowData[]) {
-    for (let rowIndex = 0; rowIndex < dataSource.length; rowIndex++) {
-      this.rowMetaIndexes.push(rowIndex);
-      // TODO: 需要考虑树状结构
-      this.rowMeta[rowIndex] = {
-        key: rowIndex,
-        rowIndex,
-        height: this.roughRowHeight,
-        y: rowIndex * this.roughRowHeight
-      }
-    }
-
-    const lastRowMeta = this.getRowMetaByRowIndex(this.dataSourceLength - 1);
-    this.viewport.scrollHeight = (lastRowMeta?.y ?? 0) + (lastRowMeta?.height ?? 0);
   }
 
   // 更新 viewport，当可视窗口更新后，用户需要调用 getViewportDataSource 重新获取数据。
@@ -508,6 +497,7 @@ export class TableState {
   }
 
   // 更新数据行元数据
+  @RuntimeLog()
   updateRowMetas(rowMetas: OuterRowMeta[]) {
     const groupedCellMetas = groupBy(rowMetas, "rowKey");
 
@@ -562,12 +552,6 @@ export class TableState {
     }
   }
 
-
-
-  lazyUpdateRowMetaY() {
-
-  }
-
   // 执行交换两行数据
   processExchangeRowData(modifiedRowIndex: number, originRowIndex: number) {
     if (modifiedRowIndex === originRowIndex) return;
@@ -575,21 +559,11 @@ export class TableState {
     // 需要交换 rowIndex 对应的key 值
   }
 
-  dynamicUpdateCellMeta() {
-    // TODO: 动态更新单元格的元数据
-    // 行高需要实时计算
-  }
-
 
   getViewportColumns() {
     // TODO: 获取可视窗口的列, 这里 V1 不做考虑。
     return [];
   }
-
-  rowOffset = {
-    top: 0,
-    bottom: 0
-  };
 
   _calculateRowOffset(rowIndex: number) {
     const rowKey = this.rowKeys[rowIndex];
@@ -601,8 +575,10 @@ export class TableState {
     return 0;
   }
 
-  getViewportDataSource(): RowData[] {
-    const range = { startIndex: 0, endIndex: 0 };
+  // 获取可视范围的索引值
+  @RuntimeLog()
+  getViewportRowDataRange(): RowDataRange {
+    const range: RowDataRange = { startIndex: 0, endIndex: 0 };
 
     const _createCompare = (targetY: number) => {
       return (key: RowKey) => {
@@ -616,8 +592,8 @@ export class TableState {
     range.startIndex = binaryFindIndexRange(this.rowKeys, _createCompare(this.scroll.top));
     const endY = this.scroll.top + this.viewport.height;
     range.endIndex = binaryFindIndexRange(this.rowKeys, _createCompare(endY));
+    range.endIndex = Math.max(range.endIndex, 0);
 
-    range.endIndex = Math.max(range.endIndex, 0)
     const dataSourceLength = this.rowKeys.length;
     if (range.endIndex === 0) {
       range.endIndex = dataSourceLength - 1;
@@ -627,11 +603,31 @@ export class TableState {
     range.startIndex = Math.max(0, range.startIndex - buffer);
     range.endIndex = Math.min(dataSourceLength - 1, range.endIndex + buffer);
 
+    return range;
+  }
+
+  rowOffset = {
+    top: 0,
+    bottom: 0
+  };
+
+  @RuntimeLog()
+  // 根据可视索引，更新上下的偏移距离。
+  updateRowOffsetByRange(range: RowDataRange) {
+    const dataSourceLength = this.rowKeys.length;
     // 这里计算获取的时候同时计算行偏移量，有点不够干净
     Object.assign(this.rowOffset, {
       top: this._calculateRowOffset(range.startIndex - 1),
       bottom: this._calculateRowOffset(dataSourceLength - 1) - this._calculateRowOffset(range.endIndex)
     });
+  }
+
+  @RuntimeLog()
+  // 获取可视范围的数据
+  getViewportDataSource(): RowData[] {
+    const range = this.getViewportRowDataRange();
+
+    this.updateRowOffsetByRange(range)
 
     return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
       const rowIndex = range.startIndex + index;

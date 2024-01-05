@@ -97,11 +97,12 @@ export default defineComponent({
       const style: StyleValue = {};
       style.gridTemplateColumns = gridTemplateColumns.value;
 
+      const rowKey = record._s_row_key ?? -1;
       const rowIndex = Number(record._s_row_index) ?? -1;
 
       const rowClass: Record<string, boolean> = {
         [PrefixClass]: true,
-        [PrefixClass + "__hover"]: rowIndex === tableState.value.hoverState.rowIndex
+        [PrefixClass + "__hover"]: rowKey === tableState.value.hoverState.rowKey
       };
 
       const customRow = props.customRow ?? (() => ({}));

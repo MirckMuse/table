@@ -1,4 +1,6 @@
 :root {
+  --table-primary-color: #1677ff;
+
   --table-border-color: #E6E7EC;
   --table-text-color: #040B29;
 
@@ -17,6 +19,7 @@
   --table-body-cell-bg-hover: #F6F7FA;
   --table-body-expand-icon-size: 16px;
   --table-body-expand-icon-gap: 4px;
+  --table-body-expand-icon-hover-color: var(--table-primary-color);
 
   --table-body-cell-border-color-selection: #1677ff;
   --table-body-cell-bg-selection: #e6f4ff;
@@ -193,6 +196,8 @@
   &-inner {
     flex: 1;
     height: fit-content;
+    display: flex;
+    align-items: center;
 
     &-ellipsis {
       overflow: hidden;
@@ -236,9 +241,11 @@
     width: var(--table-body-expand-icon-size);
     height: var(--table-body-expand-icon-size);
     margin-right: var(--table-body-expand-icon-gap);
+    border: 1px solid transparent;
 
     &:hover {
-      box-shadow: 0 3px 6px -4px #0000001f, 0 6px 16px #00000014, 0 9px 28px 8px #0000000d;
+      border-color: var(--table-body-expand-icon-hover-color);
+      transition: border .16s ease-in-out;
     }
   }
 }

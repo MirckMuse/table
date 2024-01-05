@@ -84,9 +84,17 @@ export default defineComponent({
     })
 
     const cellInnerStyle = computed<StyleValue>(() => {
-      return {
-        textAlign: props.column?.align,
+
+      const style: StyleValue = {};
+
+      style.textAlign = props.column?.align;
+      if (slots.expandIcon) {
+        const deep = props.record._s_row_deep;
+        const indentSize = '16px';
+        style.paddingLeft = `calc(${deep} * ${indentSize})`
       }
+
+      return style
     });
 
     const text = computed(() => {
@@ -126,6 +134,11 @@ export default defineComponent({
       return validVNodes.length ? validVNodes : null;
     }
 
+    const cellStyle = computed(() => {
+      const style: StyleValue = {};
+      return style;
+    })
+
     return () => {
       const contentVNodes = renderCustomCell();
 
@@ -137,7 +150,7 @@ export default defineComponent({
         "div",
         { class: cellInnerClass.value, style: cellInnerStyle.value, ref: cellInnerRef },
 
-        props.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children
+        [slots.expandIcon ? slots.expandIcon() : null].concat(props.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children)
       )
 
       const cell = h(
@@ -145,10 +158,10 @@ export default defineComponent({
         mergeProps({
           class: cellClass.value,
           ref: cellRef,
-          title: title.value
+          title: title.value,
+          style: cellStyle.value,
         }, cellBind.value),
         [
-          slots.expandIcon ? slots.expandIcon() : null,
           inner
         ]
       )

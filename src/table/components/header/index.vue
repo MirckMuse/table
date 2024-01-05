@@ -167,7 +167,8 @@ watch(
 
   &-center {
     overflow: auto;
-    width: fit-content;
+    width: 100%;
+    min-width: fit-content;
     &::-webkit-scrollbar {
       display: none;
     }

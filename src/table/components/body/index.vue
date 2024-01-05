@@ -209,7 +209,6 @@ export default defineComponent({
     watch(
       () => [
         tableState.value.scroll.top,
-        tableState.value.dataSourceLength,
         tableState.value.rowKeys
       ],
       () => {
@@ -248,9 +247,11 @@ export default defineComponent({
 
       while (target) {
         if (target.dataset.type === "cell") {
+          const { rowIndex, rowKey, colKey } = target.dataset;
           tableState.value.hoverState = {
-            rowIndex: Number(target.dataset.rowIndex),
-            colKey: target.dataset.colKey ?? ""
+            rowIndex: Number(rowIndex),
+            rowKey: rowKey ?? "",
+            colKey: colKey ?? ""
           }
 
           handleTooltipEnter(target)
@@ -261,7 +262,7 @@ export default defineComponent({
     }
 
     function handleMouseleave($event: MouseEvent) {
-      tableState.value.hoverState = { rowIndex: -1, colKey: "" }
+      tableState.value.hoverState = { rowIndex: -1, colKey: "", rowKey: -1 }
       handleTooltipLeave($event)
     }
 
@@ -291,7 +292,7 @@ export default defineComponent({
       handleMouseenter, handleMouseleave,
 
       isEmpty: computed(() => {
-        return !tableState.value.dataSourceLength
+        return !tableState.value.rowKeys.length
       }),
 
       commonRowProps
@@ -338,7 +339,8 @@ export default defineComponent({
 
   &-center {
     overflow: hidden;
-    width: fit-content;
+    width: 100%;
+    min-width: fit-content;
   }
 }
 </style>

@@ -69,6 +69,9 @@ export interface TableProps {
   customRow?: CustomRow;
 
   transformCellText?: TransformCellText;
+
+  // 缩进尺寸，传入数字时，这里的单位位 px。
+  indentSize?: number | string;
 }
 
 export type TransformCellText = (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;

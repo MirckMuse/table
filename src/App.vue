@@ -52,7 +52,10 @@ function createItem(_: unknown, index: number) {
 
 const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
 
-data_source.value[0].children = Array(10).fill(null).map(createItem)
+const children = Array(10).fill(null).map(createItem) as any[];
+
+children[0].children = Array(10).fill(null).map(createItem) as any[];
+data_source.value[0].children = children;
 
 const columns = ref<TableColumn[]>([
   {
