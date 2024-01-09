@@ -228,6 +228,15 @@
 
 .s-table-row-expand-icon {
   cursor: pointer;
+  display: inline-block;
+  width: var(--table-body-expand-icon-size);
+  min-width: var(--table-body-expand-icon-size);
+  height: var(--table-body-expand-icon-size);
+
+  >svg {
+    width: 100%;
+    height: 100%;
+  }
 
   &-space {
     width: var(--table-body-expand-icon-size);
@@ -238,8 +247,6 @@
   &__shrink {
     background-color: #FFF;
     border-radius: 2px;
-    width: var(--table-body-expand-icon-size);
-    height: var(--table-body-expand-icon-size);
     margin-right: var(--table-body-expand-icon-gap);
     border: 1px solid transparent;
 

@@ -44,5 +44,5 @@ export const renderExpandIcon: ExpandIconSlot = ({
   }
 
 
-  return h(expandIcon, { class: expandClass, onClick: handleExpandIconClick })
+  return h('span', { class: expandClass, onClick: handleExpandIconClick }, h(expandIcon))
 }

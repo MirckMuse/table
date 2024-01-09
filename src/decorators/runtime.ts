@@ -7,7 +7,11 @@ export function RuntimeLog() {
       const results = originalFunction.apply(this, args);
       const endTime = new Date().getTime();
 
-      console.log(`*** ${proppertyKey.toString()} run time: ${endTime - startTime} ms`);
+      const spendTime = endTime - startTime;
+
+      if (spendTime > 5) {
+        console.warn(`*** ${proppertyKey.toString()} run time: ${spendTime} ms`);
+      }
 
       return results
     }

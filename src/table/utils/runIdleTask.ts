@@ -1,4 +1,21 @@
+import { time } from "console";
+
 type TaskCallback = () => void;
+
+function createRequestIdleCallback() {
+  return globalThis.requestIdleCallback || function (callback: IdleRequestCallback, options?: IdleRequestOptions) {
+    const _startTime = performance.now();
+
+    return globalThis.requestAnimationFrame((time) => {
+      callback({
+        didTimeout: false,
+        timeRemaining: () => Math.max(0, 50 - (_startTime - time))
+      })
+    })
+  }
+}
+
+export const requestIdleCallback = createRequestIdleCallback();
 
 function createRunIdleTask() {
   const tasks: TaskCallback[] = [];
@@ -7,7 +24,7 @@ function createRunIdleTask() {
   function _run() {
     isRunning = true;
 
-    globalThis.requestIdleCallback((deadline) => {
+    requestIdleCallback((deadline) => {
       if (!tasks.length) {
         isRunning = false;
         return;

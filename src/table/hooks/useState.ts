@@ -132,7 +132,6 @@ export function useStateProvide({
     () => props.dataSource ?? [],
     (dataSource) => {
       state.value.coverDataSource(dataSource)
-      state.value.initRowMeta(dataSource);
     }
   )
 
@@ -155,6 +154,7 @@ export function useStateProvide({
 
     props.onResizeColumn?.(resizedWidth, column);
     revertTableUserSelect();
+    // state.value
   }
 
   const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({

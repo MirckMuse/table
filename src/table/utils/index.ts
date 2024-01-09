@@ -14,7 +14,7 @@ export const optimizeScrollXY = (
   return [deltaX * ratio, deltaY * ratio];
 };
 
-export * from "./optimize";
+export * from "./runIdleTask";
 
 export * from "./addEventListener";
 

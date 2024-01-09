@@ -1,11 +1,12 @@
 // FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rust 实现，以确保更小的内存和更快的逻辑。
 
 import { chunk, groupBy, isNil } from "lodash-es";
+import { RuntimeLog } from "../decorators";
 import { ColKeySplitWord } from "../table/config";
 import { RowData, RowKey, TableColumn, TableColumnFixed } from "../table/typing";
 import { binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn, runIdleTask } from "../table/utils";
 import { EXPAND_COLUMN } from "../table/utils/constant";
-import { RuntimeLog } from "../decorators"
+
 
 // TODO:
 // 1. 树形结构的元数据怎么存储？
@@ -143,7 +144,7 @@ function updateFlattenColumnsMeta(columns: TableColumn[], maxDeep: number = 1) {
 
 export type HoverState = {
   rowIndex: number;
-  
+
   rowKey: RowKey;
 
   colKey: string;
@@ -154,6 +155,8 @@ const Row_Height = 55;
 function adjustScrollOffset(offset: number, maxMove: number) {
   return Math.max(0, Math.min(maxMove, offset))
 }
+
+const ChunkSize = 100;
 
 export class TableState {
   // 数据可视区域的高度和宽度
@@ -174,7 +177,18 @@ export class TableState {
   // 行数据的映射值
   private rowDataMap = new Map<RowKey, RowData>;
 
-  rowKeys: RowKey[] = [];
+  _rowKey: RowKey[] = [];
+  rowKeysChunks: RowKey[][] = [];
+
+  get rowKeys() {
+    return this._rowKey;
+  }
+
+  set rowKeys(keys: RowKey[]) {
+    console.log(keys)
+    this.rowKeysChunks = chunk(keys, ChunkSize);
+    this._rowKey = keys;
+  }
 
   rowMeta: Record<RowMetaKey, RowMeta> = {};
 
@@ -295,6 +309,7 @@ export class TableState {
 
   hoverState: HoverState = {
     rowIndex: -1,
+    rowKey: -1,
     colKey: ""
   }
 
@@ -336,11 +351,10 @@ export class TableState {
       return;
     }
 
-    const chunkSize = 100;
-    const chunks = chunk(dataSource, chunkSize);
+    const chunks = chunk(dataSource, ChunkSize);
     const _update = (singleChunk: RowData[], chunkIndex: number) => {
       singleChunk.forEach((row, index) => {
-        const rowIndex = index + chunkIndex * chunkSize;
+        const rowIndex = index + chunkIndex * ChunkSize;
         this.updateInternalProperty(row, rowIndex, 0);
         if (!isNil(row._s_row_key)) {
           this.rawRowKeys.push(row._s_row_key);
@@ -519,19 +533,19 @@ export class TableState {
         });
       }
     }
-
     if (needReCalculateY) {
       this.reCalculateY();
     }
   }
 
+  @RuntimeLog()
   reCalculateY() {
-    const chunkSize = 100;
-    const chunks = chunk(this.rowKeys, chunkSize);
+    const chunks = this.rowKeysChunks;
+    if (!chunks.length) return;
 
     const _update = (singleChunk: RowKey[], chunkIndex: number) => {
       singleChunk.forEach((rowKey, index) => {
-        const rowIndex = index + chunkIndex * chunkSize;
+        const rowIndex = index + chunkIndex * ChunkSize;
 
         const meta = this.getRowMetaByRowKey(rowKey);
         if (!meta) return;

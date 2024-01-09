@@ -29,7 +29,6 @@ type EventName = {
   stop: keyof HTMLElementEventMap;
 }
 
-
 const MouseEventName: EventName = {
   start: "mousedown",
   move: "mousemove",
@@ -81,9 +80,7 @@ function processDrag($event: DragEvent) {
     maxWidth.value,
   );
 
-  window.requestAnimationFrame(() => {
-    handleResizeColumn(adjustedWidth, props.column)
-  })
+  handleResizeColumn(adjustedWidth, props.column)
 }
 
 function handleDragMove($event: DragEvent) {
