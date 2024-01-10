@@ -15,6 +15,11 @@ export default defineComponent({
 
     rowIndex: { type: Number, required: true },
 
+    deep: { type: Number, default: 0 },
+
+    // indentSize 需要从外面传递过来
+    indentSize: { type: String, default: "16px" },
+
     selection: {},
 
     ...BodyCellInheritProps,
@@ -89,8 +94,7 @@ export default defineComponent({
 
       style.textAlign = props.column?.align;
       if (slots.expandIcon) {
-        const deep = props.record._s_row_deep;
-        const indentSize = '16px';
+        const { deep, indentSize } = props;
         style.paddingLeft = `calc(${deep} * ${indentSize})`
       }
 

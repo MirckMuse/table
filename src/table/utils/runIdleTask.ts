@@ -1,5 +1,3 @@
-import { time } from "console";
-
 type TaskCallback = () => void;
 
 function createRequestIdleCallback() {
@@ -17,9 +15,16 @@ function createRequestIdleCallback() {
 
 export const requestIdleCallback = createRequestIdleCallback();
 
+const Buffer_Time = 0;
+
 function createRunIdleTask() {
   const tasks: TaskCallback[] = [];
   let isRunning = false;
+
+  function isIdea(deadline: IdleDeadline) {
+    const ideaTime = deadline.timeRemaining();
+    return Buffer_Time < ideaTime;
+  }
 
   function _run() {
     isRunning = true;
@@ -30,9 +35,14 @@ function createRunIdleTask() {
         return;
       }
 
-      while (tasks.length && (performance.now() + deadline.timeRemaining()) > performance.now()) {
-        const _task = tasks.shift();
-        _task?.();
+      while (tasks.length && isIdea(deadline)) {
+        let _task: any = tasks.shift();
+
+        if (_task) {
+          _task();
+          // 设置函数为空，及时触发垃圾回收，避免内存泄漏
+          _task = null;
+        }
       }
       _run();
     })

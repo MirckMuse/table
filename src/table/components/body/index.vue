@@ -209,7 +209,7 @@ export default defineComponent({
     watch(
       () => [
         tableState.value.scroll.top,
-        tableState.value.rowKeys
+        tableState.value.rowStateCenter.flattenRowKeys
       ],
       () => {
         dataSource.value = tableState.value.getViewportDataSource()
@@ -292,7 +292,7 @@ export default defineComponent({
       handleMouseenter, handleMouseleave,
 
       isEmpty: computed(() => {
-        return !tableState.value.rowKeys.length
+        return !tableState.value.isEmpty()
       }),
 
       commonRowProps

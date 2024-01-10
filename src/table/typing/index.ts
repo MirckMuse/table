@@ -62,7 +62,7 @@ export interface TableProps {
 
   onResizeColumn?: Function;
 
-  rowKey?: string | ((record: RowData) => RowKey);
+  rowKey?: string | GetRowKey;
 
   expandedRowKeys?: RowKey[];
 
@@ -180,3 +180,5 @@ export interface TableColumnMeta {
 }
 
 export type RowKey = string | number;
+
+export type GetRowKey = (record: RowData) => RowKey

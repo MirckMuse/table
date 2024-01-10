@@ -1,6 +1,6 @@
 import { ComputedRef, InjectionKey, Ref, computed, inject, provide, ref, watch } from "vue";
 import { TableState } from "../../state";
-import { InteralTableSlot, RowData, RowKey, TableColumn, TableEmit, TableProps, TableSlot } from "../typing";
+import { GetRowKey, InteralTableSlot, RowData, RowKey, TableColumn, TableEmit, TableProps, TableSlot } from "../typing";
 import { debounce, isNil, isObject } from "lodash-es";
 import { noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
@@ -12,7 +12,7 @@ interface ITableContext {
 
   slots: InteralTableSlot;
 
-  getRowKey: ComputedRef<(record: RowData) => RowKey>;
+  getRowKey: ComputedRef<GetRowKey | undefined>;
 
   handleResizeColumn: (resizedWidth: number, column: TableColumn) => void;
 
@@ -41,7 +41,7 @@ interface IStateOption {
 export interface IRowExpandOption {
   tableProps: TableProps;
 
-  getRowKey: ComputedRef<(record: RowData) => RowKey>;
+  getRowKey: (record: RowData) => RowKey;
 
   beforeHandleRowExpand?: ($event: Event, record: RowData) => void;
 
@@ -75,7 +75,7 @@ export function useRowExpand(option: IRowExpandOption) {
   function handleRowExpand($event: Event, record: RowData) {
     beforeHandleRowExpand?.($event, record);
 
-    const rowKey = getRowKey.value(record);
+    const rowKey = getRowKey(record);
     const expanded = !mergedExpandedKeys.value.has(rowKey);
 
     const rowKeySet = mergedExpandedKeys.value;
@@ -108,10 +108,7 @@ export function useStateProvide({
   const getRowKey = computed(() => {
     const rowKey = props.rowKey;
 
-    if (!rowKey) return function (record: RowData) {
-      const { _s_row_deep, _s_row_index } = record;
-      return [_s_row_index, _s_row_deep].filter((v) => !isNil(v)).join("-");
-    }
+    if (!rowKey) return;
 
     if (typeof rowKey === "function") return rowKey;
 
@@ -154,7 +151,6 @@ export function useStateProvide({
 
     props.onResizeColumn?.(resizedWidth, column);
     revertTableUserSelect();
-    // state.value
   }
 
   const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({
@@ -168,7 +164,9 @@ export function useStateProvide({
 
   const { handleRowExpand, expandedKeys } = useRowExpand({
     tableProps: props,
-    getRowKey,
+    getRowKey(record) {
+      return state.value.rowStateCenter.getStateByRowData(record)?.getMeta().key ?? -1;
+    },
     afterHandleRowExpand(expanded, record, expandedRows) {
       // 传递事件
       emit('expand', expanded, record);

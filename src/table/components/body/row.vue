@@ -6,6 +6,7 @@ import { genGridTemplateColumns } from '../../utils';
 import { useStateInject } from '../../hooks';
 import { EXPAND_COLUMN, SlotMap, renderExpandIcon } from '../../utils/constant';
 import { get, isNil } from 'lodash-es';
+import { RowMeta } from '../../../state/row';
 
 
 export default defineComponent({
@@ -67,19 +68,21 @@ export default defineComponent({
     }
 
     // 渲染单元格
-    function renderCell(column: TableColumn, record: RowData, rowIndex: number) {
+    function renderCell(column: TableColumn, record: RowData, meta?: RowMeta) {
+      const rowIndex = meta?.index ?? -1;
       return h(
         BodyCell,
         {
           column,
           record,
           rowIndex,
+          deep: meta?.deep ?? 0,
           transformCellText: props.transformCellText,
           bodyCell: props.bodyCell,
           "data-col-index": column.dataIndex,
           "data-col-key": column.key,
-          "data-row-index": rowIndex,
-          "data-row-key": record._s_row_key,
+          "data-row-index": meta?.index,
+          "data-row-key": meta?.key,
           "data-type": "cell"
         },
         createCellSlot(column)
@@ -97,8 +100,11 @@ export default defineComponent({
       const style: StyleValue = {};
       style.gridTemplateColumns = gridTemplateColumns.value;
 
-      const rowKey = record._s_row_key ?? -1;
-      const rowIndex = Number(record._s_row_index) ?? -1;
+      const meta = tableState.value.rowStateCenter.getStateByRowData(record)?.getMeta();
+
+
+      const rowKey = meta?.key ?? -1;
+      const rowIndex = meta?.index ?? -1;
 
       const rowClass: Record<string, boolean> = {
         [PrefixClass]: true,
@@ -113,7 +119,7 @@ export default defineComponent({
           customRow(record, rowIndex),
           { class: rowClass, "data-row-index": rowIndex, style },
         ),
-        columns.map(col => renderCell(col, record, rowIndex))
+        columns.map(col => renderCell(col, record, meta))
       )
     }
 
