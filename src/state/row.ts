@@ -26,6 +26,8 @@ export interface TableRowStateOption {
   prev: TableRowStateOrNull;
 
   next: TableRowStateOrNull;
+
+  rowStateCenter: TableRowStateCenter;
 }
 
 export class TableRowState {
@@ -36,6 +38,8 @@ export class TableRowState {
   private prev: TableRowStateOrNull = null;
 
   private next: TableRowStateOrNull = null;
+
+  private rowStateCenter: TableRowStateCenter;
 
   // 获取只读的行元数据
   getMeta(): Readonly<RowMeta> {
@@ -51,6 +55,7 @@ export class TableRowState {
     this.meta = option.meta;
     this.next = option.next;
     this.prev = option.prev;
+    this.rowStateCenter = option.rowStateCenter;
   }
 
   clearRawPrevDoubleLine() {
@@ -86,7 +91,6 @@ export class TableRowState {
     this.clearRawPrevDoubleLine();
     this.prev = state;
     if (state) {
-      console.log(state)
       state.next = this;
     }
 
@@ -110,7 +114,7 @@ export class TableRowState {
       this.meta.y = 0;
       return;
     }
-    const prevMeta = this.prev.meta
+    const prevMeta = this.prev.getMeta()
     this.meta.y = prevMeta.y + prevMeta.height;
   }
 
@@ -125,15 +129,24 @@ export class TableRowState {
   updateRowHeight(rowHeight: number) {
     if (!this.justUpdateRowHeight(rowHeight)) return;
 
+    if (this.meta.deep > 0) return;
+
     this.updateAllNextY();
   }
 
   // 更新所有下一行的 Y坐标
   updateAllNextY() {
+
+    const _updateY = () => {
+      this.rowStateCenter?.updateTableView()
+    }
     function _run(state: TableRowState) {
       let next: TableRowState | null = state;
 
-      if (!next) return;
+      if (!next) {
+        _updateY()
+        return;
+      };
 
       requestIdleCallback(deadline => {
         while (next && deadline.timeRemaining() > 0) {
@@ -143,6 +156,8 @@ export class TableRowState {
 
         if (next) {
           _run(next)
+        } else {
+          _updateY()
         }
       })
     }
@@ -157,6 +172,7 @@ export class TableRowStateCenter {
 
   rawRowKeys: RowKey[] = [];
 
+  // 展开的行 key 值。在展开、筛选、排序操作会影响该指的变化。
   flattenRowKeys: RowKey[] = [];
 
   rowStateMap = new Map<RowKey, TableRowState>();
@@ -182,34 +198,27 @@ export class TableRowStateCenter {
     this.rowStateMap.clear();
   }
 
+  updateTableView() {
+    const lastMeta = this.getStateByFlattenRowIndex(this.flattenRowKeys.length - 1)?.getMeta();
+
+    this.tableState.viewport.scrollHeight = (lastMeta?.y ?? 0) + (lastMeta?.height ?? 0);
+  }
+
   updateDataSource(dataSource: RowData[]) {
     this.clearRowPropties();
 
-    const _chunkSize = 200;
-    const chunks = chunk(dataSource, _chunkSize);
-
-    const _update = (_chunk: RowData[], chunkIndex: number) => {
-      const { rowKeys } = initRawState(dataSource, {
-        roughHeight: this.roughRowHeight,
-        getRowKey: this.getRowKey,
-        startIndex: _chunkSize * chunkIndex,
-        map: this.rowStateMap,
-        keyMap: this.rowKeyMap,
-      });
-      this.rawRowKeys.push(...rowKeys)
-      this.flattenRowKeys.push(...rowKeys)
-
-      const lastRowMeta = this.getStateByRowKey(rowKeys[rowKeys.length - 1])?.getMeta();
-
-      this.tableState.viewport.scrollHeight = (lastRowMeta?.height ?? 0) + (lastRowMeta?.y ?? 0);
-    }
-
-    _update(chunks[0], 0);
-    for (let i = 1; i < chunks.length; i++) {
-      runIdleTask(() => {
-        _update(chunks[i], i)
-      });
-    }
+    initRawState(dataSource, {
+      roughHeight: this.roughRowHeight,
+      getRowKey: this.getRowKey,
+      map: this.rowStateMap,
+      keyMap: this.rowKeyMap,
+      rawRowKeys: this.rawRowKeys,
+      flattenRowKeys: this.flattenRowKeys,
+      rowStateCenter: this,
+      updateTableView: () => {
+        this.updateTableView()
+      }
+    });
   }
 
   getStateByRowData(rowData: RowData) {
@@ -247,7 +256,8 @@ export class TableRowStateCenter {
       record: rowData,
       meta: newMeta,
       prev: null,
-      next: null
+      next: null,
+      rowStateCenter: this
     })
 
     this.rowStateMap.set(rowKey, state);

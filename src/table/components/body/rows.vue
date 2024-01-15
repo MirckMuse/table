@@ -3,6 +3,7 @@ import type { VNode } from "vue";
 import { PropType, defineComponent, h } from "vue";
 import { BodyCellInheritProps, CustomRow, ExpandIconSlot, RowData, RowKey, TableColumn } from "../../typing";
 import BodyRow from "./row.vue";
+import { useStateInject } from "../../hooks";
 
 export default defineComponent({
   name: "STableBodyRows",
@@ -22,14 +23,21 @@ export default defineComponent({
   },
 
   setup(props) {
+    const { tableState } = useStateInject();
+
     function renderRow(columns: TableColumn[], record: RowData): VNode {
-      const rowKey = (props.getRowKey?.(record) ?? record._s_row_index) as RowKey;
+
+      const rowMeta = tableState.value.rowStateCenter.getStateByRowData(record)?.getMeta()
+
+      const rowKey = rowMeta?.key ?? -1;
 
       return h(
         BodyRow,
         {
           key: rowKey,
           rowKey: rowKey,
+          rowMeta: rowMeta,
+          rowIndex: rowMeta?.index ?? -1,
           expandIcon: props.expandIcon,
           columns,
           record,

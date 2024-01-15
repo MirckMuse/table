@@ -1,5 +1,7 @@
+import { chunk } from "lodash-es";
 import { GetRowKey, RowData, RowKey } from "../table/typing";
-import { RowMeta, TableRowState, TableRowStateOrNull } from "./row";
+import { RowMeta, TableRowState, TableRowStateCenter, TableRowStateOrNull } from "./row";
+import { runIdleTask } from "../table/utils";
 
 interface ICreateRawStateMapOption {
   // 初始粗略的高度
@@ -7,13 +9,19 @@ interface ICreateRawStateMapOption {
 
   getRowKey?: GetRowKey;
 
-  startIndex?: number;
-
   deep?: number;
 
   map?: Map<RowKey, TableRowState>;
 
   keyMap?: WeakMap<RowData, RowKey>;
+
+  rawRowKeys?: RowKey[],
+
+  flattenRowKeys?: RowKey[],
+
+  updateTableView?: () => void,
+
+  rowStateCenter: TableRowStateCenter
 }
 
 // 创建原始
@@ -24,7 +32,10 @@ export function initRawState(dataSource: RowData[], option: ICreateRawStateMapOp
     deep = 0,
     map: rawStateMap = new Map(),
     keyMap = new WeakMap(),
-    startIndex = 0
+    rawRowKeys = [],
+    flattenRowKeys = [],
+    updateTableView,
+    rowStateCenter
   } = option;
 
 
@@ -48,27 +59,44 @@ export function initRawState(dataSource: RowData[], option: ICreateRawStateMapOp
 
   // 创建表格数据行的状态
   function _createTableRowState(record: RowData, index: number) {
-    const meta = _createMeta(record, index + startIndex, prevState)
+    const meta = _createMeta(record, index, prevState)
 
-    return new TableRowState({
+    const state = new TableRowState({
       record,
       meta,
       prev: prevState,
-      next: null
+      next: null,
+      rowStateCenter
     })
+
+    if (prevState) {
+      prevState.updateNext(state)
+    }
+
+    return state
   }
 
-  const rowKeys: RowKey[] = [];
-  dataSource.forEach((record, index) => {
-    const state = _createTableRowState(record, index);
-    const rowKey = state.getMeta().key;
-    rawStateMap.set(rowKey, state);
-    prevState = state;
-    rowKeys.push(rowKey);
-    keyMap.set(record, rowKey);
-  })
-  return {
-    stateMap: rawStateMap,
-    rowKeys
+  const _chunkSize = 200;
+  const chunks = chunk(dataSource, _chunkSize);
+  function _update(_chunk: RowData[], chunkIndex: number) {
+    _chunk.forEach((record, index) => {
+      const state = _createTableRowState(record, index + chunkIndex * _chunkSize);
+      const rowKey = state.getMeta().key;
+      rawStateMap.set(rowKey, state);
+      prevState = state;
+      rawRowKeys.push(rowKey);
+      flattenRowKeys.push(rowKey);
+      keyMap.set(record, rowKey);
+    })
+
+    updateTableView?.();
+  }
+
+  _update(chunks[0], 0);
+
+  for (let i = 1; i < chunks.length; i++) {
+    runIdleTask(() => {
+      _update(chunks[i], i);
+    });
   }
 }

@@ -15,6 +15,10 @@ export default defineComponent({
   props: {
     rowKey: { type: [String, Number] as PropType<RowKey>, required: true },
 
+    rowIndex: { type: Number, default: -1 },
+
+    rowMeta: { type: Object as PropType<RowMeta> },
+
     record: { type: Object as PropType<RowData>, required: true },
 
     columns: { type: Array as PropType<TableColumn[]> },
@@ -27,6 +31,7 @@ export default defineComponent({
 
     ...BodyCellInheritProps,
   },
+
 
   setup(props) {
     const { tableState, handleRowExpand, expandedKeys } = useStateInject();
@@ -100,11 +105,11 @@ export default defineComponent({
       const style: StyleValue = {};
       style.gridTemplateColumns = gridTemplateColumns.value;
 
-      const meta = tableState.value.rowStateCenter.getStateByRowData(record)?.getMeta();
-
-
-      const rowKey = meta?.key ?? -1;
-      const rowIndex = meta?.index ?? -1;
+      const {
+        rowMeta,
+        rowIndex,
+        rowKey
+      } = props;
 
       const rowClass: Record<string, boolean> = {
         [PrefixClass]: true,
@@ -119,7 +124,7 @@ export default defineComponent({
           customRow(record, rowIndex),
           { class: rowClass, "data-row-index": rowIndex, style },
         ),
-        columns.map(col => renderCell(col, record, meta))
+        columns.map(col => renderCell(col, record, rowMeta))
       )
     }
 
@@ -129,7 +134,7 @@ export default defineComponent({
       return renderRow(columns, record)
     }
   }
-})
+});
 </script>
 
 <style lang="less" scoped>
@@ -144,4 +149,5 @@ export default defineComponent({
     background-color: var(--table-body-cell-bg-hover);
   }
 }
+
 </style>

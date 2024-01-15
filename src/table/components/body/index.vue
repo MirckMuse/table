@@ -158,7 +158,6 @@ export default defineComponent({
 
     const getCellPadding = createGetCellPadding();
 
-
     onUpdated(() => {
       const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
       const metas: OuterRowMeta[] = [];

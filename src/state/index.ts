@@ -1,6 +1,6 @@
 // FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rust 实现，以确保更小的内存和更快的逻辑。
 
-import { groupBy, isNil } from "lodash-es";
+import { cloneDeep, groupBy, isNil } from "lodash-es";
 import { RuntimeLog } from "../decorators";
 import { ColKeySplitWord } from "../table/config";
 import { GetRowKey, RowData, RowKey, TableColumn, TableColumnFixed } from "../table/typing";
@@ -177,13 +177,20 @@ export class TableState {
 
   private expandedRowKeys: RowKey[] = [];
 
+  @RuntimeLog()
   updateExpandedRowKeys(expandedRowKeys: RowKey[]) {
-    // TODO: 这里的 children 需要从外部传递进来;
-    const childrenName = "children";
-    // FIXME: 这里需要重写。
-    const expandedRowKeySet = new Set<RowKey>(expandedRowKeys);
-
     const rowStateCenter = this.rowStateCenter;
+    // TODO: 这里的 children 需要从外部传递进来;
+
+    const childrenName = "children";
+
+    const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => {
+      return (rowStateCenter.getStateByRowKey(prev)?.getMeta()?.deep ?? -1) - (rowStateCenter.getStateByRowKey(next)?.getMeta()?.deep ?? -1)
+    })
+    // FIXME: 这里需要重写。
+    const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
+
+
 
     while (expandedRowKeySet.size) {
       const rowKey = Array.from(expandedRowKeySet).find(key => rowStateCenter.getRowDataByRowKey(key));
@@ -464,7 +471,6 @@ export class TableState {
         rowState.justUpdateRowHeight(rowHeight);
       }
     }
-
     fistState?.updateAllNextY();
   }
 
@@ -505,7 +511,7 @@ export class TableState {
       }
     }
 
-    const flattenRowKeys = this.rowStateCenter.flattenRowKeys;
+    const flattenRowKeys = cloneDeep(this.rowStateCenter.flattenRowKeys);
 
     range.startIndex = binaryFindIndexRange(flattenRowKeys, _createCompare(this.scroll.top));
     const endY = this.scroll.top + this.viewport.height;
@@ -546,8 +552,6 @@ export class TableState {
     const range = this.getViewportRowDataRange();
 
     this.updateRowOffsetByRange(range);
-
-
 
     return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
       const rowIndex = range.startIndex + index;
