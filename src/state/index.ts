@@ -1,12 +1,12 @@
 // FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rust 实现，以确保更小的内存和更快的逻辑。
 
-import { cloneDeep, groupBy, isNil } from "lodash-es";
-import { RuntimeLog } from "../decorators";
-import { ColKeySplitWord } from "../table/config";
-import { GetRowKey, RowData, RowKey, TableColumn, TableColumnFixed } from "../table/typing";
-import { binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn } from "../table/utils";
-import { EXPAND_COLUMN } from "../table/utils/constant";
-import { RowMeta, TableRowState, TableRowStateCenter, TableRowStateOrNull } from "./row";
+import {cloneDeep, groupBy, isNil} from "lodash-es";
+import {RuntimeLog} from "../decorators";
+import {ColKeySplitWord} from "../table/config";
+import {GetRowKey, RowData, RowKey, TableColumn, TableColumnFixed} from "../table/typing";
+import {binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn} from "../table/utils";
+import {EXPAND_COLUMN} from "../table/utils/constant";
+import {RowMeta, TableRowState, TableRowStateCenter, TableRowStateOrNull} from "./row";
 
 
 // TODO:
@@ -154,9 +154,9 @@ export class TableState {
   //    宽度：表格容器的可见宽度
   //    高度：如果表头固定：容器高度 - 表头高度。 否则：
   //      容器高度。
-  viewport: BBox = { width: 0, height: 0, scrollWidth: 0, scrollHeight: 0 };
+  viewport: BBox = {width: 0, height: 0, scrollWidth: 0, scrollHeight: 0};
 
-  scroll: Scroll = { left: 0, top: 0 };
+  scroll: Scroll = {left: 0, top: 0};
 
   // 表头的元数据，该元数据依据之后一列的配置
   //  同一行需要高度一致
@@ -189,7 +189,6 @@ export class TableState {
     })
     // FIXME: 这里需要重写。
     const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
-
 
 
     while (expandedRowKeySet.size) {
@@ -281,7 +280,7 @@ export class TableState {
 
   constructor(option: ITableStateOption) {
     // 初始化前置必要参数
-    const { rowHeight, getRowKey } = option;
+    const {rowHeight, getRowKey} = option;
     this.roughRowHeight = rowHeight ? rowHeight : Row_Height;
     this.getRowKey = getRowKey;
     this.rowStateCenter = new TableRowStateCenter({
@@ -294,7 +293,7 @@ export class TableState {
   }
 
   init(option: ITableStateOption) {
-    const { dataSource, columns, viewport } = option;
+    const {dataSource, columns, viewport} = option;
     // 更新可视视图。
     viewport && this.updateViewport(viewport.width, viewport.height);
     this.updateColumns(columns ?? []);
@@ -332,7 +331,7 @@ export class TableState {
 
       let ellipsis = column.ellipsis
       if (column.ellipsis && typeof column.ellipsis === 'boolean') {
-        ellipsis = { showTitle: true };
+        ellipsis = {showTitle: true};
       }
 
       let fixed: TableColumnFixed | undefined = undefined;
@@ -375,7 +374,7 @@ export class TableState {
     }
 
     let nextMap2SpecialColumn: any[] = [];
-    const { left, center, right } = columns
+    const {left, center, right} = columns
       .map((column, index) => _standardizationColumn(column, index))
       .reduce<{ left: TableColumn[], right: TableColumn[], center: TableColumn[] }>(
         (result, column) => {
@@ -398,7 +397,7 @@ export class TableState {
           }
           return result;
         },
-        { left: [], right: [], center: [] }
+        {left: [], right: [], center: []}
       );
     const leftFlattenColumns = bfsFlattenColumns(left);
     const centerFlattenColumns = bfsFlattenColumns(center);
@@ -432,7 +431,7 @@ export class TableState {
   }
 
   updateScroll() {
-    const { scrollHeight, scrollWidth, width, height } = this.viewport;
+    const {scrollHeight, scrollWidth, width, height} = this.viewport;
     const maxXMove = Math.max(0, scrollWidth - width);
     const maxYMove = Math.max(0, scrollHeight - height);
     Object.assign(this.scroll, {
@@ -444,6 +443,7 @@ export class TableState {
   // 更新数据行元数据
   @RuntimeLog()
   updateRowMetas(rowMetas: OuterRowMeta[]) {
+    // TODO: 行更新后，flattenYIndexes 也会发生变化。
     const groupedCellMetas = groupBy(rowMetas, "rowKey");
 
     let fistState: TableRowState | null = null;
@@ -468,10 +468,9 @@ export class TableState {
 
         const outerRowMetas = groupedCellMetas[rowKey];
         const rowHeight = Math.max(...outerRowMetas.map(meta => meta.height));
-        rowState.justUpdateRowHeight(rowHeight);
+        rowState.updateRowHeight(rowHeight);
       }
     }
-    fistState?.updateAllNextY();
   }
 
   // 执行交换两行数据
@@ -488,37 +487,28 @@ export class TableState {
   }
 
   _calculateRowOffset(rowIndex: number) {
-    const meta = this.rowStateCenter.getStateByFlattenRowIndex(rowIndex)?.getMeta();
-
-    if (meta) {
-      return meta.y + meta.height;
-    }
-    return 0;
+    return this.rowStateCenter.flattenYIndexes[rowIndex] ?? 0;
   }
 
   // 获取可视范围的索引值
   @RuntimeLog()
   getViewportRowDataRange(): RowDataRange {
-    const range: RowDataRange = { startIndex: 0, endIndex: 0 };
+    const range: RowDataRange = {startIndex: 0, endIndex: 0};
 
     const _createCompare = (targetY: number) => {
-      return (key: RowKey) => {
-        const meta = this.rowStateCenter.getStateByRowKey(key)?.getMeta() ?? null;
-
-        if (!meta) return -1;
-
-        return targetY - meta.y;
+      return (y: number) => {
+        return targetY - y;
       }
     }
 
-    const flattenRowKeys = cloneDeep(this.rowStateCenter.flattenRowKeys);
+    const flattenYIndexes = cloneDeep(this.rowStateCenter.flattenYIndexes);
 
-    range.startIndex = binaryFindIndexRange(flattenRowKeys, _createCompare(this.scroll.top));
+    range.startIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(this.scroll.top));
     const endY = this.scroll.top + this.viewport.height;
-    range.endIndex = binaryFindIndexRange(flattenRowKeys, _createCompare(endY));
+    range.endIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(endY));
     range.endIndex = Math.max(range.endIndex, 0);
 
-    const dataSourceLength = flattenRowKeys.length;
+    const dataSourceLength = flattenYIndexes.length;
     if (range.endIndex === 0) {
       range.endIndex = dataSourceLength - 1;
     }
@@ -560,6 +550,8 @@ export class TableState {
 
       if (rowData) {
         result.push(rowData);
+      } else {
+        console.log("error")
       }
 
       return result;

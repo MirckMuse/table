@@ -1,8 +1,8 @@
-import { chunk } from "lodash-es";
-import { GetRowKey, RowData, RowKey } from "../table/typing";
-import { requestIdleCallback, runIdleTask } from "../table/utils";
-import { initRawState } from "./shared";
-import { TableState } from ".";
+import {chunk} from "lodash-es";
+import {GetRowKey, RowData, RowKey} from "../table/typing";
+import {requestIdleCallback, runIdleTask} from "../table/utils";
+import {initRawState} from "./shared";
+import {TableState} from ".";
 
 export type TableRowStateOrNull = TableRowState | null;
 
@@ -14,18 +14,12 @@ export interface RowMeta {
   deep: number;
 
   height: number;
-
-  y: number;
 }
 
 export interface TableRowStateOption {
   record: RowData;
 
   meta: RowMeta;
-
-  prev: TableRowStateOrNull;
-
-  next: TableRowStateOrNull;
 
   rowStateCenter: TableRowStateCenter;
 }
@@ -34,10 +28,6 @@ export class TableRowState {
   record: RowData;
 
   private meta: RowMeta;
-
-  private prev: TableRowStateOrNull = null;
-
-  private next: TableRowStateOrNull = null;
 
   private rowStateCenter: TableRowStateCenter;
 
@@ -53,116 +43,12 @@ export class TableRowState {
   constructor(option: TableRowStateOption) {
     this.record = option.record;
     this.meta = option.meta;
-    this.next = option.next;
-    this.prev = option.prev;
     this.rowStateCenter = option.rowStateCenter;
-  }
-
-  clearRawPrevDoubleLine() {
-    if (this.prev) {
-      if (this.prev.next === this) {
-        this.prev.next = null;
-      }
-    }
-    this.prev = null;
-  }
-
-  clearRawNextDoubleLine() {
-    if (this.next) {
-      if (this.next.prev === this) {
-        this.next.prev = null;
-
-      }
-    }
-
-    this.next = null;
-  }
-
-  // 清理原始双向链接
-  clearRawDoubleLine() {
-    this.clearRawPrevDoubleLine();
-    this.clearRawNextDoubleLine();
-
-  }
-
-  // 更新节点。
-  updatePrev(state: TableRowStateOrNull) {
-    state?.clearRawNextDoubleLine();
-    this.clearRawPrevDoubleLine();
-    this.prev = state;
-    if (state) {
-      state.next = this;
-    }
-
-    // console.log(this)
-  }
-
-  // 更行下一节点的链接
-  updateNext(state: TableRowStateOrNull) {
-    state?.clearRawPrevDoubleLine();
-    this.clearRawNextDoubleLine();
-
-    this.next = state;
-    if (state) {
-      state.prev = this;
-    }
-  }
-
-  // 更新行的 Y
-  updateY() {
-    if (!this.prev) {
-      this.meta.y = 0;
-      return;
-    }
-    const prevMeta = this.prev.getMeta()
-    this.meta.y = prevMeta.y + prevMeta.height;
-  }
-
-  // 仅更新行高，返回是否行高发生变化
-  justUpdateRowHeight(rowHeight: number): boolean {
-    const isRowHeightChanged = this.meta.height !== rowHeight;
-    this.meta.height = rowHeight;
-    return isRowHeightChanged
   }
 
   // 更行行高
   updateRowHeight(rowHeight: number) {
-    if (!this.justUpdateRowHeight(rowHeight)) return;
-
-    if (this.meta.deep > 0) return;
-
-    this.updateAllNextY();
-  }
-
-  // 更新所有下一行的 Y坐标
-  updateAllNextY() {
-
-    const _updateY = () => {
-      this.rowStateCenter?.updateTableView()
-    }
-    function _run(state: TableRowState) {
-      let next: TableRowState | null = state;
-
-      if (!next) {
-        _updateY()
-        return;
-      };
-
-      requestIdleCallback(deadline => {
-        while (next && deadline.timeRemaining() > 0) {
-          next.updateY();
-          next = next.next;
-        }
-
-        if (next) {
-          _run(next)
-        } else {
-          _updateY()
-        }
-      })
-    }
-
-    _run(this);
+    this.meta.height = rowHeight;
   }
 }
 
@@ -174,6 +60,9 @@ export class TableRowStateCenter {
 
   // 展开的行 key 值。在展开、筛选、排序操作会影响该指的变化。
   flattenRowKeys: RowKey[] = [];
+
+  // 扁平的 Y 值的索引
+  flattenYIndexes: number[] = [];
 
   rowStateMap = new Map<RowKey, TableRowState>();
 
@@ -199,13 +88,22 @@ export class TableRowStateCenter {
   }
 
   updateTableView() {
-    const lastMeta = this.getStateByFlattenRowIndex(this.flattenRowKeys.length - 1)?.getMeta();
+    let reduceHeight = 0;
+    this.flattenYIndexes = this.flattenRowKeys.reduce((heights, rowKey) => {
+      reduceHeight = reduceHeight + (this.getStateByRowKey(rowKey)?.getMeta().height ?? 0);
+      heights.push(reduceHeight)
+      return heights;
+    }, []);
 
-    this.tableState.viewport.scrollHeight = (lastMeta?.y ?? 0) + (lastMeta?.height ?? 0);
+    this.tableState.viewport.scrollHeight = reduceHeight;
   }
 
   updateDataSource(dataSource: RowData[]) {
     this.clearRowPropties();
+
+    // 粗略计算一下滚动高度
+    this.tableState.viewport.scrollHeight = dataSource.length * this.roughRowHeight;
+    this.flattenYIndexes = dataSource.map((_, index) => this.roughRowHeight * (index + 1))
 
     initRawState(dataSource, {
       roughHeight: this.roughRowHeight,
@@ -248,15 +146,12 @@ export class TableRowStateCenter {
 
     const newMeta = Object.assign({}, meta, {
       key: rowKey,
-      y: -1,
       height: this.roughRowHeight,
     }) as RowMeta;
 
     const state = new TableRowState({
       record: rowData,
       meta: newMeta,
-      prev: null,
-      next: null,
       rowStateCenter: this
     })
 
