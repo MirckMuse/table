@@ -76,16 +76,11 @@
 
 <script lang="ts">
 import {
-  StyleValue,
   computed,
   defineComponent,
+  onMounted,
   onUpdated,
-  reactive,
-  ref,
-  shallowRef,
-  watch,
-  nextTick,
-  onMounted
+  reactive, ref, shallowRef, StyleValue, watch, toRef
 } from "vue";
 import {OuterRowMeta} from "../../../state";
 import {resize} from "../../directives";
@@ -199,8 +194,9 @@ export default defineComponent({
     const bodyRef = ref<HTMLElement>();
     const bodyInnerRef = shallowRef<HTMLElement>();
 
-    const viewport = computed(() => tableState.value.viewport)
-    const scroll = computed(() => tableState.value.scroll)
+    const viewport = toRef(tableState.value, 'viewport');
+    const scroll = toRef(tableState.value, 'scroll');
+
     const bodyClass = computed(() => {
       const clas: string[] = [];
       if (scrollState.value.mode === "hover") {
@@ -304,7 +300,7 @@ export default defineComponent({
         return !tableState.value.isEmpty()
       }),
 
-      commonRowProps
+      commonRowProps,
     }
   }
 });

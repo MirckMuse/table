@@ -1,6 +1,4 @@
-import {chunk, memoize} from "lodash-es";
 import {GetRowKey, RowData, RowKey} from "../table/typing";
-import {requestIdleCallback, runIdleTask} from "../table/utils";
 import {initRawState} from "./shared";
 import {TableState} from ".";
 
@@ -14,6 +12,8 @@ export interface RowMeta {
   deep: number;
 
   height: number;
+
+  _sort: string;
 }
 
 export interface TableRowStateOption {

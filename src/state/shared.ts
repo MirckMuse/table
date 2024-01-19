@@ -48,7 +48,8 @@ export function initRawState(dataSource: RowData[], option: ICreateRawStateMapOp
       key: getRowKey ? getRowKey(record) : `${deep}-${index}`,
       index,
       deep,
-      height: roughHeight
+      height: roughHeight,
+      _sort: String(index),
     }
   }
 
@@ -90,4 +91,25 @@ export function initRawState(dataSource: RowData[], option: ICreateRawStateMapOp
       }
     });
   }
+}
+
+
+export function rowKeyCompare(prev: string, next: string) {
+  const prevIndex = prev.split("-");
+  const nextIndex = next.split("-");
+  const maxLength = Math.max(prevIndex.length, nextIndex.length);
+
+  let _compare = 0;
+  for (let i = 0; i < maxLength; i++) {
+    const prev = prevIndex[i] || -1;
+    const next = nextIndex[i] || -1;
+
+    _compare = prev - next;
+
+    if (_compare !== 0) {
+      return _compare
+    }
+  }
+
+  return _compare;
 }

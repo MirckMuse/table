@@ -1,12 +1,13 @@
 // FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rpst 实现，以确保更小的内存和更快的逻辑。
 
-import {cloneDeep, groupBy, isNil} from "lodash-es";
-import {RuntimeLog} from "../decorators";
-import {ColKeySplitWord} from "../table/config";
-import {ttRowKey, RowData, RowKey, TableColumn, TableColumnFixed} from "../table/typing";
-import {binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn} from "../table/utils";
-import {EXPAND_COLUMN} from "../table/utils/constant";
-import {RowMeta, TableRowState, TableRowStateCenter, TableRowStateOrNull} from "./row";
+import { groupBy, isNil } from "lodash-es";
+import { RuntimeLog } from "../decorators";
+import { ColKeySplitWord } from "../table/config";
+import { GetRowKey, RowData, RowKey, TableColumn, TableColumnFixed } from "../table/typing";
+import { binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn } from "../table/utils";
+import { EXPAND_COLUMN } from "../table/utils/constant";
+import { TableRowState, TableRowStateCenter, TableRowStateOrNull } from "./row";
+import { rowKeyCompare } from "./shared.ts";
 
 
 // TODO:
@@ -154,35 +155,25 @@ export class TableState {
   //    宽度：表格容器的可见宽度
   //    高度：如果表头固定：容器高度 - 表头高度。 否则：
   //      容器高度。
-  viewport: BBox = {width: 0, height: 0, scrollWidth: 0, scrollHeight: 0};
+  viewport: BBox = { width: 0, height: 0, scrollWidth: 0, scrollHeight: 0 };
 
-  scroll: Scroll = {left: 0, top: 0};
+  scroll: Scroll = { left: 0, top: 0 };
 
   // 表头的元数据，该元数据依据之后一列的配置
   //  同一行需要高度一致
   colMeta: Record<string, ColMeta> = {};
 
-  getRowData(key: RowKey) {
-    return this.rowStateMap.get(key)?.record
-  }
-
-  updateRowDataMap(record: RowData) {
-  }
-
-  getRowMetaByRowData(rowData?: RowData): RowMeta | null {
-    if (!rowData) return null;
-
-    return this.rowStateCenter.getStateByRowData(rowData)?.getMeta() ?? null;
-  }
-
   private expandedRowKeys: RowKey[] = [];
+
+  getRowDataChildren(rowData: RowData): RowData[] | undefined {
+    const childrenName = "children";
+
+    return rowData[childrenName] as RowData[]
+  }
 
   @RuntimeLog()
   updateExpandedRowKeys(expandedRowKeys: RowKey[]) {
     const rowStateCenter = this.rowStateCenter;
-    // TODO: 这里的 children 需要从外部传递进来;
-
-    const childrenName = "children";
 
     const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => {
       return (rowStateCenter.getStateByRowKey(prev)?.getMeta()?.deep ?? -1) - (rowStateCenter.getStateByRowKey(next)?.getMeta()?.deep ?? -1)
@@ -190,6 +181,7 @@ export class TableState {
     // FIXME: 这里需要重写。
     const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
 
+    const insertedRowKeySet = new Set<RowKey>([]);
 
     while (expandedRowKeySet.size) {
       const rowKey = Array.from(expandedRowKeySet).find(key => rowStateCenter.getRowDataByRowKey(key));
@@ -200,14 +192,16 @@ export class TableState {
 
         const parentMeta = rowStateCenter.getStateByRowKey(rowKey)!.getMeta();
 
-        const children = record[childrenName] as RowData[];
+        const children = this.getRowDataChildren(record) ?? [];
 
         if (children.length) {
           children.forEach((row, rowIndex) => {
-            rowStateCenter.insertRowState(row, {
+            const rowState = rowStateCenter.insertRowState(row, {
               index: rowIndex,
-              deep: parentMeta.deep + 1
+              deep: parentMeta.deep + 1,
+              _sort: parentMeta._sort + "-" + String(rowIndex)
             })
+            insertedRowKeySet.add(rowState.getMeta().key)
           })
         }
       }
@@ -217,43 +211,47 @@ export class TableState {
 
     // 最后才更新展开列
     this.expandedRowKeys = expandedRowKeys;
+    this.updateFlattenRowKeysByExpandedRowKeys();
+  }
 
-    const set = new Set<RowKey>(this.expandedRowKeys);
+  @RuntimeLog()
+  private updateFlattenRowKeysByExpandedRowKeys() {
+    const rowStateCenter = this.rowStateCenter;
 
-    // FIXME: 这里的性能比较差，需要考虑怎么优化比较好
-    let targetRowKeys = ([] as RowKey[]).concat(rowStateCenter.rawRowKeys);
+    function _getSort(rowKey: RowKey) {
+      return rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? ''
+    }
 
-    const result: RowKey[] = [];
+    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => {
+      return rowKeyCompare(_getSort(prev), _getSort(next))
+    })
 
-    while (targetRowKeys.length && set.size) {
-      const rowKey = targetRowKeys.shift();
-
-      if (!isNil(rowKey)) {
-        result.push(rowKey);
-
-        if (set.size && set.has(rowKey)) {
-          set.delete(rowKey);
-          const record = rowStateCenter.getRowDataByRowKey(rowKey);
-
-          const childrenRowKeys = ((record?.[childrenName] ?? []) as RowData[]).map(item => rowStateCenter.getStateByRowData(item)?.getMeta().key).filter(rowKey => !isNil(rowKey)) as RowKey[];
-          targetRowKeys = [...childrenRowKeys, ...targetRowKeys];
-        }
+    const newflattenRowKeys: RowKey[] = [];
+    let children: RowData[] = [];
+    let _rawRowIndex = 0;
+    let _expandRowIndedx = 0;
+    while (_rawRowIndex < rowStateCenter.rawRowKeys.length || children.length) {
+      const childrenTop = children.shift();
+      let rowKey = childrenTop
+        ? rowStateCenter.getStateByRowData(childrenTop)?.getMeta().key
+        : rowStateCenter.rawRowKeys[_rawRowIndex];
+      if (!childrenTop) {
+        _rawRowIndex++;
       }
-    }
-    rowStateCenter.flattenRowKeys = result.concat(targetRowKeys);
 
-    let prevState: TableRowStateOrNull = null;
+      if (rowKey === sortedExpandedRowKeys[_expandRowIndedx]) {
+        _expandRowIndedx++;
 
-    for (const key of rowStateCenter.flattenRowKeys) {
-      const prevMeta = prevState?.getMeta()
-      const state = rowStateCenter.getStateByRowKey(key) ?? null;
-      state?.updatePrev(prevState);
-      state?.updateMeta({
-        y: (prevMeta?.height ?? 0) + (prevMeta?.y ?? 0)
-      });
-      prevState = state;
+        const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
+        if (rowData) {
+          children = (this.getRowDataChildren(rowData) ?? []).concat(children);
+        }
+
+      }
+      rowKey && newflattenRowKeys.push(rowKey);
     }
-    prevState?.updateNext(null);
+
+    this.rowStateCenter.flattenRowKeys = newflattenRowKeys;
   }
 
   roughRowHeight = Row_Height;
@@ -280,7 +278,7 @@ export class TableState {
 
   constructor(option: ITableStateOption) {
     // 初始化前置必要参数
-    const {rowHeight, getRowKey} = option;
+    const { rowHeight, getRowKey } = option;
     this.roughRowHeight = rowHeight ? rowHeight : Row_Height;
     this.getRowKey = getRowKey;
     this.rowStateCenter = new TableRowStateCenter({
@@ -293,7 +291,7 @@ export class TableState {
   }
 
   init(option: ITableStateOption) {
-    const {dataSource, columns, viewport} = option;
+    const { dataSource, columns, viewport } = option;
     // 更新可视视图。
     viewport && this.updateViewport(viewport.width, viewport.height);
     this.updateColumns(columns ?? []);
@@ -331,7 +329,7 @@ export class TableState {
 
       let ellipsis = column.ellipsis
       if (column.ellipsis && typeof column.ellipsis === 'boolean') {
-        ellipsis = {showTitle: true};
+        ellipsis = { showTitle: true };
       }
 
       let fixed: TableColumnFixed | undefined = undefined;
@@ -374,7 +372,7 @@ export class TableState {
     }
 
     let nextMap2SpecialColumn: any[] = [];
-    const {left, center, right} = columns
+    const { left, center, right } = columns
       .map((column, index) => _standardizationColumn(column, index))
       .reduce<{ left: TableColumn[], right: TableColumn[], center: TableColumn[] }>(
         (result, column) => {
@@ -397,7 +395,7 @@ export class TableState {
           }
           return result;
         },
-        {left: [], right: [], center: []}
+        { left: [], right: [], center: [] }
       );
     const leftFlattenColumns = bfsFlattenColumns(left);
     const centerFlattenColumns = bfsFlattenColumns(center);
@@ -431,7 +429,7 @@ export class TableState {
   }
 
   updateScroll() {
-    const {scrollHeight, scrollWidth, width, height} = this.viewport;
+    const { scrollHeight, scrollWidth, width, height } = this.viewport;
     const maxXMove = Math.max(0, scrollWidth - width);
     const maxYMove = Math.max(0, scrollHeight - height);
     Object.assign(this.scroll, {
@@ -471,7 +469,9 @@ export class TableState {
 
     if (offsetHeight === 0) return;
 
-    this.rowStateCenter.updateFlattenYIndexesByRowKey(firstRowState.getMeta().key);
+    if (firstRowState) {
+      this.rowStateCenter.updateFlattenYIndexesByRowKey(firstRowState.getMeta().key);
+    }
     this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
   }
 
@@ -495,7 +495,7 @@ export class TableState {
   @RuntimeLog()
   // 获取可视范围的索引值
   getViewportRowDataRange(): RowDataRange {
-    const range: RowDataRange = {startIndex: 0, endIndex: 0};
+    const range: RowDataRange = { startIndex: 0, endIndex: 0 };
 
     let _createCompare = (targetY: number) => {
       return (y: number) => {
@@ -509,7 +509,6 @@ export class TableState {
     } = this.rowStateCenter;
 
     const dataSourceLength = flattenRowKeys.length;
-    const clone = [].concat(flattenYIndexes)
     range.startIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(this.scroll.top));
 
     if (range.startIndex === -1) {

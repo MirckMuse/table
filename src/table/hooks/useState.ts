@@ -1,7 +1,7 @@
 import { ComputedRef, InjectionKey, Ref, computed, inject, provide, ref, watch } from "vue";
 import { TableState } from "../../state";
 import { GetRowKey, InteralTableSlot, RowData, RowKey, TableColumn, TableEmit, TableProps, TableSlot } from "../typing";
-import { debounce, isNil, isObject } from "lodash-es";
+import { debounce, isObject } from "lodash-es";
 import { noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
 
@@ -48,10 +48,10 @@ export interface IRowExpandOption {
   /**
    *  展开之后的回调函数，组件内部是做 emit 的事件传递。
    *  通过接受传递的函数来让用户可以做一些定制化的操作。
-   * @param expanded 
-   * @param record 
-   * @param expandedRows 
-   * @returns 
+   * @param expanded
+   * @param record
+   * @param expandedRows
+   * @returns
    */
   afterHandleRowExpand?: (expanded: boolean, record: RowData, expandedRows: RowKey[]) => void;
 }
@@ -102,8 +102,7 @@ export function useStateProvide({
   tableRef,
 }: IStateOption) {
 
-  const interalSlots = Object.assign({
-  }, slots ?? {}) as InteralTableSlot;
+  const interalSlots = Object.assign({}, slots ?? {}) as InteralTableSlot;
 
   const getRowKey = computed(() => {
     const rowKey = props.rowKey;
@@ -197,7 +196,9 @@ export function useStateInject() {
     tableState: ref(),
     slots: {} as InteralTableSlot,
     tableProps: {},
-    getRowKey: computed(() => function () { return "" }),
+    getRowKey: computed(() => function () {
+      return ""
+    }),
 
     handleResizeColumn: noop,
 
