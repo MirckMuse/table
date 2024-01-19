@@ -1,9 +1,9 @@
-// FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rust 实现，以确保更小的内存和更快的逻辑。
+// FIXME: 管理表格状态的类。V1 版本通过 ts 实现。V2 版本通过 rpst 实现，以确保更小的内存和更快的逻辑。
 
 import {cloneDeep, groupBy, isNil} from "lodash-es";
 import {RuntimeLog} from "../decorators";
 import {ColKeySplitWord} from "../table/config";
-import {GetRowKey, RowData, RowKey, TableColumn, TableColumnFixed} from "../table/typing";
+import {ttRowKey, RowData, RowKey, TableColumn, TableColumnFixed} from "../table/typing";
 import {binaryFindIndexRange, getDFSLastColumns, isNestColumn, isSpecialColumn} from "../table/utils";
 import {EXPAND_COLUMN} from "../table/utils/constant";
 import {RowMeta, TableRowState, TableRowStateCenter, TableRowStateOrNull} from "./row";
@@ -443,34 +443,36 @@ export class TableState {
   // 更新数据行元数据
   @RuntimeLog()
   updateRowMetas(rowMetas: OuterRowMeta[]) {
-    // TODO: 行更新后，flattenYIndexes 也会发生变化。
     const groupedCellMetas = groupBy(rowMetas, "rowKey");
+    let offsetHeight = 0;
+    let firstRowState: TableRowStateOrNull = null;
 
-    let fistState: TableRowState | null = null;
-
-    for (const rowKey of Object.keys(groupedCellMetas)) {
+    const rowKeys = Object.keys(groupedCellMetas)
+    for (const rowKey of rowKeys) {
       const rowState = this.rowStateCenter.getStateByRowKey(rowKey);
       if (rowState) {
+        firstRowState = firstRowState || rowState;
+        const fistStateMeta = firstRowState.getMeta();
+        const currentStateMeta = rowState.getMeta();
 
-        if (!fistState) {
-          fistState = rowState;
-        } else {
-
-          const fistStateMeta = fistState.getMeta();
-          const currentStateMeta = fistState.getMeta();
-
-          if (fistState.getMeta().deep > currentStateMeta.deep) {
-            fistState = rowState;
-          } else if (fistStateMeta.deep === currentStateMeta.deep && fistStateMeta.index > currentStateMeta.index) {
-            fistState = rowState;
-          }
+        if (firstRowState.getMeta().deep > currentStateMeta.deep) {
+          firstRowState = rowState;
+        } else if (fistStateMeta.deep === currentStateMeta.deep && fistStateMeta.index > currentStateMeta.index) {
+          firstRowState = rowState;
         }
 
         const outerRowMetas = groupedCellMetas[rowKey];
         const rowHeight = Math.max(...outerRowMetas.map(meta => meta.height));
+
+        offsetHeight = offsetHeight + (rowHeight - rowState.getMeta().height);
         rowState.updateRowHeight(rowHeight);
       }
     }
+
+    if (offsetHeight === 0) return;
+
+    this.rowStateCenter.updateFlattenYIndexesByRowKey(firstRowState.getMeta().key);
+    this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
   }
 
   // 执行交换两行数据
@@ -490,33 +492,54 @@ export class TableState {
     return this.rowStateCenter.flattenYIndexes[rowIndex] ?? 0;
   }
 
-  // 获取可视范围的索引值
   @RuntimeLog()
+  // 获取可视范围的索引值
   getViewportRowDataRange(): RowDataRange {
     const range: RowDataRange = {startIndex: 0, endIndex: 0};
 
-    const _createCompare = (targetY: number) => {
+    let _createCompare = (targetY: number) => {
       return (y: number) => {
         return targetY - y;
       }
     }
 
-    const flattenYIndexes = cloneDeep(this.rowStateCenter.flattenYIndexes);
+    let {
+      flattenYIndexes,
+      flattenRowKeys
+    } = this.rowStateCenter;
 
+    const dataSourceLength = flattenRowKeys.length;
+    const clone = [].concat(flattenYIndexes)
     range.startIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(this.scroll.top));
-    const endY = this.scroll.top + this.viewport.height;
-    range.endIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(endY));
-    range.endIndex = Math.max(range.endIndex, 0);
 
-    const dataSourceLength = flattenYIndexes.length;
-    if (range.endIndex === 0) {
-      range.endIndex = dataSourceLength - 1;
+    if (range.startIndex === -1) {
+      range.startIndex = flattenYIndexes.length - 1
     }
+
+    let endY = this.scroll.top + this.viewport.height;
+
+    const getY = (index: number) => {
+      const y = flattenYIndexes[index] ?? (flattenYIndexes[index - 1] + this.rowStateCenter.getRowHeightByRowKey(flattenRowKeys[index]))
+      flattenYIndexes[index] = y;
+      return y;
+    }
+
+    for (let i = range.startIndex; i < flattenRowKeys.length - 1; i++) {
+      range.endIndex = i;
+      const currntY = getY(i)
+      if (endY < currntY) {
+        break;
+      }
+    }
+
+    this.rowStateCenter.flattenYIndexes = flattenYIndexes;
+
+
+    range.endIndex = Math.max(range.endIndex, 0);
 
     const buffer = Math.ceil((range.endIndex - range.startIndex + 1) / 2);
     range.startIndex = Math.max(0, range.startIndex - buffer);
     range.endIndex = Math.min(dataSourceLength - 1, range.endIndex + buffer);
-
     return range;
   }
 
@@ -550,8 +573,6 @@ export class TableState {
 
       if (rowData) {
         result.push(rowData);
-      } else {
-        console.log("error")
       }
 
       return result;
@@ -562,10 +583,10 @@ export class TableState {
   getViewportHeightList(viewportDataSource: RowData[]): number[] {
     return viewportDataSource.map(rowData => {
       return this.rowStateCenter.getStateByRowData(rowData)?.getMeta().height ?? 0;
-    })
+    });
   }
 
   isEmpty() {
-    return this.rowStateCenter.flattenRowKeys.length;
+    return !!this.rowStateCenter.flattenRowKeys.length;
   }
 }

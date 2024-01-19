@@ -21,18 +21,18 @@
           :style="leftStyle"
         >
           <body-rows
-            :columns="leftColumns" 
+            :columns="leftColumns"
             v-bind="commonRowProps"
           />
         </div>
 
-        <div 
+        <div
           ref="bodyCenterRef"
-          class="s-table-body__inner-center" 
+          class="s-table-body__inner-center"
           :style="centerStyle"
         >
           <body-rows
-            :columns="centerColumns" 
+            :columns="centerColumns"
             v-bind="commonRowProps"
           />
         </div>
@@ -45,27 +45,27 @@
           :style="rightStyle"
         >
           <body-rows
-            :columns="rightColumns" 
+            :columns="rightColumns"
             v-bind="commonRowProps"
           />
         </div>
-      </template> 
+      </template>
 
       <div v-else class="s-table-body__empty">
         <AEmpty></AEmpty>
       </div>
     </div>
-    
+
     <Scrollbar
       v-if="!isEmpty"
       :state="scrollState"
-      :client="viewport.height" 
+      :client="viewport.height"
       :content="viewport.scrollHeight"
       :scroll="scroll.top"
       :is-vertical="true"
     />
 
-    <Scrollbar 
+    <Scrollbar
       :state="scrollState"
       :client="viewport.width"
       :content="viewport.scrollWidth"
@@ -75,16 +75,26 @@
 </template>
 
 <script lang="ts">
-import { nextTick } from "process";
-import { StyleValue, computed, defineComponent, onUpdated, reactive, ref, shallowRef, watch } from "vue";
-import { OuterRowMeta } from "../../../state";
-import { resize } from "../../directives";
-import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
-import { RowData } from "../../typing";
-import { px2Number } from "../../utils";
+import {
+  StyleValue,
+  computed,
+  defineComponent,
+  onUpdated,
+  reactive,
+  ref,
+  shallowRef,
+  watch,
+  nextTick,
+  onMounted
+} from "vue";
+import {OuterRowMeta} from "../../../state";
+import {resize} from "../../directives";
+import {useBBox, useStateInject, useTableBodyScroll} from "../../hooks";
+import {RowData} from "../../typing";
+import {px2Number} from "../../utils";
 import Scrollbar from "../scrollbar/index.vue";
 import BodyRows from "./rows.vue";
-import { Empty as AEmpty } from "ant-design-vue"
+import {Empty as AEmpty} from "ant-design-vue"
 
 export default defineComponent({
   name: "STableBody",
@@ -131,7 +141,7 @@ export default defineComponent({
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      const { top: scrollTop } = scroll.value;
+      const {top: scrollTop} = scroll.value;
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.transform = `translateY(${-scrollTop}px)`
@@ -149,7 +159,7 @@ export default defineComponent({
         if (padding.top >= 0 && padding.bottom >= 0) {
           return padding;
         }
-        const { paddingTop, paddingBottom } = window.getComputedStyle(el)
+        const {paddingTop, paddingBottom} = window.getComputedStyle(el)
         padding.top = px2Number(paddingTop);
         padding.bottom = px2Number(paddingBottom);
         return padding;
@@ -163,15 +173,14 @@ export default defineComponent({
       const metas: OuterRowMeta[] = [];
       for (const element of innserElements) {
         const cellElement = element.parentElement as HTMLElement;
-        const { top, bottom } = getCellPadding(cellElement)
-        const { rowKey } = cellElement.dataset
+        const {top, bottom} = getCellPadding(cellElement)
+        const {rowKey} = cellElement.dataset
         metas.push({
           // 以行的索引作为 key 值。
           rowKey: rowKey!,
           height: Math.floor(element.getBoundingClientRect().height) + top + bottom
         })
       }
-
       tableState.value.updateRowMetas(metas);
     });
 
@@ -179,14 +188,13 @@ export default defineComponent({
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {};
-      const { top: scrollTop } = scroll.value;
+      const {top: scrollTop} = scroll.value;
       style.transform = `translateY(${-scrollTop}px)`;
       style.gridTemplateRows = gridTemplateRows.value;
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       return style;
     });
-
 
     const bodyRef = ref<HTMLElement>();
     const bodyInnerRef = shallowRef<HTMLElement>();
@@ -201,8 +209,7 @@ export default defineComponent({
       return clas;
     });
     const bodyStyle = computed(() => {
-      return {
-      };
+      return {};
     });
 
     watch(
@@ -215,16 +222,19 @@ export default defineComponent({
       }
     );
 
-    nextTick(() => {
-      dataSource.value = tableState.value.getViewportDataSource()
+    onMounted(() => {
+      setTimeout(() => {
+        dataSource.value = tableState.value.getViewportDataSource()
+      })
     })
+
 
     const bodyLeftRef = shallowRef<HTMLElement>();
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
 
-    const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
-    const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
+    const {bbox: bodyLeftBBox} = useBBox(bodyLeftRef);
+    const {bbox: bodyRightBBox} = useBBox(bodyRightRef);
 
     useTableBodyScroll(bodyInnerRef, tableState);
 
@@ -236,7 +246,7 @@ export default defineComponent({
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.gridTemplateRows = gridTemplateRows.value;
-      const { left: scrollLeft, top: scrollTop } = scroll.value;
+      const {left: scrollLeft, top: scrollTop} = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
       return style;
     });
@@ -246,7 +256,7 @@ export default defineComponent({
 
       while (target) {
         if (target.dataset.type === "cell") {
-          const { rowIndex, rowKey, colKey } = target.dataset;
+          const {rowIndex, rowKey, colKey} = target.dataset;
           tableState.value.hoverState = {
             rowIndex: Number(rowIndex),
             rowKey: rowKey ?? "",
@@ -261,7 +271,7 @@ export default defineComponent({
     }
 
     function handleMouseleave($event: MouseEvent) {
-      tableState.value.hoverState = { rowIndex: -1, colKey: "", rowKey: -1 }
+      tableState.value.hoverState = {rowIndex: -1, colKey: "", rowKey: -1}
       handleTooltipLeave($event)
     }
 
@@ -305,6 +315,7 @@ export default defineComponent({
 .s-table-body {
   position: relative;
   transform: translateZ(0);
+
   &__scrollbar-vertical {
     position: fixed;
     display: inline-block;
@@ -351,6 +362,7 @@ export default defineComponent({
     &:hover > .s-table-scroll__track {
       opacity: 1;
     }
+
     > .s-table-scroll__track {
       opacity: 0;
       transition: opacity .16s cubic-bezier(0, .5, 1, .5);

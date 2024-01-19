@@ -1,31 +1,31 @@
 <template>
   <div style="padding: 10px;">
-    <s-table 
-      :data-source="data_source" 
+    <s-table
+      :data-source="data_source"
       :columns="columns"
-      :bordered="true" 
+      :bordered="true"
       rowKey="id"
       :scroll="{ y: 700 }"
       :transform-cell-text="transformCellText"
       @resizeColumn="handleResizeColumn"
     >
       <template v-slot:bodyCell="{ text, column }">
-         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
+        <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
     </s-table>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { h, ref } from "vue";
-import { RowData, TableColumn, TransformCellText } from "./table/typing";
-import { uniqueId } from "lodash-es";
+import {h, ref} from "vue";
+import {RowData, TableColumn, TransformCellText} from "./table/typing";
+import {uniqueId} from "lodash-es";
 
 function handleResizeColumn(width: number, col: TableColumn) {
   col.width = width;
 }
 
-const transformCellText: TransformCellText = ({ text, column }) => {
+const transformCellText: TransformCellText = ({text, column}) => {
   if (column.dataIndex === "a") {
     return "这是A列"
   }
@@ -82,23 +82,23 @@ const columns = ref<TableColumn[]>([
     title: "第三列-2",
     colSpan: 2,
     customCell() {
-      return { style: "color: red" }
+      return {style: "color: red"}
     }
   },
-  { dataIndex: 'd', title: "第三列-1", colSpan: 0 },
+  {dataIndex: 'd', title: "第三列-1", colSpan: 0},
   {
     title: "分组",
     children: [
-      { dataIndex: 'd', title: "第三列-2" },
-      { dataIndex: 'c', title: "第三列-3", resizable: true, minWidth: 100 },
+      {dataIndex: 'd', title: "第三列-2"},
+      {dataIndex: 'c', title: "第三列-3", resizable: true, minWidth: 100},
     ]
   },
-  { dataIndex: 'c', title: "第三列-4" },
-  { dataIndex: 'c', title: "第三列-5" },
-  { dataIndex: 'c', title: "第三列-6" },
-  { dataIndex: 'c', title: "第三列-7" },
-  { dataIndex: 'c', title: "第三列-8" },
-  { dataIndex: 'd', title: "第三列-9" },
+  {dataIndex: 'c', title: "第三列-4"},
+  {dataIndex: 'c', title: "第三列-5"},
+  {dataIndex: 'c', title: "第三列-6"},
+  {dataIndex: 'c', title: "第三列-7"},
+  {dataIndex: 'c', title: "第三列-8"},
+  {dataIndex: 'd', title: "第三列-9"},
   {
     dataIndex: 'c',
     title: "操作",

@@ -1,4 +1,4 @@
-import {chunk} from "lodash-es";
+import {chunk, memoize} from "lodash-es";
 import {GetRowKey, RowData, RowKey} from "../table/typing";
 import {requestIdleCallback, runIdleTask} from "../table/utils";
 import {initRawState} from "./shared";
@@ -87,35 +87,51 @@ export class TableRowStateCenter {
     this.rowStateMap.clear();
   }
 
-  updateTableView() {
-    let reduceHeight = 0;
-    this.flattenYIndexes = this.flattenRowKeys.reduce((heights, rowKey) => {
-      reduceHeight = reduceHeight + (this.getStateByRowKey(rowKey)?.getMeta().height ?? 0);
-      heights.push(reduceHeight)
-      return heights;
-    }, []);
+  updateFlattenYIndexesByRowKey(rowKey?: RowKey) {
+    if (!rowKey) {
+      this.updateFlattenYIndexesByRowIndex();
+      return;
+    }
 
-    this.tableState.viewport.scrollHeight = reduceHeight;
+    const rowIndex = this.getStateByRowKey(rowKey)?.getMeta().index ?? -1;
+
+    const matchIndex = rowIndex < (this.flattenRowKeys.length / 2)
+      ? this.flattenRowKeys.findIndex(_rowKey => _rowKey === rowKey)
+      : this.flattenRowKeys.findLastIndex(_rowKey => _rowKey === rowKey);
+
+    this.updateFlattenYIndexesByRowIndex(matchIndex)
+  }
+
+  updateFlattenYIndexesByRowIndex(index: number = 0) {
+
+    index = Math.max(index, 0);
+    let reduceHeight = this.flattenYIndexes[index - 1] || 0;
+    let length = this.flattenYIndexes.length;
+
+    for (let i = index; i < length - 1; i++) {
+      this.flattenYIndexes[i] = reduceHeight + this.getRowHeightByRowKey(this.flattenRowKeys[i]);
+      reduceHeight = this.flattenYIndexes[i];
+    }
   }
 
   updateDataSource(dataSource: RowData[]) {
     this.clearRowPropties();
 
+    const chunkSize = 100;
+
     // 粗略计算一下滚动高度
     this.tableState.viewport.scrollHeight = dataSource.length * this.roughRowHeight;
-    this.flattenYIndexes = dataSource.map((_, index) => this.roughRowHeight * (index + 1))
+    this.flattenYIndexes = Array(chunkSize).fill(null).map((_, i) => (i + 1) * this.roughRowHeight)
 
     initRawState(dataSource, {
       roughHeight: this.roughRowHeight,
       getRowKey: this.getRowKey,
       map: this.rowStateMap,
+      chunkSize: chunkSize,
       keyMap: this.rowKeyMap,
       rawRowKeys: this.rawRowKeys,
       flattenRowKeys: this.flattenRowKeys,
-      rowStateCenter: this,
-      updateTableView: () => {
-        this.updateTableView()
-      }
+      rowStateCenter: this
     });
   }
 
@@ -127,6 +143,14 @@ export class TableRowStateCenter {
 
   getStateByRowKey(rowKey: RowKey) {
     return this.rowStateMap.get(rowKey);
+  }
+
+  getRowHeight(state?: TableRowState) {
+    return state?.getMeta().height ?? this.roughRowHeight;
+  }
+
+  getRowHeightByRowKey(rowKey: RowKey) {
+    return this.getRowHeight(this.getStateByRowKey(rowKey))
   }
 
   getStateByFlattenRowIndex(index: number) {

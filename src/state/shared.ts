@@ -7,6 +7,8 @@ interface ICreateRawStateMapOption {
   // 初始粗略的高度
   roughHeight: number;
 
+  chunkSize: number;
+
   getRowKey?: GetRowKey;
 
   deep?: number;
@@ -35,7 +37,8 @@ export function initRawState(dataSource: RowData[], option: ICreateRawStateMapOp
     rawRowKeys = [],
     flattenRowKeys = [],
     updateTableView,
-    rowStateCenter
+    rowStateCenter,
+    chunkSize
   } = option;
 
 
@@ -62,7 +65,7 @@ export function initRawState(dataSource: RowData[], option: ICreateRawStateMapOp
     return state
   }
 
-  const _chunkSize = 200;
+  const _chunkSize = chunkSize;
   const chunks = chunk(dataSource, _chunkSize);
 
   function _update(_chunk: RowData[], chunkIndex: number) {
