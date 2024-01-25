@@ -82,14 +82,14 @@ import {
   onUpdated,
   reactive, ref, shallowRef, StyleValue, watch, toRef
 } from "vue";
-import {OuterRowMeta} from "../../../state";
-import {resize} from "../../directives";
-import {useBBox, useStateInject, useTableBodyScroll} from "../../hooks";
-import {RowData} from "../../typing";
-import {px2Number} from "../../utils";
+import { OuterRowMeta } from "@stable/table-state-ts";
+import { resize } from "../../directives";
+import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
+import { ColKey, RowData, TableColumn } from "@stable/table-typing";
+import { px2Number } from "../../utils";
 import Scrollbar from "../scrollbar/index.vue";
 import BodyRows from "./rows.vue";
-import {Empty as AEmpty} from "ant-design-vue"
+import { Empty as AEmpty } from "ant-design-vue"
 
 export default defineComponent({
   name: "STableBody",
@@ -132,11 +132,28 @@ export default defineComponent({
       return tableState.value.getViewportHeightList(dataSource.value).map(height => height + 'px').join(" ");
     })
 
-    const leftColumns = computed(() => tableState.value.dfsFixedLeftFlattenColumns)
+    function _map2Columns(colKeys: ColKey[]) {
+      const colStateCenter = tableState.value.colStateCenter;
+
+      return colKeys.reduce<TableColumn[]>((columns, colKey) => {
+        const column = colStateCenter.getColumnByColKey(colKey);
+        if (column) {
+          columns.push(column);
+        }
+        return columns;
+      }, [])
+    }
+
+    const leftColumns = computed(() => {
+      const colStateCenter = tableState.value.colStateCenter;
+
+      return _map2Columns(colStateCenter.lastLeftColKeys);
+    });
+
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
-      const {top: scrollTop} = scroll.value;
+      const { top: scrollTop } = scroll.value;
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.transform = `translateY(${-scrollTop}px)`
@@ -154,7 +171,7 @@ export default defineComponent({
         if (padding.top >= 0 && padding.bottom >= 0) {
           return padding;
         }
-        const {paddingTop, paddingBottom} = window.getComputedStyle(el)
+        const { paddingTop, paddingBottom } = window.getComputedStyle(el)
         padding.top = px2Number(paddingTop);
         padding.bottom = px2Number(paddingBottom);
         return padding;
@@ -168,8 +185,8 @@ export default defineComponent({
       const metas: OuterRowMeta[] = [];
       for (const element of innserElements) {
         const cellElement = element.parentElement as HTMLElement;
-        const {top, bottom} = getCellPadding(cellElement)
-        const {rowKey} = cellElement.dataset
+        const { top, bottom } = getCellPadding(cellElement)
+        const { rowKey } = cellElement.dataset
         metas.push({
           // 以行的索引作为 key 值。
           rowKey: rowKey!,
@@ -179,11 +196,15 @@ export default defineComponent({
       tableState.value.updateRowMetas(metas);
     });
 
-    const rightColumns = computed(() => tableState.value.dfsFixedRightFlattenColumns);
+    const rightColumns = computed(() => {
+      const colStateCenter = tableState.value.colStateCenter;
+
+      return _map2Columns(colStateCenter.lastRightColKeys);
+    });
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {};
-      const {top: scrollTop} = scroll.value;
+      const { top: scrollTop } = scroll.value;
       style.transform = `translateY(${-scrollTop}px)`;
       style.gridTemplateRows = gridTemplateRows.value;
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
@@ -229,12 +250,16 @@ export default defineComponent({
     const bodyRightRef = shallowRef<HTMLElement>();
     const bodyCenterRef = shallowRef<HTMLElement>();
 
-    const {bbox: bodyLeftBBox} = useBBox(bodyLeftRef);
-    const {bbox: bodyRightBBox} = useBBox(bodyRightRef);
+    const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
+    const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
 
     useTableBodyScroll(bodyInnerRef, tableState);
 
-    const centerColumns = computed(() => tableState.value.dfsCenterFlattenColumns);
+    const centerColumns = computed(() => {
+      const colStateCenter = tableState.value.colStateCenter;
+
+      return _map2Columns(colStateCenter.lastCenterColKeys);
+    });
     const centerStyle = computed(() => {
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
@@ -242,7 +267,7 @@ export default defineComponent({
       style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
       style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
       style.gridTemplateRows = gridTemplateRows.value;
-      const {left: scrollLeft, top: scrollTop} = scroll.value;
+      const { left: scrollLeft, top: scrollTop } = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
       return style;
     });
@@ -252,7 +277,7 @@ export default defineComponent({
 
       while (target) {
         if (target.dataset.type === "cell") {
-          const {rowIndex, rowKey, colKey} = target.dataset;
+          const { rowIndex, rowKey, colKey } = target.dataset;
           tableState.value.hoverState = {
             rowIndex: Number(rowIndex),
             rowKey: rowKey ?? "",
@@ -267,7 +292,7 @@ export default defineComponent({
     }
 
     function handleMouseleave($event: MouseEvent) {
-      tableState.value.hoverState = {rowIndex: -1, colKey: "", rowKey: -1}
+      tableState.value.hoverState = { rowIndex: -1, colKey: "", rowKey: -1 }
       handleTooltipLeave($event)
     }
 

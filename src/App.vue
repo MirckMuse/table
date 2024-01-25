@@ -18,7 +18,8 @@
 
 <script lang="ts" setup>
 import { h, ref } from "vue";
-import { RowData, TableColumn, TransformCellText } from "./table/typing";
+import { TransformCellText } from "./table/typing";
+import { RowData, TableColumn } from "@stable/table-typing"
 import { uniqueId } from "lodash-es";
 
 function handleResizeColumn(width: number, col: TableColumn) {
@@ -63,6 +64,7 @@ const columns = ref<TableColumn[]>([
     dataIndex: 'a',
     title: "第一列",
     width: 100,
+    fixed: true,
     resizable: true,
     customHeaderCell() {
       return {
@@ -73,7 +75,6 @@ const columns = ref<TableColumn[]>([
   {
     dataIndex: 'id',
     title: "一段长文案长文案长文案长文案长文案长文案长文案长文案",
-    fixed: true,
     ellipsis: true,
     resizable: true,
   },

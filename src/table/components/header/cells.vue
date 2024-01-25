@@ -2,7 +2,7 @@
 import type { StyleValue, VNode } from "vue";
 import { PropType, computed, defineComponent, h } from "vue";
 import { useStateInject } from "../../hooks";
-import { TableColumn, TableColumnEllipsisObject } from "../../typing";
+import { TableColumn, TableColumnEllipsisObject } from "@stable/table-typing";
 import Cell from "./cell.vue";
 
 export default defineComponent({
@@ -16,10 +16,10 @@ export default defineComponent({
     type: { type: String }
   },
 
-  setup(props, { slots }) {
-    const {
-      tableState
-    } = useStateInject();
+  setup(props) {
+    const { tableState } = useStateInject();
+
+    const colStateCenter = tableState.value.colStateCenter;
 
     // TODO: 可以考虑做个检测列检测，colSpan 相加和 大于展示行数，提示开发者
     function renderCell(column: TableColumn): VNode | null {
@@ -29,14 +29,13 @@ export default defineComponent({
 
       const style: StyleValue = {};
 
-      if (typeof column.colSpan === "number" && column.colSpan > 0) {
-        let colSpan = column.colSpan ?? 1;
-        if ((column._s_meta?.colSpan ?? 1) > 1) {
-          colSpan = column._s_meta?.colSpan ?? 1
-        }
-        style.gridColumn = `span ${colSpan}`;
-        style.gridRow = `span ${column._s_meta?.rowSpan}`;
-      }
+      const {
+        rowSpan = 1,
+        colSpan = 1
+      } = colStateCenter.getStateByColumn(column)?.getMeta() || {};
+
+      style.gridColumn = `span ${colSpan}`;
+      style.gridRow = `span ${rowSpan}`;
 
       return h(
         Cell,

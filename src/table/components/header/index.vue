@@ -47,6 +47,7 @@ import { useStateInject, useTableHeaderScroll } from "../../hooks";
 import { genGridTemplateColumns, runIdleTask } from "../../utils";
 import HeaderCells from "./cells.vue";
 import { nextTick } from "process";
+import { ColKey, TableColumn } from "@stable/table-typing";
 
 defineOptions({
   name: "STableHeader",
@@ -93,43 +94,84 @@ const headerStyle = computed(() => {
   return {};
 });
 
-const leftColumns = computed(() => tableState.value.fixedLeftColumns ?? []);
-const leftFlattenColumns = computed(() => tableState.value.fixedLeftFlattenColumns)
+function _map2Columns(colKeys: ColKey[]) {
+  const colStateCenter = tableState.value.colStateCenter;
+
+  return colKeys.reduce<TableColumn[]>((columns, colKey) => {
+    const column = colStateCenter.getColumnByColKey(colKey);
+    if (column) {
+      columns.push(column);
+    }
+    return columns;
+  }, [])
+}
+
+const leftColumns = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+
+  return _map2Columns(colStateCenter.lastLeftColKeys ?? []);
+});
+const leftFlattenColumns = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+
+  return _map2Columns(colStateCenter.leftColKeys ?? []);
+});
+
 const leftColumnsVisible = computed(() => leftColumns.value.length);
 const leftStyle = computed<StyleValue>(() => {
+  const colStateCenter = tableState.value.colStateCenter;
   const style: StyleValue = {}
-  const maxDeep = tableState.value.maxTableHeaderDeep;
+  const maxDeep = colStateCenter.maxTableHeaderDeep + 1;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
-  style.gridTemplateColumns = genGridTemplateColumns(tableState.value.dfsFixedLeftFlattenColumns);
+  style.gridTemplateColumns = genGridTemplateColumns(_map2Columns(colStateCenter.lastLeftColKeys ?? []));
   return style;
 });
-const centerColumns = computed(() => tableState.value.columns ?? []);
+const centerColumns = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+
+  return _map2Columns(colStateCenter.lastCenterColKeys ?? [])
+});
 
 const scroll = computed(() => tableState.value.scroll);
 
-const centerFlattenColumns = computed(() => tableState.value.centerFlattenColumns ?? []);
+const centerFlattenColumns = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+
+  return _map2Columns(colStateCenter.centerColKeys ?? [])
+});
 
 const centerStyle = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+
   const style: StyleValue = {};
   const { left: scrollLeft } = scroll.value;
   style.paddingLeft = `${headerLeftBBox.value.width}px`;
   style.paddingRight = `${headerRightBBox.value.width}px`;
   style.transform = `translateX(${-scrollLeft}px)`
-  const maxDeep = tableState.value.maxTableHeaderDeep;
+  const maxDeep = colStateCenter.maxTableHeaderDeep + 1;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
-  style.gridTemplateColumns = genGridTemplateColumns(tableState.value.dfsCenterFlattenColumns);
+  style.gridTemplateColumns = genGridTemplateColumns(_map2Columns(colStateCenter.lastCenterColKeys ?? []));
   return style;
 });
 
 
-const rightColumns = computed(() => tableState.value.fixedRightColumns ?? []);
-const rightFlattenColumns = computed(() => tableState.value.fixedRightFlattenColumns ?? []);
+const rightColumns = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+
+  return _map2Columns(colStateCenter.lastRightColKeys ?? [])
+});
+const rightFlattenColumns = computed(() => {
+  const colStateCenter = tableState.value.colStateCenter;
+  return _map2Columns(colStateCenter.rightColKeys ?? [])
+});
 const rightColumnsVisible = computed(() => leftColumns.value.length);
 const rightStyle = computed<StyleValue>(() => {
+  const colStateCenter = tableState.value.colStateCenter;
   const style: StyleValue = {}
-  const maxDeep = tableState.value.maxTableHeaderDeep;
+  const maxDeep = colStateCenter.maxTableHeaderDeep + 1;
+
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
-  style.gridTemplateColumns = genGridTemplateColumns(tableState.value.dfsFixedRightFlattenColumns);
+  style.gridTemplateColumns = genGridTemplateColumns(_map2Columns(colStateCenter.lastRightColKeys ?? []));
   return style;
 });
 
@@ -137,13 +179,6 @@ const maxXMove = computed(() => {
   return tableState.value.viewport.scrollWidth - tableState.value.viewport.width
 });
 
-
-// TODO: 最好是监听 colmetas 来触发 viewport 的改变
-watch(
-  () => tableState.value.columns,
-  updateViewportWidth,
-  { deep: true }
-)
 </script>
 
 <style lang="less" scoped>

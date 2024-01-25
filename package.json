@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.4.1",
+    "@stable/table-typing": "link:@stable/table-typing",
     "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "^5.0.2",
     "ant-design-vue": "^4.0.8",
@@ -36,6 +37,8 @@
   "dependencies": {
     "@floating-ui/dom": "^1.5.3",
     "@remixicon/vue": "^4.0.1",
+    "@stable/table-shared": "link:@stable/table-shared",
+    "@stable/table-state-ts": "link:@stable/table-state-ts",
     "@vueuse/core": "^10.6.1",
     "lodash-es": "^4.17.21"
   },

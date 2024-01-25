@@ -1,0 +1,18 @@
+{
+  "name": "@stable/table-shared",
+  "module": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "build": "bun run clean && bun run build:dts && bun run ./scripts/build.js",
+    "build:dts": "tsc -p tsconfig.declaration.json",
+    "clean": "rimraf index.d.ts lib"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

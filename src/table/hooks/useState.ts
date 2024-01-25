@@ -1,9 +1,10 @@
 import { ComputedRef, InjectionKey, Ref, computed, inject, provide, ref, watch } from "vue";
-import { TableState } from "../../state";
-import { GetRowKey, InteralTableSlot, RowData, RowKey, TableColumn, TableEmit, TableProps, TableSlot } from "../typing";
-import { debounce, isObject } from "lodash-es";
+import { GetRowKey, RowData, RowKey, TableColumn } from "@stable/table-typing";
+import { InteralTableSlot, TableEmit, TableProps, TableSlot } from "../typing";
+import { debounce, isNil, isObject } from "lodash-es";
 import { noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
+import { TableState } from "@stable/table-state-ts";
 
 interface ITableContext {
   tableState: Ref<TableState>;
@@ -115,9 +116,10 @@ export function useStateProvide({
   })
 
   function createTableState() {
+
     return new TableState({
       columns: props.columns ?? [],
-      dataSource: props.dataSource ?? [],
+      rowDatas: props.dataSource ?? [],
       getRowKey: getRowKey.value
     });
   }
@@ -127,7 +129,7 @@ export function useStateProvide({
   watch(
     () => props.dataSource ?? [],
     (dataSource) => {
-      state.value.coverDataSource(dataSource)
+      state.value.updateRowDatas(dataSource)
     }
   )
 
@@ -155,7 +157,9 @@ export function useStateProvide({
   const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({
     tooltipVisible(cellEl: HTMLElement) {
       const colKey = cellEl.dataset.colKey ?? "";
-      const column = state.value.columnMap[colKey];
+      const column = state.value.colStateCenter.getColumnByColKey(colKey);
+
+      if (isNil(column)) return false;
 
       return !!(isObject(column.ellipsis) && column.ellipsis.showTooltip)
     }

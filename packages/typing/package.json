@@ -1,0 +1,9 @@
+{
+  "name": "@stable/table-typing",
+  "module": "index.ts",
+  "version": "0.0.1",
+  "type": "module",
+  "devDependencies": {
+    "vue": "^3.4.3"
+  }
+}

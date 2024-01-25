@@ -1,55 +1,49 @@
 <script lang="ts">
-import {PropType, StyleValue, computed, defineComponent, h, mergeProps, openBlock, ref, onMounted} from 'vue';
-import {
-  BodyCellInheritProps,
-  CustomRow,
-  ExpandIconSlot,
-  RowData,
-  RowKey,
-  TableColumn,
-} from '../../typing';
+import { PropType, StyleValue, computed, defineComponent, h, mergeProps, openBlock, ref, onMounted } from 'vue';
+import { BodyCellInheritProps, CustomRow, ExpandIconSlot } from '../../typing';
+import { RowData, RowKey, TableColumn } from "@stable/table-typing"
 import BodyCell from "./cell.vue"
-import {genGridTemplateColumns} from '../../utils';
-import {useStateInject} from '../../hooks';
-import {EXPAND_COLUMN, renderExpandIcon} from '../../utils/constant';
-import {get, isNil} from 'lodash-es';
-import {RowMeta} from '../../../state/row';
+import { genGridTemplateColumns } from '../../utils';
+import { useStateInject } from '../../hooks';
+import { EXPAND_COLUMN, renderExpandIcon } from '../../utils/constant';
+import { get, isNil } from 'lodash-es';
+import { RowMeta } from '../../../state/row';
 
 export default defineComponent({
   name: "STableBodyRow",
 
   props: {
-    rowKey: {type: [String, Number] as PropType<RowKey>, required: true},
+    rowKey: { type: [String, Number] as PropType<RowKey>, required: true },
 
-    rowIndex: {type: Number, default: -1},
+    rowIndex: { type: Number, default: -1 },
 
-    rowMeta: {type: Object as PropType<RowMeta>},
+    rowMeta: { type: Object as PropType<RowMeta> },
 
-    record: {type: Object as PropType<RowData>, required: true},
+    record: { type: Object as PropType<RowData>, required: true },
 
-    columns: {type: Array as PropType<TableColumn[]>},
+    columns: { type: Array as PropType<TableColumn[]> },
 
-    customRow: {type: Function as PropType<CustomRow>},
+    customRow: { type: Function as PropType<CustomRow> },
 
-    expandIcon: {type: Function as PropType<ExpandIconSlot>, default: renderExpandIcon},
+    expandIcon: { type: Function as PropType<ExpandIconSlot>, default: renderExpandIcon },
 
-    childrenColumnName: {type: String, default: 'children'},
+    childrenColumnName: { type: String, default: 'children' },
 
     ...BodyCellInheritProps,
   },
 
 
   setup(props) {
-    const {tableState, handleRowExpand, expandedKeys} = useStateInject();
+    const { tableState, handleRowExpand, expandedKeys } = useStateInject();
 
     const expanded = computed(() => {
-      const {rowKey} = props;
+      const { rowKey } = props;
       return !!expandedKeys.value?.has(rowKey);
     })
 
     // 是否存在嵌套子表格
     const hasNestChildren = computed(() => {
-      const {childrenColumnName, record} = props;
+      const { childrenColumnName, record } = props;
       return !!childrenColumnName && !isNil(get(record, childrenColumnName))
     });
 
@@ -59,7 +53,8 @@ export default defineComponent({
 
     // 创建单元格插槽
     function createCellSlot(column: TableColumn) {
-      const specialColumnMap = tableState.value.specialColumnMap.get(column) ?? [];
+      // const specialColumnMap = tableState.value.specialColumnMap.get(column) ?? [];
+      const specialColumnMap: any[] = [];
 
       const slots: Record<string, any> = {};
 
@@ -102,7 +97,7 @@ export default defineComponent({
 
     const PrefixClass = 's-table-body-row';
     const gridTemplateColumns = computed(() => {
-      const {columns} = props;
+      const { columns } = props;
       return genGridTemplateColumns(columns ?? []);
     })
 
@@ -130,14 +125,14 @@ export default defineComponent({
         "div",
         mergeProps(
           customRow(record, rowIndex),
-          {class: rowClass, "data-row-index": rowIndex, style, ref: rowRef},
+          { class: rowClass, "data-row-index": rowIndex, style, ref: rowRef },
         ),
         columns.map(col => renderCell(col, record, rowMeta))
       )
     }
 
     return function () {
-      const {columns = [], record} = props;
+      const { columns = [], record } = props;
 
       return renderRow(columns, record)
     }
