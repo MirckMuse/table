@@ -1,6 +1,7 @@
 {
   "name": "@stable/table-vue",
   "module": "./esm/index.js",
+  "types": "./typing/index.d.ts",
   "type": "module",
   "scripts": {
     "build": "vue-tsc && vite build"

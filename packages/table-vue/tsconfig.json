@@ -5,6 +5,9 @@
       "DOM",
       "DOM.Iterable",
     ],
+    "declarationDir": "typing",
+    "emitDeclarationOnly": true,
+    "declaration": true,
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
@@ -14,11 +17,17 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "noEmit": false,
     /* Linting */
     "skipLibCheck": true,
     "strict": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue"
+  ],
 }
