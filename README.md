@@ -5,7 +5,6 @@
 目标：10 万条数据，单次操作在 60ms 内。
 
 + Typescript: V5+
-+ Bun: 用作包管理器和JS的运行时。
 + Vite：当前最新版本 V5+，作为 Demo 的构建工具。
 + Biome: 用作代码校验和格式化来代替 Eslint 和 prettier
 + Rust: 用作 table 核心功能的编写，包括不限于可视窗口的数据获取、类Excel的操作等等。

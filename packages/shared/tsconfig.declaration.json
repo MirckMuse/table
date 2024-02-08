@@ -1,7 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "declarationDir": "./lib",
+    "declarationDir": "./esm",
     "declarationMap": false,
     "declaration": true,
     "emitDeclarationOnly": true,

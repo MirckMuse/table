@@ -5,12 +5,12 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "preinstall": "npx only-allow bun",
-    "dev": "bunx --bun vite",
+    "preinstall": "npx only-allow pnpm",
+    "dev": "vite",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "bunx --bun vite build",
-    "format": "bunx @biomejs/biome format ./src/**/*.{ts,vue} --write",
-    "lint": "bunx @biomejs/biome lint ./src/**/*.{ts,vue}"
+    "build": "npx vite build",
+    "format": "npx @biomejs/biome format ./src/**/*.{ts,vue} --write",
+    "lint": "npx @biomejs/biome lint ./src/**/*.{ts,vue}"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +25,6 @@
     "@vitejs/plugin-vue": "^5.0.2",
     "ant-design-vue": "^4.0.8",
     "browserslist": "^4.22.2",
-    "bun-types": "^1.0.8",
     "less": "^4.2.0",
     "lightningcss": "^1.22.1",
     "only-allow": "^1.2.1",
@@ -39,6 +38,7 @@
     "@remixicon/vue": "^4.0.1",
     "@stable/table-shared": "link:@stable/table-shared",
     "@stable/table-state-ts": "link:@stable/table-state-ts",
+    "@stable/table-vue": "lastest",
     "@vueuse/core": "^10.6.1",
     "lodash-es": "^4.17.21"
   },

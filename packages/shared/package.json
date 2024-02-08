@@ -1,16 +1,17 @@
 {
   "name": "@stable/table-shared",
-  "module": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "module": "esm/index.esm.js",
+  "types": "esm/index.d.ts",
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "build": "bun run clean && bun run build:dts && bun run ./scripts/build.js",
+    "build": "npm run clean && rollup -c rollup.config.mjs && npm run build:dts",
     "build:dts": "tsc -p tsconfig.declaration.json",
     "clean": "rimraf index.d.ts lib"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rollup": "^4.9.6"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"

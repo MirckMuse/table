@@ -1,8 +1,6 @@
 {
   "compilerOptions": {
-    "types": [
-      "bun-types"
-    ],
+    "types": [],
     "lib": [
       "ESNext"
     ],
@@ -24,13 +22,16 @@
     "composite": true,
     "downlevelIteration": true,
     "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
   },
   "include": [
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue"
+  ],
+  "exclude": [
+    "./scripts/**"
   ],
   "references": [
     {

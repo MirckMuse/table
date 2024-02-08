@@ -1,0 +1,20 @@
+{
+  "name": "bun-plugin-vue",
+  "module": "index.ts",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.mjs"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@vue/compiler-sfc": "^3.4.15"
+  }
+}
