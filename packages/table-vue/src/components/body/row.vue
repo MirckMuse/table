@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { RowData, RowKey, TableColumn } from "@stable/table-typing";
 import type { PropType, StyleValue } from "vue";
-import type { RowMeta } from "@stable/table-state-ts"
+import type { RowMeta } from "@stable/table-state"
 import { get, isNil } from 'lodash-es';
 import { computed, defineComponent, h, mergeProps, ref } from 'vue';
 import { useStateInject } from '../../hooks';

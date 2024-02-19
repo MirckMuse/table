@@ -1,16 +1,22 @@
 {
-  "name": "@stable/table-shared",
-  "module": "esm/index.esm.js",
+  "name": "@stable/table-state",
+  "module": "esm/index.js",
+  "type": "module",
   "types": "esm/index.d.ts",
   "version": "0.0.1",
-  "type": "module",
   "scripts": {
     "build": "npm run clean && rollup -c rollup.config.mjs && npm run build:dts",
     "build:dts": "tsc -p tsconfig.declaration.json",
     "clean": "rimraf index.d.ts lib"
   },
   "devDependencies": {
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^20.11.5",
+    "rimraf": "^5.0.5",
     "@rollup/plugin-typescript": "^11.1.6",
     "rollup": "^4.9.6"
+  },
+  "dependencies": {
+    "lodash-es": "^4.17.21"
   }
 }

@@ -75,7 +75,7 @@
 </template>
 
 <script lang="ts">
-import type { OuterRowMeta } from "@stable/table-state-ts";
+import type { OuterRowMeta } from "@stable/table-state";
 import type { ColKey, RowData, TableColumn } from "@stable/table-typing";
 import { Empty as AEmpty } from "ant-design-vue";
 import type { StyleValue } from "vue";

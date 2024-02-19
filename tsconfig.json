@@ -23,6 +23,21 @@
     "downlevelIteration": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
+    "baseUrl": "./",
+    "paths": {
+      "@": [
+        "src"
+      ],
+      "@stable/table-typing": [
+        "packages/typing/index.ts"
+      ],
+      "@stable/table-shared": [
+        "packages/shared/src/index.ts"
+      ],
+      "@stable/table-vue": [
+        "packages/table-vue/src/index.ts"
+      ],
+    },
   },
   "include": [
     "src/**/*.ts",

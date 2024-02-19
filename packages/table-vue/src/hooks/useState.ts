@@ -5,7 +5,7 @@ import type { InteralTableSlot, TableEmit, TableProps, TableSlot } from "../typi
 import { debounce, isNil, isObject } from "lodash-es";
 import { noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
-import { TableState } from "@stable/table-state-ts";
+import { TableState } from "@stable/table-state";
 
 interface ITableContext {
   tableState: Ref<TableState>;

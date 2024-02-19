@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declarationDir": "esm",
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "paths": {
+      "@stable/table-typing": [
+        "typing/index.ts"
+      ],
+      "@stable/table-shared": [
+        "shared/src/index.ts"
+      ],
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

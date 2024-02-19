@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictPropertyInitialization": false,
+    "allowSyntheticDefaultImports": true,
+    "module": "esnext",
+    "declaration": false,
+    "sourceMap": true,
+    "target": "es2016",
+    "importHelpers": true,
+    "moduleResolution": "Bundler",
+    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "resolveJsonModule": true,
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": false,
+    "isolatedModules": true,
+    "forceConsistentCasingInFileNames": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "baseUrl": "packages",
+    "types": [
+      "node",
+      "vite/client"
+    ]
+  }
+}

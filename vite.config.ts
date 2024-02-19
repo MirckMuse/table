@@ -24,7 +24,10 @@ export default defineConfig({
 
   resolve: {
     alias: {
-      "@": resolve(__dirname, "./src")
+      "@": resolve(__dirname, "./src"),
+      "@stable/table-typing": resolve(__dirname, "./packages/typing/index.ts"),
+      "@stable/table-shared": resolve(__dirname, "./packages/shared/src/index.ts"),
+      "@stable/table-vue": resolve(__dirname, "./packages/table-vue/src/index.ts"),
     }
   }
 })
