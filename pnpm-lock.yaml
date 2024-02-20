@@ -76,6 +76,12 @@ importers:
       '@rollup/plugin-typescript':
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.9.6)(typescript@5.3.3)
+      '@stable/table-shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@stable/table-typing':
+        specifier: workspace:*
+        version: link:../typing
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12

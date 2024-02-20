@@ -4,14 +4,7 @@
     "declarationDir": "esm",
     "declaration": true,
     "emitDeclarationOnly": true,
-    "paths": {
-      "@stable/table-typing": [
-        "typing/index.ts"
-      ],
-      "@stable/table-shared": [
-        "shared/src/index.ts"
-      ],
-    }
+    "paths": {}
   },
   "include": [
     "src"
