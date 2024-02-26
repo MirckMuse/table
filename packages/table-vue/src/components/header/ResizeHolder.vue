@@ -36,11 +36,12 @@ const MouseEventName: EventName = {
   move: "mousemove",
   stop: "mouseup"
 };
-const TouchEventName: EventName = {
-  start: "touchstart",
-  move: "touchmove",
-  stop: "touchend"
-};
+
+// const TouchEventName: EventName = {
+//   start: "touchstart",
+//   move: "touchmove",
+//   stop: "touchend"
+// };
 
 const rootRef = shallowRef<HTMLElement>();
 

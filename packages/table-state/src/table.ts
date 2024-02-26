@@ -1,9 +1,9 @@
 import { groupBy, isNil } from "lodash-es";
 import { TableColStateCenter } from "./col";
-import { TableRowStateCenter, TableRowStateOrNull } from "./row";
+import { TableRowStateCenter, type TableRowStateOrNull } from "./row";
 import { adjustScrollOffset, rowKeyCompare } from "./shared";
-import { Viewport, IViewport } from "./viewport";
-import { RowData, GetRowKey, TableColumn, RowKey } from "@stable/table-typing"
+import { Viewport, type IViewport } from "./viewport";
+import type { RowData, GetRowKey, TableColumn, RowKey } from "@stable/table-typing"
 import { binaryFindIndexRange } from "@stable/table-shared";
 
 export interface TableStateOption {

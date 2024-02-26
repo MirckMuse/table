@@ -34,6 +34,9 @@
       "@stable/table-shared": [
         "packages/shared/src/index.ts"
       ],
+      "@stable/table-vue/esm": [
+        "packages/table-vue/esm"
+      ],
       "@stable/table-vue": [
         "packages/table-vue/src/index.ts"
       ],
@@ -43,7 +46,11 @@
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx",
-    "src/**/*.vue"
+    "src/**/*.vue",
+    "packages/**/*.ts",
+    "packages/**/*.d.ts",
+    "packages/**/*.tsx",
+    "packages/**/*.vue",
   ],
   "exclude": [
     "./scripts/**"

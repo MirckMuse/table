@@ -2,7 +2,7 @@ import { useResizeObserver } from "@vueuse/core";
 import { throttle } from "lodash-es";
 import { type Ref, computed, onMounted, ref } from "vue";
 import { TableState } from "@stable/table-state";
-import { createLockedRequestAnimationFrame, optimizeScrollXY, px2Number } from "../utils";
+import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";
 
 type BBox = {
   width: number;

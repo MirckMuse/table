@@ -25,6 +25,9 @@ export default defineComponent({
 
     columns: { type: Array as PropType<TableColumn[]> },
 
+    // 展开列
+    expandColumn: { type: Object as PropType<TableColumn> },
+
     customRow: { type: Function as PropType<CustomRow> },
 
     expandIcon: { type: Function as PropType<ExpandIconSlot>, default: renderExpandIcon },
@@ -62,7 +65,7 @@ export default defineComponent({
 
       // 渲染展开图标
       if (specialColumnMap.includes(EXPAND_COLUMN)) {
-        slots.expandIcon = () => {
+        slots["expandIcon"] = () => {
           return props.expandIcon({
             expanded: expanded.value,
             expandable: hasNestChildren.value,

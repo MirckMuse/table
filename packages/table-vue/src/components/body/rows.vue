@@ -56,7 +56,6 @@ export default defineComponent({
         dataSource = []
       } = props;
 
-      // TODO: 需要添加 key
       return dataSource.map(record => renderRow(columns, record))
     };
   }

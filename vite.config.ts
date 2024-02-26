@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 import vue from "@vitejs/plugin-vue";
 import { resolve } from "path";
 
@@ -19,7 +20,36 @@ export default defineConfig({
   },
 
   plugins: [
-    vue()
+    vue(),
+    VitePWA({
+      includeAssets: ["vite.svg"],
+      manifest: {
+        name: "Stable",
+        "theme_color": "red",
+        icons: [
+          {
+            src: "/vite.svg",
+            sizes: "any"
+          }
+        ]
+      },
+      devOptions: {
+        enabled: true,
+        type: "module"
+      },
+      registerType: "autoUpdate",
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /(.*?)\.(png|jpe?g|svg|gif|bmp|psd|tiff|tga|eps)/, // 图片缓存
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-cache',
+            }
+          }
+        ]
+      }
+    })
   ],
 
   resolve: {

@@ -95,7 +95,7 @@ export default defineComponent({
       const style: StyleValue = {};
 
       style.textAlign = props.column?.align;
-      if (slots.expandIcon) {
+      if (slots["expandIcon"]) {
         const { deep, indentSize } = props;
         style.paddingLeft = `calc(${deep} * ${indentSize})`
       }
@@ -152,11 +152,13 @@ export default defineComponent({
 
       const { column, record, rowIndex } = props;
 
+      const expandIcon = slots["expandIcon"];
+
       const inner = h(
         "div",
         { class: cellInnerClass.value, style: cellInnerStyle.value, ref: cellInnerRef },
 
-        [slots.expandIcon ? slots.expandIcon() : null].concat(props.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children)
+        [expandIcon ? expandIcon() : null].concat(props.transformCellText?.({ text: children, column, record, index: rowIndex }) ?? children)
       )
 
       const cell = h(

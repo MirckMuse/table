@@ -1,12 +1,11 @@
 import type { InjectionKey, Ref } from "vue";
 import { provide, inject, onMounted, onUnmounted } from "vue";
 import { useStateInject } from "./useState";
-import { px2Number } from "../utils";
 
 const ResizeObserverSymbol: InjectionKey<ResizeObserver | null> = Symbol("__resizeObserver__");
 
 export function useBodyCellResiseProvide() {
-  const { tableState } = useStateInject();
+  useStateInject();
 
   let resizeObserver: ResizeObserver | null = new ResizeObserver((entries) => {
   });

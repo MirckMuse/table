@@ -5,3 +5,5 @@ scripts/**
 .gitignore
 jsconfig.json
 tsconfig.json
+tsconfig.declaration.json
+rollup.config.mjs

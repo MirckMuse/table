@@ -1,4 +1,4 @@
-import { RowKey, GetRowKey, RowData } from "@stable/table-typing";
+import type { RowKey, GetRowKey, RowData } from "@stable/table-typing";
 import { runIdleTask } from "@stable/table-shared";
 import { TableState } from "./table";
 import { chunk, isNil } from "lodash-es";

@@ -1,12 +1,20 @@
 {
   "name": "@stable/table-vue",
-  "module": "./esm/index.js",
-  "types": "./typing/index.d.ts",
+  "module": "./esm/table-vue.js",
+  "types": "./esm/index.d.ts",
+  "exports": {
+    "./esm/style.css": "./esm/style.css"
+  },
   "type": "module",
   "scripts": {
-    "build": "vue-tsc && vite build"
+    "build": "npm run clean && vue-tsc && cross-env FORMAT=es vite build && npm run build:dts",
+    "build:dts": "vue-tsc -p tsconfig.declaration.json",
+    "clean": "rimraf esm"
   },
   "devDependencies": {
+    "@stable/table-shared": "workspace:*",
+    "@stable/table-typing": "workspace:*",
+    "@stable/table-state": "workspace:*",
     "@biomejs/biome": "^1.4.1",
     "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "^5.0.2",
@@ -18,7 +26,6 @@
     "vue-tsc": "^1.8.27"
   },
   "peerDependencies": {
-    "typescript": "^5.0.0",
     "vue": "> 3"
   },
   "dependencies": {

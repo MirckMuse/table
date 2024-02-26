@@ -40,6 +40,6 @@ export const OverrideContext = defineComponent<OverrideContextProps>({
   setup(props, { slots }) {
     useOverrideProvide(props);
 
-    return () => slots.default?.();
+    return () => slots["default"]?.();
   }
 });

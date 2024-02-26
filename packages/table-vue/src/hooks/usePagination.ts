@@ -21,6 +21,7 @@ export function usePagination(tableProps: TableProps) {
   // 分页事件
   function onChange(page: number, size: number) {
     // TODO:
+    console.log(state);
   }
 
   return {

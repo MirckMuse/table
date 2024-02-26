@@ -279,7 +279,7 @@ export default defineComponent({
       let target: HTMLElement | null = $event.target as HTMLElement;
 
       while (target) {
-        if (target.dataset.type === "cell") {
+        if (target.dataset["type"] === "cell") {
           const { rowIndex, rowKey, colKey } = target.dataset;
           tableState.value.hoverState = {
             rowIndex: Number(rowIndex),

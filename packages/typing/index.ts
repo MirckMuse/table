@@ -81,6 +81,11 @@ export interface TableColumn {
 
   children?: TableColumn[];
 
+  /**
+   * 是否可展开
+   */
+  expandable?: boolean;
+
   customCell?: CustomCell;
 
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>

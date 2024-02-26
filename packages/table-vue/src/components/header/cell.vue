@@ -14,7 +14,7 @@ export default defineComponent({
 
     width: { type: [String, Number] },
 
-    ellipsis: { type: Object as PropType<TableColumnEllipsisObject> }
+    ellipsis: { type: [Object, Boolean] as PropType<TableColumnEllipsisObject> }
   },
 
   setup(props) {
@@ -23,10 +23,7 @@ export default defineComponent({
     const { slots: slotsTable } = useStateInject();
 
     return () => {
-      const {
-        column,
-        ellipsis
-      } = props
+      const { column, ellipsis } = props;
 
       const cellClass = {
         [prefixClass]: true,
@@ -47,9 +44,7 @@ export default defineComponent({
 
       const headerCellVNodes = toArray(slotsTable?.headerCell?.({ title: cellTitle, column: column! })) as VNode[];
 
-
-
-      const slotCell = headerCellVNodes.filter((item: VNode) => item.type !== Comment) ?? null
+      const slotCell = headerCellVNodes.filter((item: VNode) => item && item?.type !== Comment) ?? null
 
       const inner = h("div", { class: cellInnerClass, style: cellInnerStyle }, slotCell?.length ? slotCell : cellTitle)
 

@@ -5,7 +5,6 @@ import { RiArrowRightSFill, RiArrowDownSFill } from "@remixicon/vue"
 // 展开列的标志位
 export const EXPAND_COLUMN: Readonly<{}> = Object.freeze({});
 
-
 function createSlotMap() {
   const map = new WeakMap<any, string>();
   map.set(EXPAND_COLUMN, "expandIcon");

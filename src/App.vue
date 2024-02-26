@@ -18,7 +18,7 @@
 
 <script lang="ts" setup>
 import { h, ref } from "vue";
-import { TransformCellText } from "./table/typing";
+import { TransformCellText } from "@stable/table-vue";
 import { RowData, TableColumn } from "@stable/table-typing"
 import { uniqueId } from "lodash-es";
 
@@ -50,7 +50,6 @@ function createItem(_: unknown, index: number) {
     "d": index + 1
   }
 }
-
 
 const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
 

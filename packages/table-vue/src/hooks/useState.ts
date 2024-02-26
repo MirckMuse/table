@@ -123,6 +123,8 @@ export function useStateProvide({
       childrenColumnName
     } = props;
 
+    const lastColumn: TableColumn[] = [];
+
     return new TableState({
       columns: columns ?? [],
       rowDatas: dataSource ?? [],
@@ -164,7 +166,7 @@ export function useStateProvide({
 
   const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({
     tooltipVisible(cellEl: HTMLElement) {
-      const colKey = cellEl.dataset.colKey ?? "";
+      const colKey = cellEl.dataset["colKey"] ?? "";
       const column = state.value.colStateCenter.getColumnByColKey(colKey);
 
       if (isNil(column)) return false;
