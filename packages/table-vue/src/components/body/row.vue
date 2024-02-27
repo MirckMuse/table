@@ -8,7 +8,7 @@ import { useStateInject } from '../../hooks';
 import type { CustomRow, ExpandIconSlot } from '../../typing';
 import { BodyCellInheritProps } from '../../typing';
 import { genGridTemplateColumns } from '../../utils';
-import { EXPAND_COLUMN, renderExpandIcon } from '../../utils/constant';
+import { renderExpandIcon } from '../../utils/constant';
 import BodyCell from "./cell.vue";
 
 export default defineComponent({
@@ -58,13 +58,10 @@ export default defineComponent({
 
     // 创建单元格插槽
     function createCellSlot(column: TableColumn) {
-      // const specialColumnMap = tableState.value.specialColumnMap.get(column) ?? [];
-      const specialColumnMap: any[] = [];
-
       const slots: Record<string, any> = {};
 
       // 渲染展开图标
-      if (specialColumnMap.includes(EXPAND_COLUMN)) {
+      if (column.expandable) {
         slots["expandIcon"] = () => {
           return props.expandIcon({
             expanded: expanded.value,

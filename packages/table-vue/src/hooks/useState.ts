@@ -3,7 +3,7 @@ import { computed, inject, provide, ref, watch } from "vue";
 import type { GetRowKey, RowData, RowKey, TableColumn } from "@stable/table-typing";
 import type { InteralTableSlot, TableEmit, TableProps, TableSlot } from "../typing";
 import { debounce, isNil, isObject } from "lodash-es";
-import { noop } from "../utils/shared";
+import { getDFSLastColumns, noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
 import { TableState } from "@stable/table-state";
 
@@ -123,7 +123,11 @@ export function useStateProvide({
       childrenColumnName
     } = props;
 
-    const lastColumn: TableColumn[] = [];
+    const lastColumn: TableColumn[] = getDFSLastColumns(columns ?? []);
+
+    if (!lastColumn.some(col => col.expandable)) {
+      lastColumn[0].expandable = true;
+    }
 
     return new TableState({
       columns: columns ?? [],
