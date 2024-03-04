@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.5.3",
-    "@remixicon/vue": "^4.0.1",
+    "@remixicon/vue": "^4.2.0",
     "@vueuse/core": "^10.6.1",
     "lodash-es": "^4.17.21"
   }

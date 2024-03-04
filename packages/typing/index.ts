@@ -15,9 +15,18 @@ export type TableColumnAlign = 'left' | 'right' | 'center';
 
 export type TableColumnFixed = 'left' | 'right';
 
-export type TableColumnTitle = string | (() => string);
+export type TableColumnTitle = string | (() => unknown);
 
 export type TableColumnSorter = boolean | ((a: RowData, b: RowData) => number);
+
+export enum SorterDirection {
+  Ascend = 'ascend',
+  Descend = 'descend',
+}
+
+export type SorterState = {
+  direction?: SorterDirection;
+}
 
 export type BaseValue = string | number | boolean | undefined | null;
 

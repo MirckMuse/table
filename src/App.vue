@@ -93,7 +93,7 @@ const columns = ref<TableColumn[]>([
       { dataIndex: 'c', title: "第三列-3", resizable: true, minWidth: 100 },
     ]
   },
-  { dataIndex: 'c', title: "第三列-4" },
+  { dataIndex: 'c', title: "第三列-4", sorter: true, resizable: true, width: 200 },
   { dataIndex: 'c', title: "第三列-5" },
   { dataIndex: 'c', title: "第三列-6" },
   { dataIndex: 'c', title: "第三列-7" },

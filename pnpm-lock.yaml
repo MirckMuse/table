@@ -111,8 +111,8 @@ importers:
         specifier: ^1.5.3
         version: 1.6.1
       '@remixicon/vue':
-        specifier: ^4.0.1
-        version: 4.1.0(vue@3.4.16)
+        specifier: ^4.2.0
+        version: 4.2.0(vue@3.4.16)
       '@vueuse/core':
         specifier: ^10.6.1
         version: 10.7.2(vue@3.4.16)
@@ -1771,8 +1771,8 @@ packages:
     dev: true
     optional: true
 
-  /@remixicon/vue@4.1.0(vue@3.4.16):
-    resolution: {integrity: sha512-FhaF5b33V6JCHtYMbxZDvzYYqX2CqgoQPwu7+U0SB6x9yfOPdJ61jZKIs0ovPiH8qMVXDJ6uCcKQPK+P/57eGQ==}
+  /@remixicon/vue@4.2.0(vue@3.4.16):
+    resolution: {integrity: sha512-dFtPQPi45sZ4X3Jl2ZNxEE5j2dAmo8vfHA1wvjUCwybQnyAGKSBVQlqZqP0wKzrtBbVqRXK0tgQx+Fw8GZ45qg==}
     peerDependencies:
       vue: '>= 3'
     dependencies:
@@ -2838,7 +2838,7 @@ packages:
       function-bind: 1.1.2
       has-proto: 1.0.3
       has-symbols: 1.0.3
-      hasown: 2.0.0
+      hasown: 2.0.1
     dev: true
 
   /get-own-enumerable-property-symbols@3.0.2:
@@ -3000,7 +3000,7 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       es-errors: 1.3.0
-      hasown: 2.0.0
+      hasown: 2.0.1
       side-channel: 1.0.5
     dev: true
 

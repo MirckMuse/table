@@ -1,16 +1,31 @@
 <script lang="ts">
 import type { PropType, StyleValue, VNode } from "vue";
-import type { TableColumn, TableColumnEllipsisObject } from "@stable/table-typing";
+import type { SorterState, TableColumn, TableColumnEllipsisObject } from "@stable/table-typing";
+import { SorterDirection } from "@stable/table-typing";
 import { defineComponent, h, Comment } from "vue";
-import ResizeHolder from "./ResizeHolder.vue";
 import { useStateInject } from "../../hooks";
 import { toArray } from "../../utils";
+import ResizeHolder from "./ResizeHolder.vue";
+import { SorterFill } from "../icon"
+
+// 渲染 sorter 样式
+function renderSorter(column: TableColumn, sorterState?: SorterState) {
+  if (!column?.sorter) return null;
+
+  const direction = sorterState?.direction;
+
+  return h(
+    'span',
+    { class: "s-table-header-cell__sorter" },
+    h(SorterFill, { class: { "s-icon": true, [`s-icon__${direction}`]: true } })
+  );
+}
 
 export default defineComponent({
   name: "STableHeaderCell",
 
   props: {
-    column: { type: Object as PropType<TableColumn> },
+    column: { type: Object as PropType<TableColumn>, required: true },
 
     width: { type: [String, Number] },
 
@@ -21,6 +36,35 @@ export default defineComponent({
     const prefixClass = "s-table-header-cell";
 
     const { slots: slotsTable } = useStateInject();
+
+    // 渲染用户配置的 title
+    function renderColumnTitle(column?: TableColumn) {
+      return typeof column?.title === "function"
+        ? column?.title()
+        : column?.title;
+    }
+
+    function renderHeaderCellContent(column?: TableColumn): any {
+      const title = renderColumnTitle(column);
+
+      if (column?.sorter) {
+        const sorterVNode = renderSorter(column, { direction: SorterDirection.Ascend });
+
+        const cellExtends = h('div', {}, [
+          sorterVNode
+        ]);
+
+        return h(
+          "div",
+          {
+            class: `${prefixClass}__content`,
+          },
+          [title as any, cellExtends]
+        )
+      }
+
+      return title;
+    }
 
     return () => {
       const { column, ellipsis } = props;
@@ -38,7 +82,7 @@ export default defineComponent({
         textAlign: column?.align
       }
 
-      const cellTitle = column?.title;
+      const cellTitle = renderHeaderCellContent(column);
 
       const title = ellipsis?.showTitle ? cellTitle : undefined;
 
@@ -77,6 +121,17 @@ export default defineComponent({
   align-items: center;
   overflow: visible;
 
+  &__content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &__sorter {
+    display: flex;
+    flex-direction: column;
+  }
+
   &-inner {
     flex: 1;
 
@@ -86,6 +141,21 @@ export default defineComponent({
       text-overflow: ellipsis;
       word-break: keep-all;
     }
+  }
+}
+</style>
+
+<style lang="less">
+svg.s-icon {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+
+  &.s-icon__ascend path#ascend {
+    color: var(--table-header-cell-sorter-color-active);
+  }
+  &.s-icon__descend path#descend {
+    fill: var(--table-header-cell-sorter-color-active);
   }
 }
 </style>

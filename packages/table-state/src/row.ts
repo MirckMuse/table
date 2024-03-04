@@ -101,6 +101,9 @@ export class TableRowStateCenter {
     this.rowKeyMap = new WeakMap<RowData, RowKey>;
   }
 
+  private orderBy() {
+  }
+
   // 更新行数据
   updateRowDatas(rowDatas: RowData[]) {
     this.init();
