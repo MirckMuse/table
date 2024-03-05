@@ -1,7 +1,7 @@
-import type { RowKey, GetRowKey, RowData } from "@stable/table-typing";
 import { runIdleTask } from "@stable/table-shared";
+import { ColKey, FilteredState, GetRowKey, RowData, RowKey, SorterDirection, SorterState } from "@stable/table-typing";
+import { chunk, get, isNil } from "lodash-es";
 import { TableState } from "./table";
-import { chunk, isNil } from "lodash-es";
 
 export interface RowMeta {
   key: RowKey;
@@ -51,6 +51,8 @@ export class TableRowState {
   }
 }
 
+export type SorterMemoize = Map<ColKey, Map<SorterDirection, Map<RowKey, Map<RowKey, number>>>>;
+
 export interface TableRowStateCenterOption {
   rowHeight?: number;
 
@@ -62,6 +64,12 @@ export interface TableRowStateCenterOption {
 const DefaultRowHeight = 55;
 
 const ChunkSize = 100;
+
+enum CompareResult {
+  Less = -1,
+  Equal = 0,
+  Greater = 1
+}
 
 export class TableRowStateCenter {
   // 原始行 keys
@@ -101,7 +109,101 @@ export class TableRowStateCenter {
     this.rowKeyMap = new WeakMap<RowData, RowKey>;
   }
 
-  private orderBy() {
+  private sorterMemoize: SorterMemoize = new Map();
+
+  // 根据排序状态获取排序结果
+  // TODO: 数据有可能会发生更新
+  private getSorterMemorize(sorterState: SorterState, prevRowData: RowData, nextRowData: RowData): number {
+    const { colKey, direction } = sorterState;
+
+    if (!direction || !colKey) {
+      return CompareResult.Equal;
+    }
+
+    let map = this.sorterMemoize.get(sorterState.colKey)?.get(direction)
+
+    const prevRowDataKey = this.getRowKeyByRowData(prevRowData);
+    const nextRowDataKey = this.getRowKeyByRowData(nextRowData);
+
+    let compareResult = map?.get(prevRowDataKey)?.get(nextRowDataKey)
+
+    if (!isNil(compareResult)) {
+      return compareResult;
+    }
+
+    // 排序系数
+    let rate = 0;
+    if (sorterState.direction === SorterDirection.Ascend) {
+      rate = 1;
+    } else if (sorterState.direction === SorterDirection.Descend) {
+      rate = -1;
+    }
+
+    compareResult = this.orderBy(sorterState, prevRowData, nextRowData) * rate;
+
+    map = map || new Map<RowKey, Map<RowKey, number>>();
+    const childrenMap = map.get(prevRowDataKey) || new Map();
+    childrenMap.set(nextRowDataKey, compareResult);
+    map.set(prevRowDataKey, childrenMap);
+
+    const cokKeyMap = this.sorterMemoize.get(sorterState.colKey) || new Map();
+    cokKeyMap.set(direction, map)
+    this.sorterMemoize.set(sorterState.colKey, cokKeyMap);
+
+    return compareResult;
+  }
+
+
+  private sorterState: SorterState[] = [];
+
+  private filteredState: FilteredState[] = [];
+
+  // TODO: 获取筛选后的行数据
+  getFilteredRowDatas(rowDatas: RowData[]): RowData[] {
+    return [];
+  }
+
+  //  获取排序后的行数据
+  getSortedRowDatas(rowDatas: RowData[]): RowData[] {
+    return rowDatas
+      .sort((prev, next) => {
+        for (const state of this.sorterState) {
+          const compareResult = this.getSorterMemorize(state, prev, next);
+
+          if (compareResult === CompareResult.Equal) {
+            continue;
+          }
+
+          return compareResult;
+        }
+
+        return CompareResult.Equal;
+      });
+  }
+
+  private orderBy(sorterState: SorterState, prevRowData: RowData, nextRowData: RowData): number {
+    const column = this.tableState.colStateCenter.getColumnByColKey(sorterState.colKey);
+
+    if (!column || !column.dataIndex) return CompareResult.Equal;
+
+    const prevRowDataValue = get(prevRowData, column.dataIndex);
+    const nextRowDataValue = get(nextRowData, column.dataIndex);
+
+    // 空之间的相互对比
+    if (isNil(prevRowDataValue) && isNil(nextRowDataValue)) return CompareResult.Equal;
+    if (isNil(prevRowDataValue) && !isNil(nextRowDataValue)) return CompareResult.Greater;
+    if (!isNil(prevRowDataValue) && isNil(nextRowDataValue)) return CompareResult.Less;
+
+    if (prevRowDataValue === nextRowDataValue) return CompareResult.Equal;
+
+    // number string 之间的相互对比
+    if (typeof prevRowDataValue === "number" && typeof nextRowDataValue === "number") return prevRowDataValue - nextRowDataValue;
+    if (typeof prevRowDataValue === "string" && typeof nextRowDataValue === "string") return prevRowDataValue > nextRowDataValue ? CompareResult.Greater : CompareResult.Less;
+    if (typeof prevRowDataValue === "number" && typeof nextRowData === "string") return CompareResult.Greater;
+    if (typeof prevRowDataValue === "string" && typeof nextRowData === "number") return CompareResult.Less;
+
+    // 其他之间的数据类型对比，则直接判定为相等。
+    return CompareResult.Equal;
   }
 
   // 更新行数据
@@ -165,6 +267,10 @@ export class TableRowStateCenter {
 
   getStateByRowKey(rowKey: RowKey): TableRowStateOrNull {
     return this.rowStateMap.get(rowKey) ?? null;
+  }
+
+  getRowKeyByRowData(rowData: RowData): RowKey {
+    return this.rowKeyMap.get(rowData) ?? -1;
   }
 
   getStateByFlattenIndex(index: number): TableRowStateOrNull {

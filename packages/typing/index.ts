@@ -1,3 +1,4 @@
+import type { ColumnCount } from "ant-design-vue/es/list";
 import type { VNode } from "vue";
 
 // 行数据
@@ -24,8 +25,18 @@ export enum SorterDirection {
   Descend = 'descend',
 }
 
+// 排序状态
 export type SorterState = {
+  colKey: ColKey;
+
   direction?: SorterDirection;
+}
+
+// TODO: 筛选状态
+export type FilteredState = {
+  colKey: ColKey;
+
+  // TODO: ....
 }
 
 export type BaseValue = string | number | boolean | undefined | null;

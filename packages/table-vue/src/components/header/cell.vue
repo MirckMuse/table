@@ -9,6 +9,7 @@ import ResizeHolder from "./ResizeHolder.vue";
 import { SorterFill } from "../icon"
 
 // 渲染 sorter 样式
+// TODO: 可以从外部传入
 function renderSorter(column: TableColumn, sorterState?: SorterState) {
   if (!column?.sorter) return null;
 
@@ -44,11 +45,13 @@ export default defineComponent({
         : column?.title;
     }
 
+    // 渲染排序的图标
     function renderHeaderCellContent(column?: TableColumn): any {
       const title = renderColumnTitle(column);
 
+      // TODO: 渲染筛选组件
       if (column?.sorter) {
-        const sorterVNode = renderSorter(column, { direction: SorterDirection.Ascend });
+        const sorterVNode = renderSorter(column, { colKey: column.key ?? "", direction: SorterDirection.Ascend });
 
         const cellExtends = h('div', {}, [
           sorterVNode
