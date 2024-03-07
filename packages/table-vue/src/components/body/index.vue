@@ -1,53 +1,19 @@
 <template>
-  <div
-    v-resize:height
-    ref="bodyRef"
-    class="s-table-body"
-    :class="bodyClass"
-    :style="bodyStyle"
-  >
-    <div
-      class="s-table-body__inner"
-      ref="bodyInnerRef"
-      @mouseover="handleMouseenter"
-      @mouseout="handleMouseleave"
-    >
+  <div v-resize:height ref="bodyRef" class="s-table-body" :class="bodyClass" :style="bodyStyle">
+    <div class="s-table-body__inner" ref="bodyInnerRef" @mouseover="handleMouseenter" @mouseout="handleMouseleave">
       <template v-if="!isEmpty">
-        <div
-          v-if="leftColumnsVisible"
-          ref="bodyLeftRef"
-          class="s-table-body__inner-fixedLeft s-table-fixedLeft"
-          :class="{ 'shadow': scroll.left > 0 }"
-          :style="leftStyle"
-        >
-          <body-rows
-            :columns="leftColumns"
-            v-bind="commonRowProps"
-          />
+        <div v-if="leftColumnsVisible" ref="bodyLeftRef" class="s-table-body__inner-fixedLeft s-table-fixedLeft"
+          :class="{ 'shadow': scroll.left > 0 }" :style="leftStyle">
+          <body-rows :columns="leftColumns" v-bind="commonRowProps" />
         </div>
 
-        <div
-          ref="bodyCenterRef"
-          class="s-table-body__inner-center"
-          :style="centerStyle"
-        >
-          <body-rows
-            :columns="centerColumns"
-            v-bind="commonRowProps"
-          />
+        <div ref="bodyCenterRef" class="s-table-body__inner-center" :style="centerStyle">
+          <body-rows :columns="centerColumns" v-bind="commonRowProps" />
         </div>
 
-        <div
-          v-if="rightColumnsVisible"
-          ref="bodyRightRef"
-          class="s-table-body__inner-fixedRight s-table-fixedRight"
-          :class="{ 'shadow': scroll.left < maxXMove }"
-          :style="rightStyle"
-        >
-          <body-rows
-            :columns="rightColumns"
-            v-bind="commonRowProps"
-          />
+        <div v-if="rightColumnsVisible" ref="bodyRightRef" class="s-table-body__inner-fixedRight s-table-fixedRight"
+          :class="{ 'shadow': scroll.left < maxXMove }" :style="rightStyle">
+          <body-rows :columns="rightColumns" v-bind="commonRowProps" />
         </div>
       </template>
 
@@ -56,21 +22,10 @@
       </div>
     </div>
 
-    <Scrollbar
-      v-if="!isEmpty"
-      :state="scrollState"
-      :client="viewport.height"
-      :content="viewport.scrollHeight"
-      :scroll="scroll.top"
-      :is-vertical="true"
-    />
+    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scrollHeight"
+      :scroll="scroll.top" :is-vertical="true" />
 
-    <Scrollbar
-      :state="scrollState"
-      :client="viewport.width"
-      :content="viewport.scrollWidth"
-      :scroll="scroll.left"
-    />
+    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth" :scroll="scroll.left" />
   </div>
 </template>
 
@@ -143,6 +98,7 @@ export default defineComponent({
         if (column) {
           columns.push(column);
         }
+
         return columns;
       }, [])
     }
@@ -335,7 +291,6 @@ export default defineComponent({
 </script>
 
 <style lang="less" scoped>
-
 .s-table-body {
   position: relative;
   transform: translateZ(0);
@@ -383,11 +338,11 @@ export default defineComponent({
 .s-table-body {
 
   &__scrollbar-hover {
-    &:hover > .s-table-scroll__track {
+    &:hover>.s-table-scroll__track {
       opacity: 1;
     }
 
-    > .s-table-scroll__track {
+    >.s-table-scroll__track {
       opacity: 0;
       transition: opacity .16s cubic-bezier(0, .5, 1, .5);
     }
@@ -400,4 +355,5 @@ export default defineComponent({
     align-items: center;
     justify-content: center;
   }
-}</style>
+}
+</style>

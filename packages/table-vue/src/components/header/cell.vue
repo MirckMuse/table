@@ -7,6 +7,7 @@ import { useStateInject } from "../../hooks";
 import { toArray } from "../../utils";
 import ResizeHolder from "./ResizeHolder.vue";
 import { SorterFill } from "../icon"
+import HeaderFilter from "../filter/index.vue"
 
 // 渲染 sorter 样式
 // TODO: 可以从外部传入
@@ -49,20 +50,25 @@ export default defineComponent({
     function renderHeaderCellContent(column?: TableColumn): any {
       const title = renderColumnTitle(column);
 
-      // TODO: 渲染筛选组件
+      const appendVNodes: VNode[] = [];
+
       if (column?.sorter) {
-        const sorterVNode = renderSorter(column, { colKey: column.key ?? "", direction: SorterDirection.Ascend });
+        const _vNode = renderSorter(column, { colKey: column.key ?? "", direction: SorterDirection.Ascend });
+        _vNode && appendVNodes.push(_vNode);
+      }
 
-        const cellExtends = h('div', {}, [
-          sorterVNode
-        ]);
+      if (column?.filter) {
+        // TODO: filterState
+        appendVNodes.push(h(HeaderFilter, { filter: column.filter, column: column }))
+      }
 
+      if (appendVNodes.length) {
         return h(
           "div",
           {
             class: `${prefixClass}__content`,
           },
-          [title as any, cellExtends]
+          [title as any, h('div', { class: prefixClass + "__append" }, appendVNodes)]
         )
       }
 
@@ -115,7 +121,7 @@ export default defineComponent({
   font-size: var(--table-header-cell-text-size);
   font-style: normal;
   font-weight: 700;
-  
+
   background-color: var(--table-header-cell-bg);
   color: var(--table-header-cell-text-color);
 
@@ -157,6 +163,7 @@ svg.s-icon {
   &.s-icon__ascend path#ascend {
     color: var(--table-header-cell-sorter-color-active);
   }
+
   &.s-icon__descend path#descend {
     fill: var(--table-header-cell-sorter-color-active);
   }

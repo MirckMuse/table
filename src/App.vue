@@ -1,14 +1,7 @@
 <template>
   <div style="padding: 10px;">
-    <s-table
-      :data-source="data_source"
-      :columns="columns"
-      :bordered="true"
-      rowKey="id"
-      :scroll="{ y: 700 }"
-      :transform-cell-text="transformCellText"
-      @resizeColumn="handleResizeColumn"
-    >
+    <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 700 }"
+      :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
@@ -93,7 +86,18 @@ const columns = ref<TableColumn[]>([
       { dataIndex: 'c', title: "第三列-3", resizable: true, minWidth: 100 },
     ]
   },
-  { dataIndex: 'c', title: "第三列-4", sorter: true, resizable: true, width: 200 },
+  {
+    dataIndex: 'c',
+    title: "第三列-4",
+    sorter: true,
+    filter: {
+      options: [
+        { label: "123", value: "123" }
+      ]
+    },
+    resizable: true,
+    width: 200
+  },
   { dataIndex: 'c', title: "第三列-5" },
   { dataIndex: 'c', title: "第三列-6" },
   { dataIndex: 'c', title: "第三列-7" },

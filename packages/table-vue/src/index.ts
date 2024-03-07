@@ -7,7 +7,7 @@ import "./style/index.less";
 export * from "./typing"
 
 const install: Plugin = (app: App) => {
-  app.component(STable.name, STable);
+  app.component(STable.name!, STable);
 }
 
 export const Table = Object.assign(STable, {

@@ -112,3 +112,7 @@ export function binaryFindIndexRange<T = unknown>(sortedArray: T[], compareFn: (
 
   return rangeIndex ?? -1;
 }
+
+export function stopPropagation($event: Event) {
+  $event.stopPropagation();
+}

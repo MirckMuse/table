@@ -1,5 +1,5 @@
 import { runIdleTask } from "@stable/table-shared";
-import { ColKey, FilteredState, GetRowKey, RowData, RowKey, SorterDirection, SorterState } from "@stable/table-typing";
+import { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterDirection, SorterState } from "@stable/table-typing";
 import { chunk, get, isNil } from "lodash-es";
 import { TableState } from "./table";
 
@@ -156,7 +156,7 @@ export class TableRowStateCenter {
 
   private sorterState: SorterState[] = [];
 
-  private filteredState: FilteredState[] = [];
+  private filterState: FilterState[] = [];
 
   // TODO: 获取筛选后的行数据
   getFilteredRowDatas(rowDatas: RowData[]): RowData[] {

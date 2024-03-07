@@ -1,4 +1,3 @@
-import type { ColumnCount } from "ant-design-vue/es/list";
 import type { VNode } from "vue";
 
 // 行数据
@@ -32,11 +31,16 @@ export type SorterState = {
   direction?: SorterDirection;
 }
 
-// TODO: 筛选状态
-export type FilteredState = {
+// 筛选状态
+export type FilterState = {
+  // 列的 key
   colKey: ColKey;
 
-  // TODO: ....
+  // 筛选值
+  filterKeys?: TableColumnFilterValue[] | null;
+
+  // TODO: 待确认
+  forceFilter?: boolean;
 }
 
 export type BaseValue = string | number | boolean | undefined | null;
@@ -71,6 +75,43 @@ export type TableColumnEllipsisObject = {
 };
 
 export type TableColumnEllipsis = boolean | TableColumnEllipsisObject;
+
+export type TableColumnFilterValue = string | number | boolean;
+
+export interface TableColumnFilterOption {
+  label: TableColumnFilterValue | VNode | (() => VNode);
+
+  value: TableColumnFilterValue;
+
+  title?: string;
+
+  children?: TableColumnFilterOption[];
+}
+
+
+export type TableColumnFilterMode = "menu" | "tree";
+
+// 表头筛选项的配置
+export interface TableColumnFilter {
+  filtered?: boolean;
+
+  filterDropdown?: VNode | ((props: TableColumnFilter) => VNode);
+
+  open?: boolean;
+
+  value?: string[];
+
+  icon?: VNode | ((props: TableColumnFilter) => VNode);
+
+  // 默认 tree
+  mode?: TableColumnFilterMode;
+
+  multiple?: boolean;
+
+  search?: boolean | ((search: string, option: TableColumnFilterOption) => boolean);
+
+  options?: TableColumnFilterOption[];
+}
 
 /**
  * 表格列配置，key 和dataIndex 至少有一个必填
@@ -119,4 +160,6 @@ export interface TableColumn {
   sortOrder?: string | null;
   sortDirections?: [string, string];
   showSorterTooltip?: boolean;
+
+  filter?: TableColumnFilter;
 }
