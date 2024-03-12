@@ -1,4 +1,7 @@
 :root {
+  --table-text-color: rgba(0, 0, 0, 0.88);
+  --table-popover-box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+
   --table-primary-color: #1677ff;
 
   --table-border-color: #E6E7EC;
@@ -101,7 +104,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    color: rgba(0, 0, 0, 0.88);
+    color: var(--table-text-color);
     font-size: 14px;
     line-height: 1.5714285714285714;
     list-style: none;
@@ -122,7 +125,7 @@
     word-wrap: break-word;
     background-color: rgba(0, 0, 0, 0.85);
     border-radius: 6px;
-    box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--table-popover-box-shadow);
   }
 
   &-inner-content {
@@ -279,7 +282,7 @@
     color: var(--table-header-cell-filter-color);
     cursor: pointer;
   }
-  
+
   &__active {
     color: var(--table-header-cell-filter-color-active);
   }
@@ -288,5 +291,40 @@
   &__trigger>svg {
     width: var(--table-header-cell-filter-size);
     height: var(--table-header-cell-filter-size);
+  }
+
+  &__dropdown,
+  &__dropdown-submenu {
+    .ant-checkbox-wrapper+span {
+      padding-left: 8px;
+    }
+  }
+
+  &__dropdown {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    color: var(--table-text-color);
+    font-size: 14px;
+    line-height: 1.5714285714285714;
+    list-style: none;
+    min-width: 120px;
+    background-color: #ffffff;
+    border-radius: 6px;
+    box-shadow: var(--table-popover-box-shadow);
+
+    >.ant-dropdown-menu {
+      border: none;
+      box-shadow: none;
+    }
+
+    &-btns {
+      display: flex;
+      justify-content: space-between;
+      padding: 7px 8px;
+      overflow: hidden;
+      background-color: inherit;
+      border-top: 1px solid #f0f0f0;
+    }
   }
 }

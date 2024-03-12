@@ -37,7 +37,7 @@ export type FilterState = {
   colKey: ColKey;
 
   // 筛选值
-  filterKeys?: TableColumnFilterValue[] | null;
+  filterKeys?: TableColumnFilterValue[];
 
   // TODO: 待确认
   forceFilter?: boolean;
@@ -111,6 +111,12 @@ export interface TableColumnFilter {
   search?: boolean | ((search: string, option: TableColumnFilterOption) => boolean);
 
   options?: TableColumnFilterOption[];
+
+  onOpenChange?: (visible: boolean) => void;
+
+  resetToDefaultFilteredValue?: boolean;
+
+  defaultFilteredValue?: TableColumnFilterValue[];
 }
 
 /**

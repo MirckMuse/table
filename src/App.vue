@@ -92,7 +92,15 @@ const columns = ref<TableColumn[]>([
     sorter: true,
     filter: {
       options: [
-        { label: "123", value: "123" }
+        { label: "123", value: "123" },
+        {
+          label: "Submenu", value: "Submenu", children: [
+            {
+              label: 'Green',
+              value: 'Green',
+            },
+          ]
+        },
       ]
     },
     resizable: true,
