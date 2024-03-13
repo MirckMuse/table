@@ -147,6 +147,19 @@ export function useStateProvide({
     }
   )
 
+  watch(
+    () => state.value.rowStateCenter.filterStates,
+    () => {
+      console.time('filter')
+      state.value.rowStateCenter
+        .getFilteredRowDatas(props.dataSource ?? [])
+        .then((result) => {
+          console.timeEnd('filter')
+        })
+    },
+    { deep: true }
+  );
+
   let userSelectState = {
     pre: "",
     isSet: false,

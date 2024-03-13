@@ -78,7 +78,7 @@ export default defineComponent({
 
     column: { type: Object as PropType<TableColumn>, required: true },
 
-    triggerFilter: { type: Function as PropType<(filterState: FilterState) => void> },
+    triggerFilter: { type: Function as PropType<(filterKeys: TableColumnFilterValue[], column: TableColumn) => void> },
 
     customRenderFilterDropdown: { type: Function as PropType<CustomRenderFilterDropdown> },
 
@@ -206,11 +206,7 @@ export default defineComponent({
         return null;
       }
 
-      triggerFilter?.({
-        colKey: column.key ?? "",
-        ...(filterState || {}),
-        filterKeys: _keys ?? []
-      })
+      triggerFilter?.(_keys ?? [], column)
     }
 
     // 渲染表单项

@@ -1,7 +1,10 @@
 import { runIdleTask } from "@stable/table-shared";
 import { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterDirection, SorterState } from "@stable/table-typing";
-import { chunk, get, isNil } from "lodash-es";
+import { chunk, cloneDeep, get, isNil } from "lodash-es";
 import { TableState } from "./table";
+import workerpool from "workerpool";
+
+const workerpoolInstance = workerpool.pool()
 
 export interface RowMeta {
   key: RowKey;
@@ -154,20 +157,69 @@ export class TableRowStateCenter {
   }
 
 
-  private sorterState: SorterState[] = [];
+  private sorterStates: SorterState[] = [];
 
-  private filterState: FilterState[] = [];
+  filterStates: FilterState[] = [];
 
-  // TODO: 获取筛选后的行数据
-  getFilteredRowDatas(rowDatas: RowData[]): RowData[] {
-    return [];
+  // 获取筛选后的行数据
+  async getFilteredRowDatas(rowDatas: RowData[]): Promise<RowData[]> {
+    if (!this.filterStates?.length) return rowDatas;
+
+    type PoolRow = { key: RowKey, data: RowData };
+
+    function _poolTask(rows: PoolRow[], filterStates: FilterState[]): RowKey[] {
+      return filterStates
+        .reduce<PoolRow[]>((filteredRows, filterState) => {
+          const { filterKeys, dataIndex } = filterState as any;
+
+          if (filterKeys?.length) {
+            return filteredRows.filter((row) => {
+              return filterKeys.some((key: string) => row.data[dataIndex] === key)
+            })
+          }
+
+          return filteredRows;
+        }, rows)
+        .map((row: PoolRow) => row.key);
+    }
+
+    const _task = (rows: RowData[]) => {
+      const poolRows = rows.map(row => {
+        return {
+          key: this.getRowKeyByRowData(row),
+          data: cloneDeep(row)
+        }
+      });
+
+      return workerpoolInstance.exec(_poolTask, [
+        poolRows,
+        cloneDeep(this.filterStates).map(state => Object.assign({}, state, { dataIndex: this.tableState.colStateCenter.getColumnByColKey(state.colKey)?.dataIndex }))
+      ])
+    }
+
+    const chunks = chunk(rowDatas, ChunkSize);
+
+    return Promise
+      .all(chunks.map(rows => _task(rows)))
+      .then((rowKeyChunks) => {
+        return rowKeyChunks.flat().reduce<RowData[]>((result, key) => {
+          const rowData = this.getRowDataByRowKey(key)
+          if (rowData) {
+            result.push(rowData);
+          }
+          return result;
+        }, [])
+      })
+      .finally(() => {
+        workerpoolInstance.terminate();
+      })
   }
 
   //  获取排序后的行数据
   getSortedRowDatas(rowDatas: RowData[]): RowData[] {
     return rowDatas
       .sort((prev, next) => {
-        for (const state of this.sorterState) {
+        for (const state of this.sorterStates) {
           const compareResult = this.getSorterMemorize(state, prev, next);
 
           if (compareResult === CompareResult.Equal) {

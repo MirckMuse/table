@@ -161,12 +161,9 @@ export class TableState {
       }
     }
 
-    const {
-      flattenYIndexes,
-      flattenRowKeys
-    } = this.rowStateCenter;
-
+    const { flattenYIndexes, flattenRowKeys } = this.rowStateCenter;
     const dataSourceLength = flattenRowKeys.length;
+
     range.startIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(this.scroll.top));
 
     if (range.startIndex === -1) {

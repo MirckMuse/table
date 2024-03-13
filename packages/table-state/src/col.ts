@@ -4,6 +4,8 @@ import { isNil } from "lodash-es";
 
 export type TableColumnOrNull = TableColumn | null;
 
+export type ColKeyOrNull = ColKey | null;
+
 export type TableColStateOrNull = TableColState | null;
 
 export const DefaultColWidth = 120;
@@ -117,6 +119,10 @@ export class TableColStateCenter {
 
   getColumnByColKey(colKey: ColKey): TableColumnOrNull {
     return this.getStateByColKey(colKey)?.column ?? null;
+  }
+
+  getColKeyByColumn(column: TableColumn): ColKeyOrNull {
+    return this.colKeyMap.get(column) ?? null
   }
 
   maxTableHeaderDeep = 0;

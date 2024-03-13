@@ -1,5 +1,7 @@
-import { isNil, chunk, groupBy } from 'lodash-es';
+import { isNil, get, chunk, cloneDeep, groupBy } from 'lodash-es';
 import { runIdleTask, binaryFindIndexRange } from '@stable/table-shared';
+import { SorterDirection } from '@stable/table-typing';
+import workerpool from 'workerpool';
 
 const DefaultColWidth = 120;
 const ColKeySplitWord = "__$$__";
@@ -62,6 +64,10 @@ class TableColStateCenter {
     getColumnByColKey(colKey) {
         var _a, _b;
         return (_b = (_a = this.getStateByColKey(colKey)) === null || _a === void 0 ? void 0 : _a.column) !== null && _b !== void 0 ? _b : null;
+    }
+    getColKeyByColumn(column) {
+        var _a;
+        return (_a = this.colKeyMap.get(column)) !== null && _a !== void 0 ? _a : null;
     }
     updateColumns(columns) {
         this.init();
@@ -196,6 +202,39 @@ class TableColStateCenter {
     }
 }
 
+/******************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+/* global Reflect, Promise, SuppressedError, Symbol */
+
+
+function __awaiter(thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
+
+typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+    var e = new Error(message);
+    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
+};
+
+const workerpoolInstance = workerpool.pool();
 class TableRowState {
     getMeta() {
         return Object.assign({}, this.meta);
@@ -214,6 +253,12 @@ class TableRowState {
 }
 const DefaultRowHeight = 55;
 const ChunkSize = 100;
+var CompareResult;
+(function (CompareResult) {
+    CompareResult[CompareResult["Less"] = -1] = "Less";
+    CompareResult[CompareResult["Equal"] = 0] = "Equal";
+    CompareResult[CompareResult["Greater"] = 1] = "Greater";
+})(CompareResult || (CompareResult = {}));
 class TableRowStateCenter {
     constructor(option) {
         var _a, _b;
@@ -226,6 +271,9 @@ class TableRowStateCenter {
         // rowKey => TableRowState 映射关系
         this.rowStateMap = new Map();
         this.rowKeyMap = new WeakMap;
+        this.sorterMemoize = new Map();
+        this.sorterStates = [];
+        this.filterStates = [];
         this.tableState = option.tableState;
         this.roughRowHeight = (_a = option.rowHeight) !== null && _a !== void 0 ? _a : DefaultRowHeight;
         this.getRowKey = (_b = option.getRowKey) !== null && _b !== void 0 ? _b : (() => -1);
@@ -237,6 +285,128 @@ class TableRowStateCenter {
         this.flattenRowKeys = [];
         this.flattenYIndexes = [];
         this.rowKeyMap = new WeakMap;
+    }
+    // 根据排序状态获取排序结果
+    // TODO: 数据有可能会发生更新
+    getSorterMemorize(sorterState, prevRowData, nextRowData) {
+        var _a, _b;
+        const { colKey, direction } = sorterState;
+        if (!direction || !colKey) {
+            return CompareResult.Equal;
+        }
+        let map = (_a = this.sorterMemoize.get(sorterState.colKey)) === null || _a === void 0 ? void 0 : _a.get(direction);
+        const prevRowDataKey = this.getRowKeyByRowData(prevRowData);
+        const nextRowDataKey = this.getRowKeyByRowData(nextRowData);
+        let compareResult = (_b = map === null || map === void 0 ? void 0 : map.get(prevRowDataKey)) === null || _b === void 0 ? void 0 : _b.get(nextRowDataKey);
+        if (!isNil(compareResult)) {
+            return compareResult;
+        }
+        // 排序系数
+        let rate = 0;
+        if (sorterState.direction === SorterDirection.Ascend) {
+            rate = 1;
+        }
+        else if (sorterState.direction === SorterDirection.Descend) {
+            rate = -1;
+        }
+        compareResult = this.orderBy(sorterState, prevRowData, nextRowData) * rate;
+        map = map || new Map();
+        const childrenMap = map.get(prevRowDataKey) || new Map();
+        childrenMap.set(nextRowDataKey, compareResult);
+        map.set(prevRowDataKey, childrenMap);
+        const cokKeyMap = this.sorterMemoize.get(sorterState.colKey) || new Map();
+        cokKeyMap.set(direction, map);
+        this.sorterMemoize.set(sorterState.colKey, cokKeyMap);
+        return compareResult;
+    }
+    // 获取筛选后的行数据
+    getFilteredRowDatas(rowDatas) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!((_a = this.filterStates) === null || _a === void 0 ? void 0 : _a.length))
+                return rowDatas;
+            function _poolTask(rows, filterStates) {
+                return filterStates
+                    .reduce((filteredRows, filterState) => {
+                    const { filterKeys, dataIndex } = filterState;
+                    if (filterKeys === null || filterKeys === void 0 ? void 0 : filterKeys.length) {
+                        return filteredRows.filter((row) => {
+                            return filterKeys.some((key) => row.data[dataIndex] === key);
+                        });
+                    }
+                    return filteredRows;
+                }, rows)
+                    .map((row) => row.key);
+            }
+            const _task = (rows) => {
+                const poolRows = rows.map(row => {
+                    return {
+                        key: this.getRowKeyByRowData(row),
+                        data: cloneDeep(row)
+                    };
+                });
+                return workerpoolInstance.exec(_poolTask, [
+                    poolRows,
+                    cloneDeep(this.filterStates).map(state => { var _a; return Object.assign({}, state, { dataIndex: (_a = this.tableState.colStateCenter.getColumnByColKey(state.colKey)) === null || _a === void 0 ? void 0 : _a.dataIndex }); })
+                ]);
+            };
+            const chunks = chunk(rowDatas, ChunkSize);
+            return Promise
+                .all(chunks.map(rows => _task(rows)))
+                .then((rowKeyChunks) => {
+                return rowKeyChunks.flat().reduce((result, key) => {
+                    const rowData = this.getRowDataByRowKey(key);
+                    if (rowData) {
+                        result.push(rowData);
+                    }
+                    return result;
+                }, []);
+            })
+                .finally(() => {
+                workerpoolInstance.terminate();
+            });
+        });
+    }
+    //  获取排序后的行数据
+    getSortedRowDatas(rowDatas) {
+        return rowDatas
+            .sort((prev, next) => {
+            for (const state of this.sorterStates) {
+                const compareResult = this.getSorterMemorize(state, prev, next);
+                if (compareResult === CompareResult.Equal) {
+                    continue;
+                }
+                return compareResult;
+            }
+            return CompareResult.Equal;
+        });
+    }
+    orderBy(sorterState, prevRowData, nextRowData) {
+        const column = this.tableState.colStateCenter.getColumnByColKey(sorterState.colKey);
+        if (!column || !column.dataIndex)
+            return CompareResult.Equal;
+        const prevRowDataValue = get(prevRowData, column.dataIndex);
+        const nextRowDataValue = get(nextRowData, column.dataIndex);
+        // 空之间的相互对比
+        if (isNil(prevRowDataValue) && isNil(nextRowDataValue))
+            return CompareResult.Equal;
+        if (isNil(prevRowDataValue) && !isNil(nextRowDataValue))
+            return CompareResult.Greater;
+        if (!isNil(prevRowDataValue) && isNil(nextRowDataValue))
+            return CompareResult.Less;
+        if (prevRowDataValue === nextRowDataValue)
+            return CompareResult.Equal;
+        // number string 之间的相互对比
+        if (typeof prevRowDataValue === "number" && typeof nextRowDataValue === "number")
+            return prevRowDataValue - nextRowDataValue;
+        if (typeof prevRowDataValue === "string" && typeof nextRowDataValue === "string")
+            return prevRowDataValue > nextRowDataValue ? CompareResult.Greater : CompareResult.Less;
+        if (typeof prevRowDataValue === "number" && typeof nextRowData === "string")
+            return CompareResult.Greater;
+        if (typeof prevRowDataValue === "string" && typeof nextRowData === "number")
+            return CompareResult.Less;
+        // 其他之间的数据类型对比，则直接判定为相等。
+        return CompareResult.Equal;
     }
     // 更新行数据
     updateRowDatas(rowDatas) {
@@ -288,6 +458,10 @@ class TableRowStateCenter {
     getStateByRowKey(rowKey) {
         var _a;
         return (_a = this.rowStateMap.get(rowKey)) !== null && _a !== void 0 ? _a : null;
+    }
+    getRowKeyByRowData(rowData) {
+        var _a;
+        return (_a = this.rowKeyMap.get(rowData)) !== null && _a !== void 0 ? _a : -1;
     }
     getStateByFlattenIndex(index) {
         const rowKey = this.flattenRowKeys[index];

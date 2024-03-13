@@ -1,8 +1,9 @@
 <script lang="ts">
 import type { PropType, StyleValue, VNode } from "vue";
-import type { SorterState, TableColumn, TableColumnEllipsisObject } from "@stable/table-typing";
+import type { FilterState, SorterState, TableColumn, TableColumnEllipsisObject, TableColumnFilterValue } from "@stable/table-typing";
+
 import { SorterDirection } from "@stable/table-typing";
-import { defineComponent, h, Comment } from "vue";
+import { defineComponent, h, Comment, ref, computed } from "vue";
 import { useStateInject } from "../../hooks";
 import { toArray } from "../../utils";
 import ResizeHolder from "./ResizeHolder.vue";
@@ -37,13 +38,40 @@ export default defineComponent({
   setup(props) {
     const prefixClass = "s-table-header-cell";
 
-    const { slots: slotsTable } = useStateInject();
+    const { slots: slotsTable, tableState } = useStateInject();
+
+    const computedColKey = computed(() => tableState.value.colStateCenter.getColKeyByColumn(props.column));
+
+    const computedFilterState = computed(() => tableState.value.rowStateCenter.filterStates.find(state => state.colKey === computedColKey.value))
 
     // 渲染用户配置的 title
     function renderColumnTitle(column?: TableColumn) {
       return typeof column?.title === "function"
         ? column?.title()
         : column?.title;
+    }
+
+
+    // 执行搜索
+    function processFilter(filterKeys: TableColumnFilterValue[]) {
+      const colKey = computedColKey.value;
+      let filterStates = tableState.value.rowStateCenter.filterStates;
+      if (!colKey) return;
+
+      if (!filterKeys.length) {
+        // TODO: 可以优化
+        tableState.value.rowStateCenter.filterStates = filterStates.filter(state => state.colKey !== colKey);
+        return;
+      }
+
+      const matchedFilter = filterStates.find(state => state.colKey === colKey);
+
+      if (matchedFilter) {
+        matchedFilter.filterKeys = filterKeys;
+        return;
+      }
+
+      filterStates.push({ colKey, filterKeys });
     }
 
     // 渲染排序的图标
@@ -58,8 +86,13 @@ export default defineComponent({
       }
 
       if (column?.filter) {
-        // TODO: filterState
-        appendVNodes.push(h(HeaderFilter, { filter: column.filter, column: column }))
+        appendVNodes.push(h(HeaderFilter, {
+          filter: column.filter,
+          filterState: computedFilterState.value,
+          column: column,
+          triggerFilter: processFilter,
+          // TODO: 缺少一个筛选自定义渲染函数
+        }))
       }
 
       if (appendVNodes.length) {

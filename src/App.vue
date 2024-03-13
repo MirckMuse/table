@@ -26,13 +26,11 @@ const transformCellText: TransformCellText = ({ text, column }) => {
   return text
 }
 
-function customRow(record: RowData, rowIndex: number) {
-  if (rowIndex === 50) {
-    return {
-      style: "background-color: red"
-    }
-  }
-}
+const Enums = [
+  { label: "选项 1", value: "001" },
+  { label: "选项 2", value: "002" },
+  { label: "选项 3", value: "003" },
+]
 
 function createItem(_: unknown, index: number) {
   return {
@@ -40,7 +38,8 @@ function createItem(_: unknown, index: number) {
     "a": index,
     "b": "很长很长的一段文本很长很长的一段文本",
     "c": index,
-    "d": index + 1
+    "d": index + 1,
+    enums: Enums[(index % Enums.length)].value
   }
 }
 
@@ -71,6 +70,17 @@ const columns = ref<TableColumn[]>([
     resizable: true,
   },
   {
+    dataIndex: 'enums',
+    title: "筛选",
+    ellipsis: true,
+    filter: {
+      options: Enums
+    },
+    customRender({ text }) {
+      return Enums.find(item => item.value === text)?.label
+    }
+  },
+  {
     dataIndex: 'c',
     title: "第三列-2",
     colSpan: 2,
@@ -90,19 +100,6 @@ const columns = ref<TableColumn[]>([
     dataIndex: 'c',
     title: "第三列-4",
     sorter: true,
-    filter: {
-      options: [
-        { label: "123", value: "123" },
-        {
-          label: "Submenu", value: "Submenu", children: [
-            {
-              label: 'Green',
-              value: 'Green',
-            },
-          ]
-        },
-      ]
-    },
     resizable: true,
     width: 200
   },
