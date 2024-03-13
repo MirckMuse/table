@@ -76,7 +76,7 @@ export type TableColumnEllipsisObject = {
 
 export type TableColumnEllipsis = boolean | TableColumnEllipsisObject;
 
-export type TableColumnFilterValue = string | number | boolean;
+export type TableColumnFilterValue = string | number;
 
 export interface TableColumnFilterOption {
   label: TableColumnFilterValue | VNode | (() => VNode);
@@ -90,6 +90,8 @@ export interface TableColumnFilterOption {
 
 
 export type TableColumnFilterMode = "menu" | "tree";
+
+export type TableColumnFilterSearch = boolean | ((search: string, option: TableColumnFilterOption) => boolean);
 
 // 表头筛选项的配置
 export interface TableColumnFilter {
@@ -108,7 +110,7 @@ export interface TableColumnFilter {
 
   multiple?: boolean;
 
-  search?: boolean | ((search: string, option: TableColumnFilterOption) => boolean);
+  search?: TableColumnFilterSearch;
 
   options?: TableColumnFilterOption[];
 

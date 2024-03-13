@@ -1,8 +1,10 @@
 <script lang="ts">
-import type { FilterState, TableColumn, TableColumnFilter, TableColumnFilterValue } from "@stable/table-typing";
+import type { FilterState, TableColumn, TableColumnFilter, TableColumnFilterOption, TableColumnFilterValue } from "@stable/table-typing";
 import type { PropType, VNode } from "vue";
+import type { DataNode } from "ant-design-vue/es/tree";
+
 import { computed, defineComponent, h, onBeforeUnmount, ref, shallowRef, watch } from "vue";
-import { Dropdown, Button, Empty, Menu, Checkbox, Radio } from "ant-design-vue";
+import { Dropdown, Button, Empty, Menu, Checkbox, Radio, Tree } from "ant-design-vue";
 import { RiFilter2Fill } from "@remixicon/vue";
 import { stopPropagation } from "../../utils"
 import { isEqual, isNil } from "lodash-es";
@@ -17,12 +19,54 @@ interface FilterResetProps {
   closeDropdown?: boolean;
 }
 
+// 默认的筛选项的 reset 的属性。
 const DefaultFilterResetProps: FilterResetProps = {
   confirm: false,
   closeDropdown: false,
 }
 
-const DefaultTableColumnFilter: TableColumnFilter = { mode: "menu", multiple: true }
+// 默认的表格筛选配置。
+const DefaultTableColumnFilter: TableColumnFilter = { mode: "menu", multiple: true };
+
+type CustomRenderFilterDropdown = Function;
+
+interface RenderDropdownMenuOption {
+  filter: TableColumnFilter;
+
+  keyword: string;
+
+  customRenderFilterDropdown?: CustomRenderFilterDropdown;
+
+  column: TableColumn;
+
+  visible: boolean;
+
+  selectedKeys?: TableColumnFilterValue[];
+
+  openKeys?: TableColumnFilterValue[];
+
+  treeData?: DataNode[];
+}
+
+interface RenderDropdownMenuContentOption extends RenderDropdownMenuOption {
+}
+
+function genTreeData(options?: TableColumnFilterOption[]): DataNode[] | undefined {
+  return options?.map((option, index) => {
+    const key = String(option.value ?? index);
+
+    const item: DataNode = {
+      title: option.label,
+      key: key,
+    }
+
+    if (option.children) {
+      item.children = genTreeData(option.children)
+    }
+
+    return item;
+  });
+}
 
 export default defineComponent({
   name: "STableFilter",
@@ -36,7 +80,9 @@ export default defineComponent({
 
     triggerFilter: { type: Function as PropType<(filterState: FilterState) => void> },
 
-    customRenderFilterDropdown: { type: Function }
+    customRenderFilterDropdown: { type: Function as PropType<CustomRenderFilterDropdown> },
+
+    getPopupContainer: { type: Function as PropType<(target: HTMLElement) => HTMLElement> }
   },
 
   setup(props) {
@@ -45,6 +91,37 @@ export default defineComponent({
     const keywords = shallowRef("");
     function handleSearch($event: any) {
       keywords.value = $event.target?.value ?? "";
+    }
+
+    function getFilterData(node: any): TableColumnFilterOption {
+      return {
+        ...node,
+        label: node.title,
+        value: node.key,
+        children: node.children?.map(getFilterData)
+      }
+    }
+
+    // 创建树的筛选函数
+    function createFilterTreeNode(keyword: string, filter: TableColumnFilter) {
+      const _keyword = keyword.trim().toLowerCase() ?? ""
+      if (!_keyword) return undefined;
+
+      const { search } = filter;
+
+      if (typeof search === "function") {
+        return (node: any) => {
+          return search(_keyword, getFilterData(node))
+        }
+      }
+
+      return (node: any) => {
+        const label = node.text;
+        if (typeof label === "string" || typeof label === "number") {
+          return label.toString().toLowerCase().includes(_keyword)
+        }
+        return false
+      }
     }
 
     const mergedFilter = computed(() => {
@@ -69,15 +146,28 @@ export default defineComponent({
     watch(filteredKeys, (_selectedKeys) => {
       if (!mergedVisible.value) return;
 
-      handleSelectKeys({ selectedKeys: _selectedKeys })
+      handleSelectKeys({ selectedKeys: _selectedKeys ?? [] })
     }, { immediate: true });
 
-    const flattenFilteredKeys = computed(() => flattenKeys<TableColumnFilterValue>(mergedFilter.value.options));
+    // 扁平的筛选keys，提供树组件使用
+    const flattenFilteredKeys = computed(() => {
+      const { options, mode } = mergedFilter.value;
+
+      if (mode !== "tree") {
+        return []
+      }
+
+      return flattenKeys<TableColumnFilterValue>(options)
+    });
 
     const onFilterDropdownOpenChange = computed(() => props.filter.onOpenChange)
 
-    // TODO:
-    const filtered = ref(false);
+    const filtered = computed(() => {
+      if (!props.filterState) return false;
+
+      const { filterKeys, forceFilter } = props.filterState;
+      return !!(filterKeys?.length || forceFilter)
+    });
 
     const selectedKeys = shallowRef<TableColumnFilterValue[]>();
 
@@ -126,7 +216,7 @@ export default defineComponent({
     // 渲染表单项
     function renderFilterMenuItems(filter: TableColumnFilter): VNode[] {
       return filter.options!.map((option, index) => {
-        const optionKey = isNil(filter.value) ? index : String(option.value);
+        const optionKey = isNil(option.value) ? String(index) : String(option.value);
         const label = typeof option.label === "function"
           ? option.label()
           : option.label;
@@ -144,7 +234,7 @@ export default defineComponent({
         const Component = filter.multiple ? Checkbox : Radio;
 
         return h(Menu.Item, { key: optionKey }, () => [
-          h(Component),
+          h(Component, { checked: selectedKeys.value?.includes(optionKey) }),
           h("span", {}, label as any)
         ])
       })
@@ -164,6 +254,7 @@ export default defineComponent({
 
       // 重置默认的筛选值
       const { resetToDefaultFilteredValue, defaultFilteredValue } = props.filter;
+
       if (resetToDefaultFilteredValue) {
         selectedKeys.value = (defaultFilteredValue || []).map(value => String(value));
       } else {
@@ -185,6 +276,14 @@ export default defineComponent({
       triggerConfirm(selectedKeys.value);
     }
 
+    const treeData = computed(() => {
+      const { mode, options } = props.filter;
+
+      if (mode !== "tree") return [];
+
+      return genTreeData(options);
+    })
+
     // 重置按钮的禁用逻辑
     const resetDisabled = computed(() => {
       const _selectedKeys = selectedKeys.value;
@@ -197,16 +296,28 @@ export default defineComponent({
           _selectedKeys,
         )
       }
-
       return !_selectedKeys?.length;
     });
 
     // TODO: 渲染下拉菜单的内容
-    function renderDropdownMenuContent(filter: TableColumnFilter): VNodeOrNull[] {
+    function renderDropdownMenuContent(option: RenderDropdownMenuContentOption): VNodeOrNull[] {
+      let {
+        filter,
+        keyword: _keyword,
+        selectedKeys: _selectedKeys,
+        openKeys: _openKeys,
+        treeData: _treeData
+      } = option;
+
+
+      _selectedKeys = (_selectedKeys ?? []).map(value => String(value));
+      _openKeys = (_openKeys ?? []).map(value => String(value));
+
       const {
         options = [],
-        multiple,
-        mode = "menu"
+        multiple = true,
+        mode = "menu",
+        search
       } = filter;
 
       // 渲染下拉选项
@@ -214,13 +325,38 @@ export default defineComponent({
       if (options.length === 0) {
         filterComponent = h(Empty)
       } else if (mode === "tree") {
-        filterComponent = [];
-      } else if (mode === "menu") {
-        const _valueMap = (value: unknown) => String(value);
+
+        const _filterTreeNode = createFilterTreeNode(_keyword, filter);
         filterComponent = [
           h(FilterSearch, {
-            filterSearch: () => true,
-            value: keywords.value,
+            filterSearch: search,
+            value: _keyword,
+            onChange: handleSearch
+          }),
+          h("div", { class: `${prefixClass}__dropdown-tree` }, [
+            multiple ? h(Checkbox) : null,
+            h(Tree, {
+              checkable: true,
+              selectable: false,
+              blockNode: true,
+              multiple: multiple,
+              checkStrictly: !multiple,
+              class: `${prefixClass}-menu`,
+              checkedKeys: _selectedKeys,
+              selectedKeys: _selectedKeys,
+              showIcon: false,
+              treeData: _treeData,
+              autoExpandParent: true,
+              defaultExpandAll: true,
+              filterTreeNode: _filterTreeNode
+            })
+          ])
+        ];
+      } else if (mode === "menu") {
+        filterComponent = [
+          h(FilterSearch, {
+            filterSearch: search,
+            value: _keyword,
             onChange: handleSearch
           }),
           h(
@@ -228,12 +364,12 @@ export default defineComponent({
             {
               multiple,
               // prefixCls: `${prefixClass}__dropdown-menu`,
-              selectedKeys: (selectedKeys.value ?? []).map(_valueMap),
-              openKeys: (openKeys.value ?? []).map(_valueMap),
+              selectedKeys: _selectedKeys,
+              openKeys: _openKeys,
               onClick: handleMenuClick,
               onSelect: handleSelectKeys,
               onDeselect: handleSelectKeys,
-              getPopupContainer: getPopupContainer,
+              getPopupContainer: props.getPopupContainer,
               onOpenChange: handleOpenKeysChange
             },
             {
@@ -254,24 +390,32 @@ export default defineComponent({
     }
 
     // 渲染下拉菜单
-    function renderDropdownMenu(filter: TableColumnFilter) {
+    function renderDropdownMenu(option: RenderDropdownMenuOption) {
+      const {
+        filter,
+        customRenderFilterDropdown,
+        selectedKeys,
+        column,
+        visible
+      } = option;
+
       const _onKeydown = ($event: KeyboardEvent) => {
         if ($event.code === "Enter" || $event.keyCode === 13) {
           $event.stopPropagation();
         }
       }
-      const dropdownMenuContent = props.customRenderFilterDropdown
-        ? props.customRenderFilterDropdown({
-          visible: mergedVisible.value,
-          column: props.column,
+      const dropdownMenuContent = customRenderFilterDropdown
+        ? customRenderFilterDropdown({
+          visible: visible,
+          column: column,
           options: filter.options,
           setSelectedKeys: (keys: TableColumnFilterValue[]) => handleSelectKeys({ selectedKeys: keys }),
-          selectedKeys: selectedKeys.value,
+          selectedKeys: selectedKeys,
           onConfirm: handleCustomConfirm,
           onReset: handleReset,
           onClose: () => triggerVisible(false)
         })
-        : renderDropdownMenuContent(filter);
+        : renderDropdownMenuContent(option);
 
       return h(
         "div",
@@ -293,7 +437,7 @@ export default defineComponent({
         renderFilterIcon())
     }
 
-    // TODO: 处理下拉菜单的 visible
+    // 处理下拉菜单的 visible
     function handleDropdownOpenChange(visible: boolean) {
       interalVisible.value = visible;
 
@@ -308,14 +452,9 @@ export default defineComponent({
       }
     }
 
-    // TODO: Menu 选中后的逻辑
-    function handleSelectKeys({ selectedKeys: _selectedKeys }: { selectedKeys?: TableColumnFilterValue[] }) {
+    // Menu 选中后的逻辑
+    function handleSelectKeys({ selectedKeys: _selectedKeys }: { selectedKeys: TableColumnFilterValue[] }) {
       selectedKeys.value = _selectedKeys;
-    }
-
-    // TODO:
-    function getPopupContainer() {
-      return document.body;
     }
 
     return () => {
@@ -325,11 +464,21 @@ export default defineComponent({
           trigger: ["click"],
           open: mergedVisible.value,
           onOpenChange: handleDropdownOpenChange,
-          // getPopupContainer: getPopupContainer,
-          placement: "bottomRight"
+          getPopupContainer: props.getPopupContainer,
+          placement: "bottomRight",
+          forceRender: true
         },
         {
-          overlay: () => renderDropdownMenu(mergedFilter.value),
+          overlay: () => renderDropdownMenu({
+            filter: mergedFilter.value,
+            keyword: keywords.value,
+            customRenderFilterDropdown: props.customRenderFilterDropdown,
+            column: props.column,
+            selectedKeys: selectedKeys.value,
+            openKeys: openKeys.value,
+            visible: mergedVisible.value,
+            treeData: treeData.value,
+          }),
           default: () => renderDropdownTrigger({ filtered: filtered.value }),
         }
       )

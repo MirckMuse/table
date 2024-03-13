@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { RowData } from "@stable/table-typing";
+import type { TableColumnFilterSearch } from "@stable/table-typing";
 import type { PropType } from "vue";
 import { defineComponent, h } from "vue";
 import { Input } from "ant-design-vue";
@@ -13,7 +13,7 @@ export default defineComponent({
   props: {
     value: { type: String },
 
-    filterSearch: { type: [Boolean, Function] as PropType<boolean | ((keyword: string, rowData: RowData) => boolean)> },
+    filterSearch: { type: [Boolean, Function] as PropType<TableColumnFilterSearch> },
 
     onChange: { type: Function as PropType<($event: InputEvent) => void> }
   },
@@ -29,7 +29,7 @@ export default defineComponent({
       const inputVNode = h(
         Input,
         {
-          onChange,
+          onChange: onChange as any,
           value,
           htmlSize: 1,
           class: `${prefixClass}-input`,
