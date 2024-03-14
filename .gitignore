@@ -175,5 +175,5 @@ dist
 .DS_Store
 
 esm
-packages/**/esm
+packages/**/esm/
 dev-dist/

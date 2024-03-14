@@ -150,11 +150,11 @@ export function useStateProvide({
   watch(
     () => state.value.rowStateCenter.filterStates,
     () => {
-      console.time('filter')
+      const start = performance.now();
       state.value.rowStateCenter
         .getFilteredRowDatas(props.dataSource ?? [])
         .then((result) => {
-          console.timeEnd('filter')
+          console.log(`${performance.now() - start}ms`)
         })
     },
     { deep: true }

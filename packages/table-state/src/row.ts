@@ -1,8 +1,9 @@
 import { runIdleTask } from "@stable/table-shared";
 import { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterDirection, SorterState } from "@stable/table-typing";
-import { chunk, cloneDeep, get, isNil } from "lodash-es";
+import { chunk, get, isNil } from "lodash-es";
 import { TableState } from "./table";
 import workerpool from "workerpool";
+import { toRaw } from "vue";
 
 const workerpoolInstance = workerpool.pool()
 
@@ -187,18 +188,17 @@ export class TableRowStateCenter {
       const poolRows = rows.map(row => {
         return {
           key: this.getRowKeyByRowData(row),
-          data: cloneDeep(row)
+          data: toRaw(row)
         }
       });
 
       return workerpoolInstance.exec(_poolTask, [
         poolRows,
-        cloneDeep(this.filterStates).map(state => Object.assign({}, state, { dataIndex: this.tableState.colStateCenter.getColumnByColKey(state.colKey)?.dataIndex }))
+        toRaw(this.filterStates).map(state => Object.assign({}, state, { dataIndex: this.tableState.colStateCenter.getColumnByColKey(state.colKey)?.dataIndex }))
       ])
     }
 
     const chunks = chunk(rowDatas, ChunkSize);
-
     return Promise
       .all(chunks.map(rows => _task(rows)))
       .then((rowKeyChunks) => {
