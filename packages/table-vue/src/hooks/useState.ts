@@ -155,6 +155,7 @@ export function useStateProvide({
         .getFilteredRowDatas(props.dataSource ?? [])
         .then((result) => {
           console.log(`${performance.now() - start}ms`)
+          console.log(result)
         })
     },
     { deep: true }

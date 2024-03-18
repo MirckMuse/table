@@ -1,7 +1,8 @@
-import { isNil, get, chunk, cloneDeep, groupBy } from 'lodash-es';
+import { isNil, get, chunk, groupBy } from 'lodash-es';
 import { runIdleTask, binaryFindIndexRange } from '@stable/table-shared';
 import { SorterDirection } from '@stable/table-typing';
 import workerpool from 'workerpool';
+import { toRaw } from 'vue';
 
 const DefaultColWidth = 120;
 const ColKeySplitWord = "__$$__";
@@ -270,7 +271,7 @@ class TableRowStateCenter {
         this.flattenYIndexes = [];
         // rowKey => TableRowState 映射关系
         this.rowStateMap = new Map();
-        this.rowKeyMap = new WeakMap;
+        this.rowKeyMap = new WeakMap();
         this.sorterMemoize = new Map();
         this.sorterStates = [];
         this.filterStates = [];
@@ -284,7 +285,7 @@ class TableRowStateCenter {
         this.rawRowKeys = [];
         this.flattenRowKeys = [];
         this.flattenYIndexes = [];
-        this.rowKeyMap = new WeakMap;
+        this.rowKeyMap = new WeakMap();
     }
     // 根据排序状态获取排序结果
     // TODO: 数据有可能会发生更新
@@ -325,6 +326,7 @@ class TableRowStateCenter {
         return __awaiter(this, void 0, void 0, function* () {
             if (!((_a = this.filterStates) === null || _a === void 0 ? void 0 : _a.length))
                 return rowDatas;
+            const colStateCenter = this.tableState.colStateCenter;
             function _poolTask(rows, filterStates) {
                 return filterStates
                     .reduce((filteredRows, filterState) => {
@@ -339,38 +341,55 @@ class TableRowStateCenter {
                     .map((row) => row.key);
             }
             const _task = (rows) => {
-                const poolRows = rows.map(row => {
-                    return {
-                        key: this.getRowKeyByRowData(row),
-                        data: cloneDeep(row)
+                // FIXME: 10w 条数据消耗 20ms,需要优化 到 10ms 以内
+                const start = performance.now();
+                const _createGeneratePoolRows = () => {
+                    if (this.getRowKey) {
+                        return (rows) => {
+                            return toRaw(rows).map((row) => ({
+                                key: this.getRowKey(row),
+                                data: row,
+                            }));
+                        };
+                    }
+                    return (rows) => {
+                        return rows.map((row) => {
+                            return { key: this.getRowKeyByRowData(row), data: toRaw(row) };
+                        });
                     };
+                };
+                const generatePoolRows = _createGeneratePoolRows();
+                const poolRows = generatePoolRows(rows);
+                console.log(`Generate poolRows spend ${performance.now() - start}ms`);
+                const rawFilterStates = toRaw(this.filterStates).map((state) => {
+                    var _a;
+                    return Object.assign({
+                        dataIndex: (_a = colStateCenter.getColumnByColKey(state.colKey)) === null || _a === void 0 ? void 0 : _a.dataIndex,
+                    }, state);
                 });
-                return workerpoolInstance.exec(_poolTask, [
-                    poolRows,
-                    cloneDeep(this.filterStates).map(state => { var _a; return Object.assign({}, state, { dataIndex: (_a = this.tableState.colStateCenter.getColumnByColKey(state.colKey)) === null || _a === void 0 ? void 0 : _a.dataIndex }); })
-                ]);
+                return workerpoolInstance.exec(_poolTask, [poolRows, rawFilterStates]);
             };
-            const chunks = chunk(rowDatas, ChunkSize);
-            return Promise
-                .all(chunks.map(rows => _task(rows)))
-                .then((rowKeyChunks) => {
-                return rowKeyChunks.flat().reduce((result, key) => {
+            try {
+                const rows = yield _task(rowDatas);
+                return rows.reduce((result, key) => {
                     const rowData = this.getRowDataByRowKey(key);
                     if (rowData) {
                         result.push(rowData);
                     }
                     return result;
                 }, []);
-            })
-                .finally(() => {
-                workerpoolInstance.terminate();
-            });
+            }
+            catch (error) {
+                throw error;
+            }
+            finally {
+                yield workerpoolInstance.terminate();
+            }
         });
     }
     //  获取排序后的行数据
     getSortedRowDatas(rowDatas) {
-        return rowDatas
-            .sort((prev, next) => {
+        return rowDatas.sort((prev, next) => {
             for (const state of this.sorterStates) {
                 const compareResult = this.getSorterMemorize(state, prev, next);
                 if (compareResult === CompareResult.Equal) {
@@ -397,10 +416,14 @@ class TableRowStateCenter {
         if (prevRowDataValue === nextRowDataValue)
             return CompareResult.Equal;
         // number string 之间的相互对比
-        if (typeof prevRowDataValue === "number" && typeof nextRowDataValue === "number")
+        if (typeof prevRowDataValue === "number" &&
+            typeof nextRowDataValue === "number")
             return prevRowDataValue - nextRowDataValue;
-        if (typeof prevRowDataValue === "string" && typeof nextRowDataValue === "string")
-            return prevRowDataValue > nextRowDataValue ? CompareResult.Greater : CompareResult.Less;
+        if (typeof prevRowDataValue === "string" &&
+            typeof nextRowDataValue === "string")
+            return prevRowDataValue > nextRowDataValue
+                ? CompareResult.Greater
+                : CompareResult.Less;
         if (typeof prevRowDataValue === "number" && typeof nextRowData === "string")
             return CompareResult.Greater;
         if (typeof prevRowDataValue === "string" && typeof nextRowData === "number")
@@ -412,8 +435,11 @@ class TableRowStateCenter {
     updateRowDatas(rowDatas) {
         this.init();
         // 粗略估计一下可视高度
-        this.tableState.viewport.scrollHeight = rowDatas.length * this.roughRowHeight;
-        this.flattenYIndexes = Array(rowDatas.length).fill(null).map((_, i) => (i + 1) * this.roughRowHeight);
+        this.tableState.viewport.scrollHeight =
+            rowDatas.length * this.roughRowHeight;
+        this.flattenYIndexes = Array(rowDatas.length)
+            .fill(null)
+            .map((_, i) => (i + 1) * this.roughRowHeight);
         // 生成行数据的 meta
         const _createRowStateMeta = (rowData, index) => {
             return {
@@ -500,7 +526,9 @@ class TableRowStateCenter {
         return this.getRowDataByRowKey(rowKey);
     }
     insertRowState(rowData, meta) {
-        const rowKey = this.getRowKey ? this.getRowKey(rowData) : `${meta.deep}-${meta.index}`;
+        const rowKey = this.getRowKey
+            ? this.getRowKey(rowData)
+            : `${meta.deep}-${meta.index}`;
         const newMeta = Object.assign({}, {
             key: rowKey,
             height: this.roughRowHeight,
@@ -521,9 +549,9 @@ class TableRowStateCenter {
             return;
         }
         const rowIndex = (_b = (_a = this.getStateByRowKey(rowKey)) === null || _a === void 0 ? void 0 : _a.getMeta().index) !== null && _b !== void 0 ? _b : -1;
-        const matchIndex = rowIndex < (this.flattenRowKeys.length / 2)
-            ? this.flattenRowKeys.findIndex(_rowKey => _rowKey === rowKey)
-            : this.flattenRowKeys.findLastIndex(_rowKey => _rowKey === rowKey);
+        const matchIndex = rowIndex < this.flattenRowKeys.length / 2
+            ? this.flattenRowKeys.findIndex((_rowKey) => _rowKey === rowKey)
+            : this.flattenRowKeys.findLastIndex((_rowKey) => _rowKey === rowKey);
         this.updateYIndexesByFlattenIndex(matchIndex);
     }
     updateYIndexesByFlattenIndex(index = 0) {
@@ -531,7 +559,8 @@ class TableRowStateCenter {
         let reduceHeight = this.flattenYIndexes[flattenIndex - 1] || 0;
         const length = this.flattenYIndexes.length;
         for (let i = flattenIndex; i < length - 1; i++) {
-            this.flattenYIndexes[i] = reduceHeight + this.getRowHeightByFlattenIndex(i);
+            this.flattenYIndexes[i] =
+                reduceHeight + this.getRowHeightByFlattenIndex(i);
             reduceHeight = this.flattenYIndexes[i];
         }
     }
