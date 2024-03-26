@@ -152,7 +152,10 @@ export default defineComponent({
           height: Math.floor(element.getBoundingClientRect().height) + top + bottom
         })
       }
+      // const start = performance.now();
       tableState.value.updateRowMetas(metas);
+
+      // console.log("updateRowMetas", performance.now() - start);
     });
 
     const rightColumns = computed(() => {

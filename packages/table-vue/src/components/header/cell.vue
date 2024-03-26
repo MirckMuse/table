@@ -59,8 +59,7 @@ export default defineComponent({
       if (!colKey) return;
 
       if (!filterKeys.length) {
-        // TODO: 可以优化
-        tableState.value.rowStateCenter.filterStates = filterStates.filter(state => state.colKey !== colKey);
+        tableState.value.updateFilterStates(filterStates.filter(state => state.colKey !== colKey))
         return;
       }
 
@@ -68,10 +67,11 @@ export default defineComponent({
 
       if (matchedFilter) {
         matchedFilter.filterKeys = filterKeys;
-        return;
+      } else {
+        filterStates.push({ colKey, filterKeys });
       }
 
-      filterStates.push({ colKey, filterKeys });
+      tableState.value.updateFilterStates(filterStates);
     }
 
     // 渲染排序的图标

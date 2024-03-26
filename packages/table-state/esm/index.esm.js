@@ -1,7 +1,6 @@
 import { isNil, get, chunk, groupBy } from 'lodash-es';
 import { runIdleTask, binaryFindIndexRange } from '@stable/table-shared';
 import { SorterDirection } from '@stable/table-typing';
-import workerpool from 'workerpool';
 import { toRaw } from 'vue';
 
 const DefaultColWidth = 120;
@@ -203,39 +202,6 @@ class TableColStateCenter {
     }
 }
 
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol */
-
-
-function __awaiter(thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-}
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-
-const workerpoolInstance = workerpool.pool();
 class TableRowState {
     getMeta() {
         return Object.assign({}, this.meta);
@@ -278,6 +244,7 @@ class TableRowStateCenter {
         this.tableState = option.tableState;
         this.roughRowHeight = (_a = option.rowHeight) !== null && _a !== void 0 ? _a : DefaultRowHeight;
         this.getRowKey = (_b = option.getRowKey) !== null && _b !== void 0 ? _b : (() => -1);
+        console.log(123);
     }
     // 初始化一些关键属性
     init() {
@@ -323,69 +290,30 @@ class TableRowStateCenter {
     // 获取筛选后的行数据
     getFilteredRowDatas(rowDatas) {
         var _a;
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!((_a = this.filterStates) === null || _a === void 0 ? void 0 : _a.length))
-                return rowDatas;
+        if (!((_a = this.filterStates) === null || _a === void 0 ? void 0 : _a.length))
+            return rowDatas;
+        function _filterTask(rows, filterStates) {
+            return filterStates
+                .reduce((filteredRows, filterState) => {
+                const { filterKeys, filter } = filterState;
+                const onFilter = filter.onFilter;
+                if (filterKeys === null || filterKeys === void 0 ? void 0 : filterKeys.length) {
+                    return filteredRows.filter((row) => filterKeys.some((key) => onFilter(String(key), toRaw(row))));
+                }
+                return filteredRows;
+            }, rows);
+        }
+        const _task = (rows) => {
             const colStateCenter = this.tableState.colStateCenter;
-            function _poolTask(rows, filterStates) {
-                return filterStates
-                    .reduce((filteredRows, filterState) => {
-                    const { filterKeys, dataIndex } = filterState;
-                    if (filterKeys === null || filterKeys === void 0 ? void 0 : filterKeys.length) {
-                        return filteredRows.filter((row) => {
-                            return filterKeys.some((key) => row.data[dataIndex] === key);
-                        });
-                    }
-                    return filteredRows;
-                }, rows)
-                    .map((row) => row.key);
-            }
-            const _task = (rows) => {
-                // FIXME: 10w 条数据消耗 20ms,需要优化 到 10ms 以内
-                const start = performance.now();
-                const _createGeneratePoolRows = () => {
-                    if (this.getRowKey) {
-                        return (rows) => {
-                            return toRaw(rows).map((row) => ({
-                                key: this.getRowKey(row),
-                                data: row,
-                            }));
-                        };
-                    }
-                    return (rows) => {
-                        return rows.map((row) => {
-                            return { key: this.getRowKeyByRowData(row), data: toRaw(row) };
-                        });
-                    };
-                };
-                const generatePoolRows = _createGeneratePoolRows();
-                const poolRows = generatePoolRows(rows);
-                console.log(`Generate poolRows spend ${performance.now() - start}ms`);
-                const rawFilterStates = toRaw(this.filterStates).map((state) => {
-                    var _a;
-                    return Object.assign({
-                        dataIndex: (_a = colStateCenter.getColumnByColKey(state.colKey)) === null || _a === void 0 ? void 0 : _a.dataIndex,
-                    }, state);
-                });
-                return workerpoolInstance.exec(_poolTask, [poolRows, rawFilterStates]);
-            };
-            try {
-                const rows = yield _task(rowDatas);
-                return rows.reduce((result, key) => {
-                    const rowData = this.getRowDataByRowKey(key);
-                    if (rowData) {
-                        result.push(rowData);
-                    }
-                    return result;
-                }, []);
-            }
-            catch (error) {
-                throw error;
-            }
-            finally {
-                yield workerpoolInstance.terminate();
-            }
-        });
+            const rawFilterStates = this.filterStates
+                .map((state) => {
+                var _a;
+                return Object.assign({ filter: (_a = colStateCenter.getColumnByColKey(state.colKey)) === null || _a === void 0 ? void 0 : _a.filter }, state);
+            })
+                .filter((state) => { var _a; return typeof ((_a = state.filter) === null || _a === void 0 ? void 0 : _a.onFilter); });
+            return _filterTask(rows, rawFilterStates);
+        };
+        return _task(rowDatas);
     }
     //  获取排序后的行数据
     getSortedRowDatas(rowDatas) {
@@ -431,6 +359,7 @@ class TableRowStateCenter {
         // 其他之间的数据类型对比，则直接判定为相等。
         return CompareResult.Equal;
     }
+    updateRawPoolRow() { }
     // 更新行数据
     updateRowDatas(rowDatas) {
         this.init();

@@ -10,10 +10,10 @@
 </template>
 
 <script lang="ts" setup>
-import { h, ref } from "vue";
+import { TableColumn } from "@stable/table-typing";
 import { TransformCellText } from "@stable/table-vue";
-import { RowData, TableColumn } from "@stable/table-typing"
 import { uniqueId } from "lodash-es";
+import { h, ref } from "vue";
 
 function handleResizeColumn(width: number, col: TableColumn) {
   col.width = width;
@@ -43,7 +43,7 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(1000).fill(null).map(createItem));
 
 const children = Array(10).fill(null).map(createItem) as any[];
 
@@ -74,7 +74,10 @@ const columns = ref<TableColumn[]>([
     title: "筛选",
     ellipsis: true,
     filter: {
-      options: Enums
+      options: Enums,
+      onFilter(keyword, row) {
+        return row.enums === keyword;
+      }
     },
     customRender({ text }) {
       return Enums.find(item => item.value === text)?.label

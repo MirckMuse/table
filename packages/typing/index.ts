@@ -91,7 +91,9 @@ export interface TableColumnFilterOption {
 
 export type TableColumnFilterMode = "menu" | "tree";
 
-export type TableColumnFilterSearch = boolean | ((search: string, option: TableColumnFilterOption) => boolean);
+export type TableColumnFilterSearchFn = (search: string, option: TableColumnFilterOption) => boolean;
+
+export type TableColumnFilterSearch = boolean | TableColumnFilterSearchFn;
 
 // 表头筛选项的配置
 export interface TableColumnFilter {
@@ -113,6 +115,8 @@ export interface TableColumnFilter {
   search?: TableColumnFilterSearch;
 
   options?: TableColumnFilterOption[];
+
+  onFilter?: (search: string, row: RowData) => boolean;
 
   onOpenChange?: (visible: boolean) => void;
 

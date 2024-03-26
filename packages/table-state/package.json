@@ -1,8 +1,8 @@
 {
   "name": "@stable/table-state",
-  "module": "esm/index.esm.js",
   "type": "module",
-  "types": "esm/index.d.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
   "version": "0.0.1",
   "scripts": {
     "build": "npm run clean && rollup -c rollup.config.mjs && npm run build:dts",

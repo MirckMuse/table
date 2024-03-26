@@ -3,7 +3,7 @@ import { TableColStateCenter } from "./col";
 import { TableRowStateCenter, type TableRowStateOrNull } from "./row";
 import { adjustScrollOffset, rowKeyCompare } from "./shared";
 import { Viewport, type IViewport } from "./viewport";
-import type { RowData, GetRowKey, TableColumn, RowKey } from "@stable/table-typing"
+import type { RowData, GetRowKey, TableColumn, RowKey, FilterState, SorterState } from "@stable/table-typing"
 import { binaryFindIndexRange } from "@stable/table-shared";
 
 export interface TableStateOption {
@@ -104,7 +104,9 @@ export class TableState {
   }
 
   updateRowMetas(rowMetas: OuterRowMeta[]) {
+
     const groupedCellMetas = groupBy(rowMetas, "rowKey");
+
     let offsetHeight = 0;
     let firstRowState: TableRowStateOrNull = null;
 
@@ -130,10 +132,15 @@ export class TableState {
       }
     }
 
+
     if (offsetHeight === 0) return;
 
     if (firstRowState) {
-      this.rowStateCenter.updateYIndexesByRowKey(firstRowState.getMeta().key);
+      // let start = performance.now();
+
+      this.rowStateCenter.resetYIndexes();
+      // console.log(`resetYIndexes spend Time ${performance.now() - start}ms`)
+
     }
     this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
   }
@@ -152,6 +159,36 @@ export class TableState {
     })
   }
 
+
+  // 筛选或者排序后滚动到顶部
+  scrollToTopAfterFilterOrSorter = true;
+
+  /**
+   * 更新筛选状态
+   * @returns 
+   */
+
+  updateFilterStates(filterStates: FilterState[]) {
+    this.rowStateCenter.updateFilterStates(filterStates);
+
+    if (this.scrollToTopAfterFilterOrSorter) {
+      this.scroll.top = 0;
+    }
+
+    // 筛选后需要更新可滚动距离
+    const { flattenRowKeys, flattenYIndexes } = this.rowStateCenter;
+    const lastRowKey = flattenRowKeys[flattenRowKeys.length - 1];
+    const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
+    const lastRowHeight = this.rowStateCenter.getStateByRowKey(lastRowKey)?.getMeta().height ?? 0;
+    this.viewport.scrollHeight = lastRowY + lastRowHeight;
+
+  }
+
+  updateSorterStates(sorterStates: SorterState[]) {
+    // this.rowStateCenter.updateS
+    this.rowStateCenter.sorterStates = sorterStates;
+  }
+
   getViewportRowDataRange() {
     const range: RowDataRange = { startIndex: 0, endIndex: 0 };
 
@@ -162,6 +199,7 @@ export class TableState {
     }
 
     const { flattenYIndexes, flattenRowKeys } = this.rowStateCenter;
+
     const dataSourceLength = flattenRowKeys.length;
 
     range.startIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(this.scroll.top));
@@ -328,5 +366,4 @@ export class TableState {
 
     this.rowStateCenter.flattenRowKeys = newflattenRowKeys;
   }
-
 }
