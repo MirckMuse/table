@@ -48,7 +48,7 @@ function createItem(_: unknown, index: number) {
     id: uniqueId("uuid"),
     "a": index,
     "b": "很长很长的一段文本很长很长的一段文本",
-    "c": index,
+    "c": Math.floor(Math.random() * 100),
     "d": index + 1,
     enums: Enums[(index % Enums.length)].value
   }

@@ -1,11 +1,11 @@
 <script lang="ts">
-import type { VNode, PropType } from "vue";
-import type { RowData, RowKey, TableColumn } from "@scode/table-typing"
+import type { RowData, RowKey, TableColumn } from "@scode/table-typing";
+import type { PropType, VNode } from "vue";
+import { defineComponent, h } from "vue";
+import { useStateInject } from "../../hooks";
 import type { CustomRow, ExpandIconSlot, } from "../../typing";
 import { BodyCellInheritProps } from "../../typing";
-import { defineComponent, h, onRenderTriggered } from "vue";
 import BodyRow from "./row.vue";
-import { useStateInject } from "../../hooks";
 
 export default defineComponent({
   name: "STableBodyRows",
@@ -53,10 +53,6 @@ export default defineComponent({
         }
       );
     }
-
-    onRenderTriggered((e) => {
-      console.log(e)
-    })
 
     return () => {
       const {

@@ -126,6 +126,10 @@ export class TableRowStateCenter {
 
   private sorterMemoize: SorterMemoize = new Map();
 
+  // TODO: RowData 改变后，需要重置 memoize，大概 2n - 2 次操作
+  updateSorterMemoizeByRowDataChange() {
+  }
+
   // 根据排序状态获取排序结果
   // TODO: 数据有可能会发生更新
   private getSorterMemorize(
@@ -178,13 +182,17 @@ export class TableRowStateCenter {
 
   // 更新排序状态
   updateSorterStates(sorterStates: SorterState[]) {
+    if (!sorterStates.length) return;
+
     this.sorterStates = sorterStates;
 
     let height = 0;
     let flattenYIndexes: number[] = [];
 
+    const flattenRowKeysSet = new Set(this.flattenRowKeys);
+
     this.flattenRowKeys = this
-      .getSortedRowDatas(this.flattenRowKeys.reduce<RowData[]>((rowDatas, rowKey) => {
+      .getSortedRowDatas(this.rawRowKeys.filter(rowKey => flattenRowKeysSet.has(rowKey)).reduce<RowData[]>((rowDatas, rowKey) => {
         const rowData = this.getRowDataByRowKey(rowKey);
 
         if (rowData) {
@@ -246,6 +254,8 @@ export class TableRowStateCenter {
       .map(rowData => this.getRowKeyByRowData(rowData));
 
     this.flattenYIndexes = flattenYIndexes;
+
+    this.updateSorterStates(this.sorterStates);
   }
 
   // 获取筛选后的行数据

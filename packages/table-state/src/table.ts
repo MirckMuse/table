@@ -192,12 +192,13 @@ export class TableState {
     const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
     const lastRowHeight = this.rowStateCenter.getStateByRowKey(lastRowKey)?.getMeta().height ?? 0;
     this.viewport.scrollHeight = lastRowY + lastRowHeight;
-
   }
 
   updateSorterStates(sorterStates: SorterState[]) {
-    // this.rowStateCenter.updateS
-    this.rowStateCenter.sorterStates = sorterStates;
+    this.rowStateCenter.updateSorterStates(sorterStates);
+    if (this.scrollToTopAfterFilterOrSorter) {
+      this.scroll.top = 0;
+    }
   }
 
   getViewportRowDataRange() {

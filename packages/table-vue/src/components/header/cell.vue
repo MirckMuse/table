@@ -1,25 +1,29 @@
 <script lang="ts">
+import type { SorterState, TableColumn, TableColumnEllipsisObject, TableColumnFilterValue } from "@scode/table-typing";
 import type { PropType, StyleValue, VNode } from "vue";
-import type { FilterState, SorterState, TableColumn, TableColumnEllipsisObject, TableColumnFilterValue } from "@scode/table-typing";
 
 import { SorterDirection } from "@scode/table-typing";
-import { defineComponent, h, Comment, ref, computed } from "vue";
+import { Comment, computed, defineComponent, h } from "vue";
 import { useStateInject } from "../../hooks";
 import { toArray } from "../../utils";
+import HeaderFilter from "../filter/index.vue";
+import { SorterFill } from "../icon";
 import ResizeHolder from "./ResizeHolder.vue";
-import { SorterFill } from "../icon"
-import HeaderFilter from "../filter/index.vue"
 
 // 渲染 sorter 样式
 // TODO: 可以从外部传入
-function renderSorter(column: TableColumn, sorterState?: SorterState) {
+function renderSorter(
+  column: TableColumn,
+  processSorter: () => void,
+  sorterState?: SorterState,
+) {
   if (!column?.sorter) return null;
 
   const direction = sorterState?.direction;
 
   return h(
     'span',
-    { class: "s-table-header-cell__sorter" },
+    { class: "s-table-header-cell__sorter", onClick: processSorter },
     h(SorterFill, { class: { "s-icon": true, [`s-icon__${direction}`]: true } })
   );
 }
@@ -55,8 +59,10 @@ export default defineComponent({
     // 执行搜索
     function processFilter(filterKeys: TableColumnFilterValue[]) {
       const colKey = computedColKey.value;
-      let filterStates = tableState.value.rowStateCenter.filterStates;
       if (!colKey) return;
+
+      let filterStates = tableState.value.rowStateCenter.filterStates;
+
 
       if (!filterKeys.length) {
         tableState.value.updateFilterStates(filterStates.filter(state => state.colKey !== colKey))
@@ -74,6 +80,38 @@ export default defineComponent({
       tableState.value.updateFilterStates(filterStates);
     }
 
+    // 当前列的排序状态
+    const sorterState = computed(() => {
+      const { column } = props;
+
+      if (!column?.sorter) return;
+
+      return tableState.value.rowStateCenter.sorterStates.find(state => state.colKey === computedColKey.value);
+    })
+
+    // 执行排序
+    function processSorter() {
+      const colKey = computedColKey.value;
+      if (!colKey) return;
+
+      let sorterStates = tableState.value.rowStateCenter.sorterStates;
+      if (!sorterState.value) {
+        // 无状态 -> 升序
+        sorterStates.push({ colKey, direction: SorterDirection.Ascend });
+      } else if (sorterState.value.direction === SorterDirection.Ascend) {
+        // 升序 -> 降序
+        const matchedState = sorterStates.find(state => state.colKey === colKey);
+        if (matchedState) {
+          matchedState.direction = SorterDirection.Descend;
+        }
+      } else if (sorterState.value.direction === SorterDirection.Descend) {
+        // 降序 -> 无状态
+        sorterStates = sorterStates.filter(state => state.colKey !== colKey);
+      }
+
+      tableState.value.updateSorterStates(sorterStates);
+    }
+
     // 渲染排序的图标
     function renderHeaderCellContent(column?: TableColumn): any {
       const title = renderColumnTitle(column);
@@ -81,7 +119,7 @@ export default defineComponent({
       const appendVNodes: VNode[] = [];
 
       if (column?.sorter) {
-        const _vNode = renderSorter(column, { colKey: column.key ?? "", direction: SorterDirection.Ascend });
+        const _vNode = renderSorter(column, processSorter, sorterState.value);
         _vNode && appendVNodes.push(_vNode);
       }
 
