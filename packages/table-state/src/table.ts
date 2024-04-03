@@ -72,9 +72,16 @@ export class TableState {
 
   childrenColumnName = "children";
 
+  private fixedRowHeight = false;
+
+  get isFixedRowHeight() {
+    return this.fixedRowHeight;
+  }
+
   constructor(option: TableStateOption) {
     this.viewport = new Viewport();
     this.colStateCenter = new TableColStateCenter({ tableState: this });
+    this.fixedRowHeight = !isNil(option.rowHeight);
     this.rowStateCenter = new TableRowStateCenter({
       tableState: this,
       rowHeight: option.rowHeight ?? RowHeight,
@@ -99,11 +106,15 @@ export class TableState {
     this.colStateCenter.updateColumns(columns);
   }
 
+  // 更新行数据
   updateRowDatas(rowDatas: RowData[]) {
     this.rowStateCenter.updateRowDatas(rowDatas);
   }
 
   updateRowMetas(rowMetas: OuterRowMeta[]) {
+
+    // 固定行高，无需更新行 meta。
+    if (this.isFixedRowHeight) return;
 
     const groupedCellMetas = groupBy(rowMetas, "rowKey");
 
@@ -248,8 +259,37 @@ export class TableState {
     });
   }
 
-  // 获取可视范围的数据
-  getViewportDataSource(): RowData[] {
+  // 后驱可视窗口的数据 - 固定行高
+  private getViewportDataSourceByFixRowHeight(): RowData[] {
+    const range: RowDataRange = { startIndex: 0, endIndex: 0 };
+    const { rowHeight, flattenRowKeys } = this.rowStateCenter;
+
+    range.startIndex = Math.floor(this.scroll.top / rowHeight) - 1;
+    range.endIndex = Math.floor((this.scroll.top + this.viewport.height) / rowHeight) + 1;
+
+    range.startIndex = Math.max(range.startIndex, 0);
+    range.endIndex = Math.min(
+      Math.max(range.startIndex, range.endIndex),
+      flattenRowKeys.length - 1
+    );
+
+    this.updateRowOffsetByRange(range);
+
+    return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
+      const rowIndex = range.startIndex + index;
+
+      const rowData = this.rowStateCenter.getRowDataByFlattenIndex(rowIndex);
+
+      if (rowData) {
+        result.push(rowData);
+      }
+
+      return result;
+    }, []);
+  }
+
+  // 获取可视窗口的数据 - 自动行高
+  private getViewportDataSourceByAutoRowHeight(): RowData[] {
     const range = this.getViewportRowDataRange();
 
     this.updateRowOffsetByRange(range);
@@ -265,6 +305,16 @@ export class TableState {
 
       return result;
     }, []);
+  }
+
+  // 获取可视范围的数据, // TODO: 可以优化的，减少一次 if 判断
+  getViewportDataSource(): RowData[] {
+    console.log('getViewportDataSource')
+    if (this.isFixedRowHeight) {
+      return this.getViewportDataSourceByFixRowHeight();
+    }
+
+    return this.getViewportDataSourceByAutoRowHeight();
   }
 
   getViewportHeightList(viewportDataSource: RowData[]): number[] {

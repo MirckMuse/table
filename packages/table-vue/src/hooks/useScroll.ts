@@ -99,11 +99,16 @@ export function useTableHeaderScroll(
 export function useTableBodyScroll(
   tableInnerBody: Ref<HTMLElement | undefined>,
   tableState: Ref<TableState>,
+  heightChangeCallback?: () => void
 ) {
   useBBox(tableInnerBody, (el) => {
     const { offsetHeight } = el;
+
+    if (offsetHeight === tableState.value.viewport.height) return;
+
     tableState.value.viewport.height = offsetHeight;
     tableState.value.updateScroll();
+    heightChangeCallback?.()
   }); // 计算垂直
 
   const maxMove = computed(() => {

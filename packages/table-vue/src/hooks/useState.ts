@@ -139,6 +139,7 @@ export function useStateProvide({
 			columns: columns ?? [],
 			rowDatas: dataSource ?? [],
 			getRowKey: getRowKey.value,
+			rowHeight: props.rowHeight,
 			childrenColumnName: childrenColumnName,
 		});
 	}

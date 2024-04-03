@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { RowData, RowKey, TableColumn } from "@scode/table-typing";
 import type { PropType, StyleValue } from "vue";
-import type { RowMeta } from "@scode/table-state"
+import type { RowMeta, } from "@scode/table-state"
 import { get, isNil } from 'lodash-es';
 import { computed, defineComponent, h, mergeProps, ref } from 'vue';
 import { useStateInject } from '../../hooks';
@@ -34,12 +34,14 @@ export default defineComponent({
 
     childrenColumnName: { type: String, default: 'children' },
 
+    isHover: { type: Boolean, default: false },
+
     ...BodyCellInheritProps,
   },
 
 
   setup(props) {
-    const { tableState, handleRowExpand, expandedKeys } = useStateInject();
+    const { handleRowExpand, expandedKeys } = useStateInject();
 
     const expanded = computed(() => {
       const { rowKey } = props;
@@ -105,10 +107,8 @@ export default defineComponent({
 
     const rowRef = ref<HTMLElement>();
 
-    const isHover = computed(() => props.rowKey === tableState.value.hoverState.rowKey)
-
     // 渲染行数据
-    function renderRow(columns: TableColumn[], record: RowData) {
+    function renderRow(columns: TableColumn[], record: RowData, hover: boolean) {
       const style: StyleValue = {};
       style.gridTemplateColumns = gridTemplateColumns.value;
 
@@ -116,7 +116,7 @@ export default defineComponent({
 
       const rowClass: Record<string, boolean> = {
         [PrefixClass]: true,
-        [PrefixClass + "__hover"]: isHover.value
+        [PrefixClass + "__hover"]: hover
       };
 
       const customRow = props.customRow ?? (() => ({}));
@@ -131,10 +131,10 @@ export default defineComponent({
       )
     }
 
-    return function () {
-      const { columns = [], record } = props;
+    return () => {
+      const { columns = [], record, isHover } = props;
 
-      return renderRow(columns, record)
+      return renderRow(columns, record, isHover)
     }
   }
 });

@@ -1,4 +1,4 @@
-import type { RowData, RowKey } from "@stable/table-typing";
+import type { RowData, RowKey } from "@scode/table-typing";
 
 export interface ChangeOption {
   // TODO: 后期完善

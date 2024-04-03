@@ -37,7 +37,6 @@ import type { StyleValue } from "vue";
 import {
   computed,
   defineComponent,
-  onMounted,
   onUpdated,
   reactive, ref, shallowRef,
   toRef,
@@ -138,7 +137,7 @@ export default defineComponent({
     }
 
     const getCellPadding = createGetCellPadding();
-
+    
     onUpdated(() => {
       const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
       const metas: OuterRowMeta[] = [];
@@ -152,10 +151,7 @@ export default defineComponent({
           height: Math.floor(element.getBoundingClientRect().height) + top + bottom
         })
       }
-      // const start = performance.now();
       tableState.value.updateRowMetas(metas);
-
-      // console.log("updateRowMetas", performance.now() - start);
     });
 
     const rightColumns = computed(() => {
@@ -191,22 +187,21 @@ export default defineComponent({
       return {};
     });
 
+    function getViewportDataSource() {
+      dataSource.value = tableState.value.getViewportDataSource();
+    }
+
     watch(
       () => [
         tableState.value.scroll.top,
         tableState.value.rowStateCenter.flattenRowKeys
       ],
       () => {
-        dataSource.value = tableState.value.getViewportDataSource()
+        getViewportDataSource();
       }
     );
 
-    onMounted(() => {
-      setTimeout(() => {
-        dataSource.value = tableState.value.getViewportDataSource()
-      })
-    })
-
+    useTableBodyScroll(bodyInnerRef, tableState, getViewportDataSource);
 
     const bodyLeftRef = shallowRef<HTMLElement>();
     const bodyRightRef = shallowRef<HTMLElement>();
@@ -214,8 +209,6 @@ export default defineComponent({
 
     const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
     const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
-
-    useTableBodyScroll(bodyInnerRef, tableState);
 
     const centerColumns = computed(() => {
       const colStateCenter = tableState.value.colStateCenter;

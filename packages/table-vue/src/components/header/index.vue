@@ -27,7 +27,7 @@ import type { StyleValue } from "vue";
 import { throttle } from "lodash-es";
 import { computed, onMounted, shallowRef, nextTick } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";
-import { genGridTemplateColumns, runIdleTask } from "../../utils";
+import { genGridTemplateColumns } from "../../utils";
 import HeaderCells from "./cells.vue";
 
 defineOptions({
@@ -48,10 +48,8 @@ const updateViewportWidth = throttle(function () {
   }
 
 
-  runIdleTask(() => {
-    Object.assign(tableState.value.viewport, viewport)
-    tableState.value.updateScroll();
-  })
+  Object.assign(tableState.value.viewport, viewport)
+  tableState.value.updateScroll();
 }, 16)
 
 onMounted(() => {

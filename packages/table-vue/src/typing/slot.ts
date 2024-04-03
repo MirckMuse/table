@@ -1,4 +1,4 @@
-import type { TableColumn, RowData } from "@stable/table-typing";
+import type { TableColumn, RowData } from "@scode/table-typing";
 
 // 表头单元格插槽
 export type HeaderCellSlot = (option: { title: any; column: TableColumn }) => unknown;

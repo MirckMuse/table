@@ -1,4 +1,4 @@
-import type { TableColumn, RowData, GetRowKey, RowKey } from "@stable/table-typing";
+import type { TableColumn, RowData, GetRowKey, RowKey } from "@scode/table-typing";
 import type { TooltipProps } from "ant-design-vue";
 
 
@@ -42,6 +42,9 @@ export type CustomRow = (record: RowData, index: number) => any;
  */
 export interface TableProps {
   loading?: boolean;
+
+  // 固定行高
+  rowHeight?: number;
 
   pagination?: Partial<TablePaginationProps> | boolean;
 

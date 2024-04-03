@@ -67,14 +67,12 @@ export type SorterMemoize = Map<
 >;
 
 export interface TableRowStateCenterOption {
-  rowHeight?: number;
+  rowHeight: number;
 
   getRowKey?: GetRowKey;
 
   tableState: TableState;
 }
-
-const DefaultRowHeight = 55;
 
 const ChunkSize = 100;
 
@@ -105,11 +103,15 @@ export class TableRowStateCenter {
   // 近似行高、初始化使用。
   private roughRowHeight: number;
 
+  get rowHeight() {
+    return this.roughRowHeight;
+  }
+
   private getRowKey: GetRowKey;
 
   constructor(option: TableRowStateCenterOption) {
     this.tableState = option.tableState;
-    this.roughRowHeight = option.rowHeight ?? DefaultRowHeight;
+    this.roughRowHeight = option.rowHeight;
     this.getRowKey = option.getRowKey ?? (() => -1);
   }
 
@@ -311,11 +313,7 @@ export class TableRowStateCenter {
         )
         .filter((state) => typeof state.filter?.onFilter);
 
-      const start = performance.now();
-      const result = _filterTask(rows, rawFilterStates);
-      console.log(`_filterTask spend time ${performance.now() - start}`);
-
-      return result;
+      return _filterTask(rows, rawFilterStates);
     };
 
     return _task(rowDatas);
@@ -369,17 +367,53 @@ export class TableRowStateCenter {
 
   updateRawPoolRow() { }
 
-  // 更新行数据
-  updateRowDatas(rowDatas: RowData[]) {
-    this.init();
+  // 更新行数据 - 固定行高
+  private updateRowDatasByFixedRowHeight(rowDatas: RowData[]) {
+    // 生成行数据的 meta
+    const _createRowStateMeta = (rowKey: RowKey, index: number): RowMeta => {
+      return {
+        key: rowKey,
+        index,
+        deep: 0,
+        height: this.roughRowHeight,
+        _sort: index.toString(),
+      };
+    };
 
-    // 粗略估计一下可视高度
-    this.tableState.viewport.scrollHeight =
-      rowDatas.length * this.roughRowHeight;
-    this.flattenYIndexes = Array(rowDatas.length)
-      .fill(null)
-      .map((_, i) => (i + 1) * this.roughRowHeight);
+    // 生成行数据的状态
+    const _createRowState = (rowData: RowData, rowKey: RowKey, index: number) => {
+      const meta = _createRowStateMeta(rowKey, index);
 
+      return new TableRowState({
+        rowData: rowData,
+        meta,
+        rowStateCenter: this,
+      })
+    };
+
+    const _task = (oneChunk: RowData[], chunkIndex: number) => {
+      oneChunk.forEach((rowData, index) => {
+        let i = index + chunkIndex * ChunkSize;
+        const rowKey = this.getRowKey ? this.getRowKey(rowData) : `0-${i}`;
+        const state = _createRowState(rowData, rowKey, i);
+
+        this.rawRowKeys.push(rowKey);
+        this.flattenRowKeys.push(rowKey);
+        this.rowStateMap.set(rowKey, state);
+        this.rowKeyMap.set(rowData, rowKey);
+      });
+    }
+
+    const chunks = chunk(rowDatas, ChunkSize);
+
+    _task(chunks[0], 0);
+    for (let i = 1; i < chunks.length; i++) {
+      runIdleTask(() => _task(chunks[i], i));
+    }
+  }
+
+  // 更新行数据 - 不定行高
+  private updateRowDatasByAutoRowHeight(rowDatas: RowData[]) {
     // 生成行数据的 meta
     const _createRowStateMeta = (rowData: RowData, index: number): RowMeta => {
       return {
@@ -401,7 +435,6 @@ export class TableRowStateCenter {
         rowStateCenter: this,
       });
     };
-
     const _task = (oneChunk: RowData[], chunkIndex: number) => {
       oneChunk.forEach((rowData, index) => {
         const state = _createRowState(rowData, index + chunkIndex * ChunkSize);
@@ -419,6 +452,23 @@ export class TableRowStateCenter {
     _task(chunks[0], 0);
     for (let i = 1; i < chunks.length; i++) {
       runIdleTask(() => _task(chunks[i], i));
+    }
+  }
+
+  // 更新行数据
+  updateRowDatas(rowDatas: RowData[]) {
+    this.init();
+
+    this.tableState.viewport.scrollHeight = rowDatas.length * this.roughRowHeight;
+    this.flattenYIndexes = Array(rowDatas.length)
+      .fill(null)
+      .map((_, i) => (i + 1) * this.roughRowHeight);
+
+    const isFixedRowHeight = this.tableState.isFixedRowHeight;
+    if (isFixedRowHeight) {
+      this.updateRowDatasByFixedRowHeight(rowDatas);
+    } else {
+      this.updateRowDatasByAutoRowHeight(rowDatas)
     }
   }
 
@@ -535,6 +585,7 @@ export class TableRowStateCenter {
     }
   }
 
+  // TODO: 可以考虑使用 map + filter 代替 reduce。
   resetYIndexes() {
     let y = 0;
     this.flattenYIndexes = this.flattenRowKeys.reduce<number[]>((result, key) => {

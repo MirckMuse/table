@@ -1,6 +1,6 @@
 import { isNil, get, chunk, groupBy } from 'lodash-es';
-import { runIdleTask, binaryFindIndexRange } from '@stable/table-shared';
-import { SorterDirection } from '@stable/table-typing';
+import { runIdleTask, binaryFindIndexRange } from '@scode/table-shared';
+import { SorterDirection } from '@scode/table-typing';
 import { toRaw } from 'vue';
 
 const DefaultColWidth = 120;
