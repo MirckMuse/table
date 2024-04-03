@@ -1,5 +1,5 @@
 {
-  "name": "@stable/table-shared",
+  "name": "@scode/table-shared",
   "module": "esm/index.esm.js",
   "types": "esm/index.d.ts",
   "version": "0.0.1",

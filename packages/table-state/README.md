@@ -1,4 +1,4 @@
-# @stable/state-ts
+# @scode/state-ts
 
 To install dependencies:
 

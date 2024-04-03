@@ -3,8 +3,8 @@ import { TableColStateCenter } from "./col";
 import { TableRowStateCenter, type TableRowStateOrNull } from "./row";
 import { adjustScrollOffset, rowKeyCompare } from "./shared";
 import { Viewport, type IViewport } from "./viewport";
-import type { RowData, GetRowKey, TableColumn, RowKey, FilterState, SorterState } from "@stable/table-typing"
-import { binaryFindIndexRange } from "@stable/table-shared";
+import type { RowData, GetRowKey, TableColumn, RowKey, FilterState, SorterState } from "@scode/table-typing"
+import { binaryFindIndexRange } from "@scode/table-shared";
 
 export interface TableStateOption {
   rowDatas?: RowData[];

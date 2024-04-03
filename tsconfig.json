@@ -28,16 +28,16 @@
       "@": [
         "src"
       ],
-      "@stable/table-typing": [
+      "@scode/table-typing": [
         "packages/typing/index.ts"
       ],
-      "@stable/table-shared": [
+      "@scode/table-shared": [
         "packages/shared/src/index.ts"
       ],
-      "@stable/table-vue/esm": [
+      "@scode/table-vue/esm": [
         "packages/table-vue/esm"
       ],
-      "@stable/table-vue": [
+      "@scode/table-vue": [
         "packages/table-vue/src/index.ts"
       ],
     },

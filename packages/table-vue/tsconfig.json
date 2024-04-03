@@ -25,13 +25,13 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@stable/table-typing": [
+      "@scode/table-typing": [
         "typing/index.ts"
       ],
-      "@stable/table-shared": [
+      "@scode/table-shared": [
         "shared/src/index.ts"
       ],
-      "@stable/table-state": [
+      "@scode/table-state": [
         "table-state/src/index.ts"
       ],
     },

@@ -9,7 +9,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { TableColumn } from "@stable/table-typing";
+import type { TableColumn } from "@scode/table-typing";
 import type { PropType } from "vue";
 
 import { isNaN } from "lodash-es";

@@ -1,5 +1,5 @@
 {
-  "name": "@stable/table-vue",
+  "name": "@scode/table-vue",
   "module": "./esm/table-vue.js",
   "types": "./esm/index.d.ts",
   "exports": {
@@ -12,9 +12,9 @@
     "clean": "rimraf esm"
   },
   "devDependencies": {
-    "@stable/table-shared": "workspace:*",
-    "@stable/table-typing": "workspace:*",
-    "@stable/table-state": "workspace:*",
+    "@scode/table-shared": "workspace:*",
+    "@scode/table-typing": "workspace:*",
+    "@scode/table-state": "workspace:*",
     "@biomejs/biome": "^1.4.1",
     "@types/lodash-es": "^4.17.12",
     "@vitejs/plugin-vue": "^5.0.2",

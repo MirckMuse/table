@@ -1,7 +1,7 @@
 <template>
   <div style="padding: 10px;">
     <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 700 }"
-      :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn">
+      :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
@@ -10,8 +10,8 @@
 </template>
 
 <script lang="ts" setup>
-import { TableColumn } from "@stable/table-typing";
-import { TransformCellText } from "@stable/table-vue";
+import { TableColumn } from "@scode/table-typing";
+import { TransformCellText } from "@scode/table-vue";
 import { uniqueId } from "lodash-es";
 import { h, ref } from "vue";
 
@@ -24,6 +24,16 @@ const transformCellText: TransformCellText = ({ text, column }) => {
     return "这是A列"
   }
   return text
+}
+
+function customRow(row: any, index: number) {
+  // if (index === 0) {
+  //   console.log(row)
+  //   return {
+  //     style: "background: red"
+  //   }
+  // }
+  return {}
 }
 
 const Enums = [
@@ -43,7 +53,7 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(1000).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
 
 const children = Array(10).fill(null).map(createItem) as any[];
 

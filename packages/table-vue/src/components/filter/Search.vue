@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { TableColumnFilterSearch } from "@stable/table-typing";
+import type { TableColumnFilterSearch } from "@scode/table-typing";
 import type { PropType } from "vue";
 import { defineComponent, h } from "vue";
 import { Input } from "ant-design-vue";

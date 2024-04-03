@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { PropType, StyleValue } from "vue";
-import type { RowData, TableColumn } from "@stable/table-typing";
+import type { RowData, TableColumn } from "@scode/table-typing";
 import { get } from "lodash-es";
 import { Comment, computed, defineComponent, h, isVNode, mergeProps, ref } from "vue";
 import { useSelectionInject } from "../../hooks";

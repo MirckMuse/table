@@ -30,8 +30,8 @@
 </template>
 
 <script lang="ts">
-import type { OuterRowMeta } from "@stable/table-state";
-import type { ColKey, RowData, TableColumn } from "@stable/table-typing";
+import type { OuterRowMeta } from "@scode/table-state";
+import type { ColKey, RowData, TableColumn } from "@scode/table-typing";
 import { Empty as AEmpty } from "ant-design-vue";
 import type { StyleValue } from "vue";
 import {
@@ -265,7 +265,8 @@ export default defineComponent({
       dataSource: dataSource,
       getRowKey: getRowKey,
       transformCellText: tableProps.transformCellText,
-      bodyCell: tableSlots.bodyCell
+      bodyCell: tableSlots.bodyCell,
+      customRow: tableProps.customRow
     })
 
     return {

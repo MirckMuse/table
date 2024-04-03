@@ -5,7 +5,7 @@ import type {
 	RowData,
 	RowKey,
 	TableColumn,
-} from "@stable/table-typing";
+} from "@scode/table-typing";
 import type {
 	InteralTableSlot,
 	TableEmit,
@@ -15,7 +15,7 @@ import type {
 import { debounce, isNil, isObject } from "lodash-es";
 import { getDFSLastColumns, noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
-import { TableState } from "@stable/table-state";
+import { TableState } from "@scode/table-state";
 
 interface ITableContext {
 	tableState: Ref<TableState>;

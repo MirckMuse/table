@@ -1,4 +1,4 @@
-# @stable/table
+# @scode/table
 
 虽然项目起名为稳定的 table，但其实这是一个非常激进的项目，采用的了各种最新的技术。
 

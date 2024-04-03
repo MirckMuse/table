@@ -1,39 +1,20 @@
 <template>
-  <div
-    ref="headerRef"
-    class="s-table-header"
-    :class="headerClass"
-    :style="headerStyle"
-  >
+  <div ref="headerRef" class="s-table-header" :class="headerClass" :style="headerStyle">
     <div class="s-table-header__inner">
-      <div 
-        v-if="leftColumnsVisible" 
-        class="s-table-header__inner-fixedLeft s-table-fixedLeft" 
-        :class="{ 'shadow': scroll.left > 0 }"
-        :style="leftStyle"
-        ref="headerLeftRef"
-      >
-        <header-cells :columns="leftColumns" :flatten-columns="leftFlattenColumns" >
+      <div v-if="leftColumnsVisible" class="s-table-header__inner-fixedLeft s-table-fixedLeft"
+        :class="{ 'shadow': scroll.left > 0 }" :style="leftStyle" ref="headerLeftRef">
+        <header-cells :columns="leftColumns" :flatten-columns="leftFlattenColumns">
         </header-cells>
       </div>
 
-      <div
-        ref="headerCenterRef"
-        class="s-table-header__inner-center"
-        :style="centerStyle"
-      >
+      <div ref="headerCenterRef" class="s-table-header__inner-center" :style="centerStyle">
         <header-cells :columns="centerColumns" :flatten-columns="centerFlattenColumns" type="center">
         </header-cells>
       </div>
 
-      <div 
-        v-if="rightColumnsVisible" 
-        class="s-table-header__inner-fixedRight s-table-fixedRight" 
-        :class="{ 'shadow': scroll.left < maxXMove }"
-        :style="rightStyle"
-        ref="headerRightRef"
-      >
-        <header-cells :columns="rightColumns" :flatten-columns="rightFlattenColumns" >
+      <div v-if="rightColumnsVisible" class="s-table-header__inner-fixedRight s-table-fixedRight"
+        :class="{ 'shadow': scroll.left < maxXMove }" :style="rightStyle" ref="headerRightRef">
+        <header-cells :columns="rightColumns" :flatten-columns="rightFlattenColumns">
         </header-cells>
       </div>
     </div>
@@ -41,11 +22,10 @@
 </template>
 
 <script lang="ts" setup>
-import type { ColKey, TableColumn } from "@stable/table-typing";
+import type { ColKey, TableColumn } from "@scode/table-typing";
 import type { StyleValue } from "vue";
 import { throttle } from "lodash-es";
-import { nextTick } from "process";
-import { computed, onMounted, shallowRef } from "vue";
+import { computed, onMounted, shallowRef, nextTick } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";
 import { genGridTemplateColumns, runIdleTask } from "../../utils";
 import HeaderCells from "./cells.vue";
@@ -183,12 +163,12 @@ const maxXMove = computed(() => {
 </script>
 
 <style lang="less" scoped>
-
 .s-table-header__inner {
   position: relative;
   overflow: auto;
+
   &::-webkit-scrollbar {
-      display: none;
+    display: none;
   }
 
   &-fixedLeft,
@@ -197,7 +177,7 @@ const maxXMove = computed(() => {
     display: grid;
   }
 
-  &-fixedLeft{
+  &-fixedLeft {
     z-index: 1;
   }
 
@@ -205,6 +185,7 @@ const maxXMove = computed(() => {
     overflow: auto;
     width: 100%;
     min-width: fit-content;
+
     &::-webkit-scrollbar {
       display: none;
     }

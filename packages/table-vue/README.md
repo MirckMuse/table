@@ -1,4 +1,4 @@
-# @stable/table-vue
+# @scode/table-vue
 
 To install dependencies:
 

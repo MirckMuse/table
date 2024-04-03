@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { FilterState, TableColumn, TableColumnFilter, TableColumnFilterOption, TableColumnFilterValue } from "@stable/table-typing";
+import type { FilterState, TableColumn, TableColumnFilter, TableColumnFilterOption, TableColumnFilterValue } from "@scode/table-typing";
 import type { PropType, VNode } from "vue";
 import type { DataNode } from "ant-design-vue/es/tree";
 
@@ -8,7 +8,7 @@ import { Dropdown, Button, Empty, Menu, Checkbox, Radio, Tree } from "ant-design
 import { RiFilter2Fill } from "@remixicon/vue";
 import { stopPropagation } from "../../utils"
 import { isEqual, isNil } from "lodash-es";
-import { flattenKeys } from "@stable/table-shared";
+import { flattenKeys } from "@scode/table-shared";
 import FilterSearch from "./Search.vue";
 
 type VNodeOrNull = VNode | null;
@@ -149,7 +149,7 @@ export default defineComponent({
       handleSelectKeys({ selectedKeys: _selectedKeys ?? [] })
     }, { immediate: true });
 
-    // 扁平的筛选keys，提供树组件使用
+    // TODO: 扁平的筛选keys，提供树组件使用
     const flattenFilteredKeys = computed(() => {
       const { options, mode } = mergedFilter.value;
 

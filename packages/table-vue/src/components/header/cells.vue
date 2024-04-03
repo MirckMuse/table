@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { TableColumn, TableColumnEllipsisObject } from "@stable/table-typing";
+import type { TableColumn, TableColumnEllipsisObject } from "@scode/table-typing";
 import type { PropType, StyleValue, VNode } from "vue";
 import { defineComponent, h } from "vue";
 import { useStateInject } from "../../hooks";

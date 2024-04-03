@@ -1,7 +1,7 @@
 import { useResizeObserver } from "@vueuse/core";
 import { throttle } from "lodash-es";
 import { type Ref, computed, onMounted, ref } from "vue";
-import { TableState } from "@stable/table-state";
+import { TableState } from "@scode/table-state";
 import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";
 
 type BBox = {

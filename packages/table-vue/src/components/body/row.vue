@@ -1,7 +1,7 @@
 <script lang="ts">
-import type { RowData, RowKey, TableColumn } from "@stable/table-typing";
+import type { RowData, RowKey, TableColumn } from "@scode/table-typing";
 import type { PropType, StyleValue } from "vue";
-import type { RowMeta } from "@stable/table-state"
+import type { RowMeta } from "@scode/table-state"
 import { get, isNil } from 'lodash-es';
 import { computed, defineComponent, h, mergeProps, ref } from 'vue';
 import { useStateInject } from '../../hooks';
@@ -105,20 +105,18 @@ export default defineComponent({
 
     const rowRef = ref<HTMLElement>();
 
+    const isHover = computed(() => props.rowKey === tableState.value.hoverState.rowKey)
+
     // 渲染行数据
     function renderRow(columns: TableColumn[], record: RowData) {
       const style: StyleValue = {};
       style.gridTemplateColumns = gridTemplateColumns.value;
 
-      const {
-        rowMeta,
-        rowIndex,
-        rowKey
-      } = props;
+      const { rowMeta, rowIndex } = props;
 
       const rowClass: Record<string, boolean> = {
         [PrefixClass]: true,
-        [PrefixClass + "__hover"]: rowKey === tableState.value.hoverState.rowKey
+        [PrefixClass + "__hover"]: isHover.value
       };
 
       const customRow = props.customRow ?? (() => ({}));
@@ -154,5 +152,4 @@ export default defineComponent({
     background-color: var(--table-body-cell-bg-hover);
   }
 }
-
 </style>

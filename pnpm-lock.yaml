@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@stable/table-vue':
+      '@scode/table-vue':
         specifier: workspace:*
         version: link:packages/table-vue
     devDependencies:
@@ -89,10 +89,10 @@ importers:
       '@rollup/plugin-typescript':
         specifier: ^11.1.6
         version: 11.1.6(rollup@4.9.6)(tslib@2.6.2)(typescript@5.3.3)
-      '@stable/table-shared':
+      '@scode/table-shared':
         specifier: workspace:*
         version: link:../shared
-      '@stable/table-typing':
+      '@scode/table-typing':
         specifier: workspace:*
         version: link:../typing
       '@types/lodash-es':
@@ -129,13 +129,13 @@ importers:
       '@biomejs/biome':
         specifier: ^1.4.1
         version: 1.5.3
-      '@stable/table-shared':
+      '@scode/table-shared':
         specifier: workspace:*
         version: link:../shared
-      '@stable/table-state':
+      '@scode/table-state':
         specifier: workspace:*
         version: link:../table-state
-      '@stable/table-typing':
+      '@scode/table-typing':
         specifier: workspace:*
         version: link:../typing
       '@types/lodash-es':

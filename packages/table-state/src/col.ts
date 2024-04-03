@@ -1,4 +1,4 @@
-import type { ColKey, TableColumn } from "@stable/table-typing";
+import type { ColKey, TableColumn } from "@scode/table-typing";
 import { TableState } from "./table";
 import { isNil } from "lodash-es";
 

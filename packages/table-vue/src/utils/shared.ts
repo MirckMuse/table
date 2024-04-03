@@ -1,4 +1,4 @@
-import type { TableColumn } from "@stable/table-typing";
+import type { TableColumn } from "@scode/table-typing";
 import { isObject } from "lodash-es";
 import { EXPAND_COLUMN } from "./constant";
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { VNode, PropType } from "vue";
-import type { RowData, RowKey, TableColumn } from "@stable/table-typing"
+import type { RowData, RowKey, TableColumn } from "@scode/table-typing"
 import type { CustomRow, ExpandIconSlot, } from "../../typing";
 import { BodyCellInheritProps } from "../../typing";
 import { defineComponent, h } from "vue";

@@ -1,4 +1,4 @@
-import { runIdleTask } from "@stable/table-shared";
+import { runIdleTask } from "@scode/table-shared";
 import {
   ColKey,
   FilterState,
@@ -8,7 +8,7 @@ import {
   SorterDirection,
   SorterState,
   TableColumnFilter,
-} from "@stable/table-typing";
+} from "@scode/table-typing";
 import { chunk, get, isNil } from "lodash-es";
 import { TableState } from "./table";
 import { toRaw } from "vue";
@@ -174,14 +174,15 @@ export class TableRowStateCenter {
 
   filterStates: FilterState[] = [];
 
-  updateFilterStates(filterStates: FilterState[]) {
-    this.filterStates = filterStates;
+  // 更新排序状态
+  updateSorterStates(sorterStates: SorterState[]) {
+    this.sorterStates = sorterStates;
 
     let height = 0;
     let flattenYIndexes: number[] = [];
 
     this.flattenRowKeys = this
-      .getFilteredRowDatas(this.rawRowKeys.reduce<RowData[]>((rowDatas, rowKey) => {
+      .getSortedRowDatas(this.flattenRowKeys.reduce<RowData[]>((rowDatas, rowKey) => {
         const rowData = this.getRowDataByRowKey(rowKey);
 
         if (rowData) {
@@ -194,47 +195,7 @@ export class TableRowStateCenter {
       }, []))
       .map(rowData => this.getRowKeyByRowData(rowData));
 
-
     this.flattenYIndexes = flattenYIndexes;
-  }
-
-  // 获取筛选后的行数据
-  getFilteredRowDatas(rowDatas: RowData[]): RowData[] {
-    if (!this.filterStates?.length) return rowDatas;
-
-    type FilterStateWithConfig = FilterState & { filter: TableColumnFilter };
-
-    function _filterTask(rows: RowData[], filterStates: FilterStateWithConfig[]): RowData[] {
-      return filterStates
-        .reduce<RowData[]>((filteredRows, filterState) => {
-          const { filterKeys, filter } = filterState;
-
-          const onFilter = filter.onFilter!;
-
-          if (filterKeys?.length) {
-            return filteredRows.filter((row) => filterKeys.some((key) => onFilter(String(key), toRaw(row))));
-          }
-
-          return filteredRows;
-        }, rows)
-    }
-
-    const _task = (rows: RowData[]) => {
-      const colStateCenter = this.tableState.colStateCenter;
-
-      const rawFilterStates = this.filterStates
-        .map((state) =>
-          Object.assign(
-            { filter: colStateCenter.getColumnByColKey(state.colKey)?.filter },
-            state,
-          ) as FilterStateWithConfig,
-        )
-        .filter((state) => typeof state.filter?.onFilter);
-
-      return _filterTask(rows, rawFilterStates);
-    };
-
-    return _task(rowDatas);
   }
 
   //  获取排序后的行数据
@@ -252,6 +213,112 @@ export class TableRowStateCenter {
 
       return CompareResult.Equal;
     });
+  }
+
+  // 更新筛选状态
+  updateFilterStates(filterStates: FilterState[]) {
+    this.filterStates = filterStates;
+
+    let height = 0;
+    let flattenYIndexes: number[] = [];
+
+    // 筛选回调函数
+    const _filterCallback = (rowData: RowData) => {
+      const rowMeta = this.getStateByRowData(rowData)?.getMeta();
+      flattenYIndexes.push(height);
+      height = height + (rowMeta?.height ?? 0);
+    }
+
+    this.flattenRowKeys = this
+      .getFilteredRowDatas(
+        this.rawRowKeys.reduce<RowData[]>((rowDatas, rowKey) => {
+          const rowData = this.getRowDataByRowKey(rowKey);
+
+          if (rowData) {
+            rowDatas.push(rowData);
+          }
+          return rowDatas;
+        }, []),
+        _filterCallback
+      )
+      .map(rowData => this.getRowKeyByRowData(rowData));
+
+    this.flattenYIndexes = flattenYIndexes;
+  }
+
+  // 获取筛选后的行数据
+  getFilteredRowDatas(rowDatas: RowData[], callback?: (rowData: RowData) => void): RowData[] {
+    if (!this.filterStates?.length) {
+
+      if (callback) {
+        return rowDatas.map(row => {
+          callback(row);
+          return row;
+        })
+      }
+      return rowDatas;
+    }
+
+    type FilterStateWithConfig = FilterState & { filter: TableColumnFilter };
+
+    function _filterTask(rows: RowData[], filterStates: FilterStateWithConfig[]): RowData[] {
+
+      return rows.filter((rowData) => {
+
+        const isFilter = filterStates.every((filterState) => {
+          const { filterKeys, filter } = filterState;
+
+          const onFilter = filter.onFilter!;
+
+          if (filterKeys?.length) {
+            return filterKeys.some((key) => onFilter(String(key), toRaw(rowData)));
+          }
+
+          return true;
+        });
+
+        if (callback && isFilter) {
+          callback?.(rowData);
+        }
+
+        return isFilter;
+      });
+
+      // TODO: 验证是不是通过行筛选更快
+      // return filterStates
+      //   .reduce<RowData[]>((filteredRows, filterState) => {
+      //     const { filterKeys, filter } = filterState;
+
+      //     const onFilter = filter.onFilter!;
+
+      //     if (filterKeys?.length) {
+      //       return filteredRows.filter((row) => filterKeys.some((key) => onFilter(String(key), toRaw(row))));
+      //     }
+
+      //     return filteredRows;
+      //   }, rows)
+    }
+
+    const _task = (rows: RowData[]) => {
+      const colStateCenter = this.tableState.colStateCenter;
+
+      const rawFilterStates = this.filterStates
+        .map((state) =>
+          Object.assign(
+            { filter: colStateCenter.getColumnByColKey(state.colKey)?.filter },
+            state,
+          ) as FilterStateWithConfig,
+        )
+        .filter((state) => typeof state.filter?.onFilter);
+
+      const start = performance.now();
+      const result = _filterTask(rows, rawFilterStates);
+      console.log(`_filterTask spend time ${performance.now() - start}`);
+
+      return result;
+    };
+
+    return _task(rowDatas);
   }
 
   private orderBy(

@@ -1,5 +1,5 @@
 {
-  "name": "@stable/table-typing",
+  "name": "@scode/table-typing",
   "module": "index.ts",
   "types": "index.ts",
   "version": "0.0.1",

@@ -1,2 +1,2 @@
-# @stable/table-shared
+# @scode/table-shared
 

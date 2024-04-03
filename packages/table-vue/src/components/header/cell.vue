@@ -1,8 +1,8 @@
 <script lang="ts">
 import type { PropType, StyleValue, VNode } from "vue";
-import type { FilterState, SorterState, TableColumn, TableColumnEllipsisObject, TableColumnFilterValue } from "@stable/table-typing";
+import type { FilterState, SorterState, TableColumn, TableColumnEllipsisObject, TableColumnFilterValue } from "@scode/table-typing";
 
-import { SorterDirection } from "@stable/table-typing";
+import { SorterDirection } from "@scode/table-typing";
 import { defineComponent, h, Comment, ref, computed } from "vue";
 import { useStateInject } from "../../hooks";
 import { toArray } from "../../utils";
