@@ -1,0 +1,1 @@
+// TODO: 需要定制宏，辅助生成 typescript 类型。

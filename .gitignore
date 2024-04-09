@@ -176,4 +176,6 @@ dist
 
 esm
 packages/**/esm
+packages/**/target
+packages/**/dist
 dev-dist/
