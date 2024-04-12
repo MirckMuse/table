@@ -7,5 +7,8 @@ export const BodyCellInheritProps = {
 
   bodyCell: { type: Function as PropType<BodyCellSlot> },
 
+  // 行数据 children 的 key 值
+  childrenRowName: { type: String },
+
   // TODO: 1. 选中状态
 }

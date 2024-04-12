@@ -32,8 +32,6 @@ export default defineComponent({
 
     expandIcon: { type: Function as PropType<ExpandIconSlot>, default: renderExpandIcon },
 
-    childrenColumnName: { type: String, default: 'children' },
-
     isHover: { type: Boolean, default: false },
 
     ...BodyCellInheritProps,
@@ -50,8 +48,8 @@ export default defineComponent({
 
     // 是否存在嵌套子表格
     const hasNestChildren = computed(() => {
-      const { childrenColumnName, record } = props;
-      return !!childrenColumnName && !isNil(get(record, childrenColumnName))
+      const { childrenRowName, record } = props;
+      return !!childrenRowName && !isNil(get(record, childrenRowName))
     });
 
     function onInternalTriggerExpand($event: Event, record: RowData) {

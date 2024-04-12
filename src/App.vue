@@ -2,7 +2,7 @@
   <div style="padding: 10px;">
     <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 700 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
-      :row-height="56">
+      :row-height="56" childrenRowName="children">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
@@ -54,11 +54,11 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
 
-const children = Array(10).fill(null).map(createItem) as any[];
+const children = Array(1000).fill(null).map(createItem) as any[];
 
-children[0].children = Array(10).fill(null).map(createItem) as any[];
+children[0].children = Array(1000).fill(null).map(createItem) as any[];
 data_source.value[0].children = children;
 
 const columns = ref<TableColumn[]>([

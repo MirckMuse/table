@@ -66,10 +66,14 @@ export interface TableProps {
 
   transformCellText?: TransformCellText;
 
-  // 缩进尺寸，传入数字时，这里的单位位 px。
+  // 缩进尺寸，传入数字时，这里的单位为 px。
   indentSize?: number | string;
 
+  // 表头列数据的 key
   childrenColumnName?: string;
+
+  // 行数据的 children key
+  childrenRowName?: string;
 }
 
 export type TransformCellText = (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;

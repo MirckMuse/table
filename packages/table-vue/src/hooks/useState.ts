@@ -153,7 +153,6 @@ export function useStateProvide({
 		},
 	);
 
-
 	let userSelectState = {
 		pre: "",
 		isSet: false,
@@ -164,6 +163,7 @@ export function useStateProvide({
 		tableRef.value.style.userSelect = userSelectState.pre;
 	}, 60);
 
+	// 处理列的宽度调整
 	function handleResizeColumn(resizedWidth: number, column: TableColumn) {
 		if (!userSelectState.isSet && tableRef.value) {
 			userSelectState.pre = tableRef.value.style.userSelect ?? "";
@@ -175,6 +175,7 @@ export function useStateProvide({
 		revertTableUserSelect();
 	}
 
+	// 集中处理 tooltip 的逻辑
 	const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({
 		tooltipVisible(cellEl: HTMLElement) {
 			const colKey = cellEl.dataset["colKey"] ?? "";
@@ -186,6 +187,7 @@ export function useStateProvide({
 		},
 	});
 
+	// 处理展开逻辑
 	const { handleRowExpand, expandedKeys } = useRowExpand({
 		tableProps: props,
 		getRowKey(record) {
@@ -203,6 +205,7 @@ export function useStateProvide({
 		},
 	});
 
+	// 向下注入数据
 	provide(TableStateKey, {
 		tableState: state as Ref<TableState>,
 		slots: interalSlots,

@@ -18,6 +18,8 @@ export interface TableStateOption {
   rowHeight?: number;
 
   childrenColumnName?: string;
+
+  childrenRowName?: string;
 }
 
 
@@ -72,6 +74,8 @@ export class TableState {
 
   childrenColumnName = "children";
 
+  childrenRowName = "children";
+
   private fixedRowHeight = false;
 
   get isFixedRowHeight() {
@@ -92,6 +96,8 @@ export class TableState {
 
   private init(option: TableStateOption) {
     this.childrenColumnName = option.childrenColumnName ?? "children";
+    this.childrenRowName = option.childrenRowName ?? "children";
+
     Object.assign(this.viewport, option.viewport ?? {});
     if (option.columns?.length) {
       this.updateColumns(option.columns);
@@ -147,11 +153,7 @@ export class TableState {
     if (offsetHeight === 0) return;
 
     if (firstRowState) {
-      // let start = performance.now();
-
       this.rowStateCenter.resetYIndexes();
-      // console.log(`resetYIndexes spend Time ${performance.now() - start}ms`)
-
     }
     this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
   }
@@ -187,11 +189,9 @@ export class TableState {
     }
 
     // 筛选后需要更新可滚动距离
-    const { flattenRowKeys, flattenYIndexes } = this.rowStateCenter;
-    const lastRowKey = flattenRowKeys[flattenRowKeys.length - 1];
+    const { flattenYIndexes } = this.rowStateCenter;
     const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
-    const lastRowHeight = this.rowStateCenter.getStateByRowKey(lastRowKey)?.getMeta().height ?? 0;
-    this.viewport.scrollHeight = lastRowY + lastRowHeight;
+    this.viewport.scrollHeight = lastRowY;
   }
 
   updateSorterStates(sorterStates: SorterState[]) {
@@ -310,7 +310,6 @@ export class TableState {
 
   // 获取可视范围的数据, // TODO: 可以优化的，减少一次 if 判断
   getViewportDataSource(): RowData[] {
-    console.log('getViewportDataSource')
     if (this.isFixedRowHeight) {
       return this.getViewportDataSourceByFixRowHeight();
     }
@@ -338,57 +337,54 @@ export class TableState {
   updateExpandedRowKeys(expandedRowKeys: RowKey[]) {
     const rowStateCenter = this.rowStateCenter;
 
-    const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => {
-      return (rowStateCenter.getStateByRowKey(prev)?.getMeta()?.deep ?? -1) - (rowStateCenter.getStateByRowKey(next)?.getMeta()?.deep ?? -1)
-    });
+    // 获取行的深度, 用作排序
+    const getRowDeep = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()?.deep ?? -1;
 
-    // FIXME: 这里需要重写。
+    // 获取排序后的的 rowKey，确保子数据一定在父数据之后
+    const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => getRowDeep(prev) - getRowDeep(next));
+
     const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
 
-    const insertedRowKeySet = new Set<RowKey>([]);
-
+    // 将展开的子数据生成 state 塞入 center。
     while (expandedRowKeySet.size) {
       const rowKey = Array.from(expandedRowKeySet).find(key => rowStateCenter.getRowDataByRowKey(key));
 
       if (!isNil(rowKey)) {
         expandedRowKeySet.delete(rowKey);
-        const record = rowStateCenter.getRowDataByRowKey(rowKey);
 
-        if (record) {
+        const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
+
+        if (rowData) {
           const parentMeta = rowStateCenter.getStateByRowKey(rowKey)?.getMeta();
-          const children = this.getRowDataChildren(record) ?? [];
+          const children = this.getRowDataChildren(rowData) ?? [];
 
           if (children.length) {
+
             children.forEach((row, rowIndex) => {
-              const rowState = rowStateCenter.insertRowState(row, {
+              rowStateCenter.insertRowState(row, {
                 index: rowIndex,
                 deep: parentMeta ? (parentMeta.deep + 1) : 0,
                 _sort: `${parentMeta ? parentMeta._sort : "0"}-${String(rowIndex)}`
-              })
-              insertedRowKeySet.add(rowState.getMeta().key)
-            })
+              });
+            });
           }
         }
       }
     }
-
-    // FIXME: 展开和收缩后 y 的变化
 
     // 最后才更新展开列
     this.expandedRowKeys = expandedRowKeys;
     this.updateFlattenRowKeysByExpandedRowKeys();
   }
 
+  // 更新展开后的行数据
   private updateFlattenRowKeysByExpandedRowKeys() {
     const rowStateCenter = this.rowStateCenter;
 
-    function _getSort(rowKey: RowKey) {
-      return rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? ''
-    }
+    // 获取行的排序权重
+    const _getRowSort = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? '';
 
-    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => {
-      return rowKeyCompare(_getSort(prev), _getSort(next))
-    })
+    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => rowKeyCompare(_getRowSort(prev), _getRowSort(next)))
 
     const newflattenRowKeys: RowKey[] = [];
     let children: RowData[] = [];
