@@ -23,9 +23,9 @@
     </div>
 
     <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scrollHeight"
-      :scroll="scroll.top" :is-vertical="true" />
+      v-model:scroll="scroll.top" :is-vertical="true" />
 
-    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth" :scroll="scroll.left" />
+    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth" v-model:scroll="scroll.left" />
   </div>
 </template>
 
