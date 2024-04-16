@@ -23,8 +23,15 @@ pub struct Unit {
 }
 
 impl Clone for Unit {
-    fn clone(&self) -> u32 {
-        return self.convert_to_pixel();
+    fn clone(&self) -> Self {
+        return Self {
+            unit_type: match self.unit_type {
+                UnitType::REM => UnitType::REM,
+                UnitType::PIXEL => UnitType::PIXEL,
+            },
+            root: self.root,
+            value: self.value,
+        };
     }
 }
 

@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
+use std::cell::RefCell;
+use std::rc::Weak;
+use std::task::Wake;
 use crate::interface::TableColumn;
-use crate::table::TableState;
+use crate::table::InternalTableState;
 use crate::unit::Unit;
 
 pub type ColKey = String;
@@ -30,10 +33,10 @@ pub struct ColMeta {
 
 
 /// 列状态
-pub struct TableColState<'center, 'column> {
-    pub column: &'column TableColumn,
+pub struct TableColState {
+    pub column: TableColumn,
 
-    pub col_state_center: &'center TableColStateCenter,
+    pub col_state_center: TableColStateCenter,
 
     pub meta: ColMeta,
 }
@@ -49,7 +52,7 @@ impl TableColState {
         self.meta.width.update_from_pixel(width);
     }
 
-    pub fn new<'center, 'column>(center: &'center TableColStateCenter, column: &'column TableColumn, meta: ColMeta) -> TableColState {
+    pub fn new(center: TableColStateCenter, column: TableColumn, meta: ColMeta) -> TableColState {
         return TableColState {
             col_state_center: center,
             column,
@@ -60,13 +63,17 @@ impl TableColState {
 
 
 pub struct TableColStateCenter {
-    columns: Vec<TableColumn>,
+    columns: Weak<Vec<TableColumn>>,
+
+    table_state: Weak<RefCell<InternalTableState>>,
 }
 
 impl TableColStateCenter {
-    pub fn new() -> TableColStateCenter {
+    pub fn new(table_state: Weak<RefCell<InternalTableState>>) -> TableColStateCenter {
         return TableColStateCenter {
-            columns: vec![],
+            columns: Weak::new(),
+
+            table_state,
         };
     }
 }
