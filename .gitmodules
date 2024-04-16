@@ -1,0 +1,3 @@
+[submodule "table-state-rs"]
+  path = packages/table-state-rs
+  url = git@github.com:MirckMuse/table-state-rs.git
