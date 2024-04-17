@@ -38,7 +38,7 @@
   --table-scroll-radius: 1.5px;
   --table-scroll-track-bg: #ededed;
   --table-scroll-thumb-bg: #737779;
-  --table-scroll-thumb-hover-bg: #737779;
+  --table-scroll-thumb-hover-bg: #4f5254;
 }
 
 .s-table {
@@ -328,4 +328,10 @@
       border-top: 1px solid #f0f0f0;
     }
   }
+}
+
+// 分页组件和内容的距离
+.s-pagination+.s-table-interal,
+.s-table-interal+.s-pagination {
+  margin-top: 24px;
 }

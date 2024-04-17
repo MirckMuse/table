@@ -82,6 +82,8 @@ enum CompareResult {
   Greater = 1,
 }
 
+// FIXME: 目前行控制器的功能太重了，需要精简，
+// FIXME: 精简目标：只负责维护的元数据
 export class TableRowStateCenter {
   // 原始行 keys
   rawRowKeys: RowKey[] = [];
@@ -190,7 +192,11 @@ export class TableRowStateCenter {
 
   // 更新排序状态
   updateSorterStates(sorterStates: SorterState[]) {
-    if (!sorterStates.length) return;
+    if (!sorterStates.length) {
+      this.flattenRowKeys = Array.from(toRaw(this.rawRowKeys));
+      this.sorterStates = [];
+      return;
+    };
 
     // 判断是否为固定高度的表格。
     const isFixedRowHeight = this.tableState.isFixedRowHeight;

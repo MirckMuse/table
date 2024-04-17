@@ -1,5 +1,7 @@
 <template>
   <component :is="InteralSpin" v-bind="spinProps">
+
+    <!-- 分页组件[顶部] -->
     <component v-if="paginationProps.vertical === 'top'" :is="InteralPagination" v-bind="paginationBind"></component>
 
     <div ref="tableRef" :class="tableClass" :style="tableStyle">
@@ -7,6 +9,7 @@
       <TableBody ref="tableBodyRef" style="flex: 1; min-height: 0;"></TableBody>
     </div>
 
+    <!-- 分页组件[底部] -->
     <component v-if="paginationProps.vertical === 'bottom'" :is="InteralPagination" v-bind="paginationBind"></component>
   </component>
 </template>
@@ -71,12 +74,16 @@ const {
   onChange: onPaginationChange,
 } = usePagination(props);
 
+console.log(paginationProps.value)
+
 
 const paginationBind = computed(() => {
+  console.log("paginationBind", paginationProps.value)
   return {
     class: `s-pagination s-pagination-${paginationProps.value.horizontal || 'right'}`,
     onChange: onPaginationChange,
     onShowSizeChange: onPaginationChange,
+    ...paginationProps.value
   }
 });
 </script>
