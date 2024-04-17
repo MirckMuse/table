@@ -22,10 +22,11 @@
       </div>
     </div>
 
-    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scrollHeight"
+    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scroll_height"
       v-model:scroll="scroll.top" :is-vertical="true" />
 
-    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth" v-model:scroll="scroll.left" />
+    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth"
+      v-model:scroll="scroll.left" />
   </div>
 </template>
 
@@ -194,13 +195,16 @@ export default defineComponent({
     watch(
       () => [
         tableState.value.scroll.top,
-        tableState.value.rowStateCenter.flattenRowKeys
+        tableState.value.rowStateCenter.flattenRowKeys,
+        tableState.value.pagination?.page,
+        tableState.value.pagination?.size,
       ],
       () => {
         getViewportDataSource();
       }
     );
 
+    // 控制表体滚动逻辑
     useTableBodyScroll(bodyInnerRef, tableState, getViewportDataSource);
 
     const bodyLeftRef = shallowRef<HTMLElement>();

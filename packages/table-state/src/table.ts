@@ -5,6 +5,7 @@ import { adjustScrollOffset, rowKeyCompare } from "./shared";
 import { Viewport, type IViewport } from "./viewport";
 import type { RowData, GetRowKey, TableColumn, RowKey, FilterState, SorterState } from "@scode/table-typing"
 import { binaryFindIndexRange } from "@scode/table-shared";
+import { TablePagination, type ITablePagination } from "./pagination";
 
 export interface TableStateOption {
   rowDatas?: RowData[];
@@ -12,6 +13,8 @@ export interface TableStateOption {
   getRowKey?: GetRowKey;
 
   columns?: TableColumn[];
+
+  pagination?: ITablePagination;
 
   viewport?: IViewport;
 
@@ -57,6 +60,8 @@ export class TableState {
 
   scroll: Scroll = { left: 0, top: 0 };
 
+  pagination?: TablePagination;
+
   colStateCenter: TableColStateCenter;
 
   rowStateCenter: TableRowStateCenter;
@@ -83,7 +88,7 @@ export class TableState {
   }
 
   constructor(option: TableStateOption) {
-    this.viewport = new Viewport();
+    this.viewport = new Viewport(this);
     this.colStateCenter = new TableColStateCenter({ tableState: this });
     this.fixedRowHeight = !isNil(option.rowHeight);
     this.rowStateCenter = new TableRowStateCenter({
@@ -95,6 +100,13 @@ export class TableState {
   }
 
   private init(option: TableStateOption) {
+    if (option.pagination) {
+      this.pagination = new TablePagination(
+        option.pagination.page,
+        option.pagination.size,
+        option.pagination.total,
+      );
+    }
     this.childrenColumnName = option.childrenColumnName ?? "children";
     this.childrenRowName = option.childrenRowName ?? "children";
 
@@ -163,7 +175,10 @@ export class TableState {
   }
 
   updateScroll() {
-    const { scrollHeight, scrollWidth, width, height } = this.viewport;
+    const { scroll_height, scrollHeight, scrollWidth, width, height } = this.viewport;
+
+    if (height >= scroll_height) return;
+
     const maxXMove = Math.max(0, scrollWidth - width);
     const maxYMove = Math.max(0, scrollHeight - height);
     Object.assign(this.scroll, {
@@ -252,26 +267,42 @@ export class TableState {
 
   // 根据可视索引，更新上下的偏移距离。
   updateRowOffsetByRange(range: RowDataRange) {
+    const { page = 1, size = 10 } = this.pagination ?? {};
+    let offset = this._calculateRowOffset((page - 1) * size - 1);
     const dataSourceLength = this.rowStateCenter.flattenRowKeys.length;
     // 这里计算获取的时候同时计算行偏移量，有点不够干净
     Object.assign(this.rowOffset, {
-      top: this._calculateRowOffset(range.startIndex - 1),
+      top: this._calculateRowOffset(range.startIndex - 1) - offset,
       bottom: this._calculateRowOffset(dataSourceLength - 1) - this._calculateRowOffset(range.endIndex)
     });
   }
 
   // 后驱可视窗口的数据 - 固定行高
   private getViewportDataSourceByFixRowHeight(): RowData[] {
+    let preIndex = 0;
+
+    if (this.pagination) {
+      const { page, size } = this.pagination;
+      preIndex = (page - 1) * size;
+    }
+
+
     const range: RowDataRange = { startIndex: 0, endIndex: 0 };
     const { rowHeight, flattenRowKeys } = this.rowStateCenter;
+    // 分页的偏差高度
+    let offsetHeight = preIndex * rowHeight;
 
-    range.startIndex = Math.floor(this.scroll.top / rowHeight) - 1;
-    range.endIndex = Math.floor((this.scroll.top + this.viewport.height) / rowHeight) + 1;
+    range.startIndex = Math.floor((this.scroll.top + offsetHeight) / rowHeight) - 1;
+    range.endIndex = Math.floor((this.scroll.top + this.viewport.height + offsetHeight) / rowHeight) + 1;
 
-    range.startIndex = Math.max(range.startIndex, 0);
+    range.startIndex = Math.max(
+      range.startIndex,
+      preIndex
+    );
+
     range.endIndex = Math.min(
       Math.max(range.startIndex, range.endIndex),
-      flattenRowKeys.length - 1
+      this.pagination ? this.pagination.page * this.pagination.size - 1 : flattenRowKeys.length - 1,
     );
 
     this.updateRowOffsetByRange(range);

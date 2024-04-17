@@ -17,8 +17,10 @@ export function usePagination(tableProps: TableProps) {
 
   // 分页事件
   function onChange(page: number, size: number) {
-    // TODO:
-    console.log(pagination.value);
+    if (typeof tableProps.pagination === 'object') {
+      tableProps.pagination.current = page;
+      tableProps.pagination.pageSize = size;
+    }
   }
 
   return {

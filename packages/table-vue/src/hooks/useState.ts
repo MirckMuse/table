@@ -135,12 +135,28 @@ export function useStateProvide({
 			lastColumn[0].expandable = true;
 		}
 
+		let pagination;
+		if (props.pagination) {
+			pagination = typeof props.pagination === "boolean"
+				? {
+					page: 1,
+					size: 10,
+					total: dataSource?.length ?? 0,
+				}
+				: {
+					page: props.pagination.current ?? 1,
+					size: props.pagination.pageSize ?? 10,
+					total: props.pagination.total ?? 0
+				};
+		}
+
 		return new TableState({
 			columns: columns ?? [],
 			rowDatas: dataSource ?? [],
 			getRowKey: getRowKey.value,
 			rowHeight: props.rowHeight,
 			childrenColumnName: childrenColumnName,
+			pagination: pagination
 		});
 	}
 

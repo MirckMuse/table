@@ -19,9 +19,9 @@ import type { TableProps } from "../typing";
 import type { StyleValue } from "vue";
 
 import { Pagination as APagination, Spin as ASpin } from "ant-design-vue";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useOverrideInject } from "../context/OverrideContext";
-import { usePagination, useSelectionProvide } from "../hooks";
+import { usePagination, useSelectionProvide, useStateInject } from "../hooks";
 import TableBody from "./body/index.vue";
 import TableHeader from "./header/index.vue";
 
@@ -39,6 +39,10 @@ const {
   spin: overrideSpin,
   pagination: overridePagination,
 } = useOverrideInject();
+
+const {
+  tableState
+} = useStateInject();
 
 const prefixClass = "s-table";
 
@@ -74,11 +78,17 @@ const {
   onChange: onPaginationChange,
 } = usePagination(props);
 
-console.log(paginationProps.value)
-
+// 同步分页参数
+watch(
+  () => paginationProps.value,
+  pagination => {
+    const { current, pageSize, total } = pagination;
+    tableState.value.pagination?.update(current ?? 1, pageSize ?? 10, total ?? 0);
+  },
+  { immediate: true, deep: true }
+)
 
 const paginationBind = computed(() => {
-  console.log("paginationBind", paginationProps.value)
   return {
     class: `s-pagination s-pagination-${paginationProps.value.horizontal || 'right'}`,
     onChange: onPaginationChange,
