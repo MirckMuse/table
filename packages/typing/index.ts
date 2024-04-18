@@ -166,7 +166,7 @@ export interface TableColumn {
 
   customRender?: CustomRender;
 
-  // 排序相关
+  // 排序相关, TODO: 要不要整合在一块呢？？
   sorter?: TableColumnSorter;
 
   sortOrder?: string | null;

@@ -49,7 +49,7 @@ const updateViewportWidth = throttle(function () {
 
 
   Object.assign(tableState.value.viewport, viewport)
-  tableState.value.updateScroll();
+  tableState.value.adjustScroll();
 }, 16)
 
 onMounted(() => {

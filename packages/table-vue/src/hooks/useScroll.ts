@@ -55,7 +55,7 @@ export function useTableHeaderScroll(
     const { offsetWidth } = el;
 
     tableState.value.viewport.width = offsetWidth;
-    tableState.value.updateScroll();
+    tableState.value.adjustScroll();
   }
 
   const { bbox: headerLeftBBox } = useBBox(headerLeftRef);
@@ -101,58 +101,21 @@ export function useTableBodyScroll(
   tableState: Ref<TableState>,
   heightChangeCallback?: () => void
 ) {
+
   useBBox(tableInnerBody, (el) => {
     const { offsetHeight } = el;
-
     if (offsetHeight === tableState.value.viewport.height) return;
 
     tableState.value.viewport.height = offsetHeight;
-    tableState.value.updateScroll();
+    tableState.value.adjustScroll();
     heightChangeCallback?.()
   }); // 计算垂直
 
-  const maxMove = computed(() => {
-    const {
-      width,
-      height,
-      scrollHeight,
-      scrollWidth
-    } = tableState.value.viewport;
-
-
-    return {
-      x: Math.max(0, scrollWidth - width),
-      y: Math.max(0, scrollHeight - height),
-    }
-  });
+  // 处理 body 的滚动事件
   const throttleUpdateScroll = throttle((deltaX: number, deltaY) => {
-    const viewport = tableState.value.viewport;
-
-    if (viewport && viewport.scroll_height < viewport.height) {
-      return;
-    }
-    
-    let {
-      left: scrollLeft,
-      top: scrollTop,
-    } = tableState.value.scroll;
-
     const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
-
-
-    scrollTop = Math.max(
-      0,
-      Math.min(scrollTop + optimizeY, maxMove.value.y)
-    );
-    scrollLeft = Math.max(
-      0,
-      Math.min(scrollLeft + optimizeX, maxMove.value.x)
-    );
-
-    Object.assign(tableState.value.scroll, {
-      left: scrollLeft,
-      top: scrollTop
-    });
+    tableState.value.updateScroll(optimizeX, optimizeY);
+    tableState.value.adjustScroll();
   }, 16);
 
   const processWheel = ($event: WheelEvent) => {

@@ -54,6 +54,15 @@ export type OuterRowMeta = {
   height: number;
 }
 
+function get_max_scroll(viewport: Viewport): [number, number] {
+  const { scroll_height, scrollWidth, width, height } = viewport;
+
+  const maxXMove = Math.max(0, scrollWidth - width);
+  const maxYMove = Math.max(0, scroll_height - height);
+
+  return [maxXMove, maxYMove];
+}
+
 // 表格的状态类
 export class TableState {
   viewport: Viewport;
@@ -88,9 +97,9 @@ export class TableState {
   }
 
   constructor(option: TableStateOption) {
+    this.fixedRowHeight = !isNil(option.rowHeight);
     this.viewport = new Viewport(this);
     this.colStateCenter = new TableColStateCenter({ tableState: this });
-    this.fixedRowHeight = !isNil(option.rowHeight);
     this.rowStateCenter = new TableRowStateCenter({
       tableState: this,
       rowHeight: option.rowHeight ?? RowHeight,
@@ -100,6 +109,7 @@ export class TableState {
   }
 
   private init(option: TableStateOption) {
+    this.init_event();
     if (option.pagination) {
       this.pagination = new TablePagination(
         option.pagination.page,
@@ -118,6 +128,16 @@ export class TableState {
     if (option.rowDatas?.length) {
       this.updateRowDatas(option.rowDatas)
     }
+  }
+
+  getViewportDataSource: () => RowData[];
+
+  // 初始化事件
+  private init_event() {
+    // 初始化获取可视窗口数据的事件
+    this.getViewportDataSource = this.isFixedRowHeight
+      ? this.getViewportDataSourceByFixRowHeight
+      : this.getViewportDataSourceByAutoRowHeight
   }
 
   updateColumns(columns: TableColumn[]) {
@@ -174,13 +194,21 @@ export class TableState {
     Object.assign(this.viewport ?? {}, { width, height });
   }
 
-  updateScroll() {
-    const { scroll_height, scrollHeight, scrollWidth, width, height } = this.viewport;
+  // 更新滚动距离
+  updateScroll(deltaX: number, deltaY: number) {
+    const { left, top } = this.scroll;
+    Object.assign(this.scroll, {
+      left: left + deltaX,
+      top: top + deltaY
+    });
 
-    if (height >= scroll_height) return;
+    this.adjustScroll();
+  }
 
-    const maxXMove = Math.max(0, scrollWidth - width);
-    const maxYMove = Math.max(0, scrollHeight - height);
+  // 校准滚动，确保不会滚动溢出
+  adjustScroll() {
+    const [maxXMove, maxYMove] = get_max_scroll(this.viewport);
+
     Object.assign(this.scroll, {
       left: adjustScrollOffset(this.scroll.left, maxXMove),
       top: adjustScrollOffset(this.scroll.top, maxYMove)
@@ -286,7 +314,6 @@ export class TableState {
       preIndex = (page - 1) * size;
     }
 
-
     const range: RowDataRange = { startIndex: 0, endIndex: 0 };
     const { rowHeight, flattenRowKeys } = this.rowStateCenter;
     // 分页的偏差高度
@@ -306,6 +333,7 @@ export class TableState {
     );
 
     this.updateRowOffsetByRange(range);
+
 
     return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
       const rowIndex = range.startIndex + index;
@@ -339,15 +367,6 @@ export class TableState {
     }, []);
   }
 
-  // 获取可视范围的数据, // TODO: 可以优化的，减少一次 if 判断
-  getViewportDataSource(): RowData[] {
-    if (this.isFixedRowHeight) {
-      return this.getViewportDataSourceByFixRowHeight();
-    }
-
-    return this.getViewportDataSourceByAutoRowHeight();
-  }
-
   getViewportHeightList(viewportDataSource: RowData[]): number[] {
     return viewportDataSource.map(rowData => {
       return this.rowStateCenter.getRowHeightByRowData(rowData);
@@ -356,6 +375,16 @@ export class TableState {
 
   isEmpty() {
     return !!this.rowStateCenter.flattenRowKeys.length;
+  }
+
+  // 判断垂直滚动是否溢出
+  is_vertical_overflow() {
+
+    const { height, scroll_height } = this.viewport;
+
+    if (height === 0 || scroll_height === 0 || this.scroll.top === 0) return false;
+
+    return this.scroll.top + height >= scroll_height;
   }
 
   getRowDataChildren(rowData: RowData): RowData[] | undefined {
