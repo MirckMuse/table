@@ -97,30 +97,39 @@ export class TableState {
   }
 
   constructor(option: TableStateOption) {
+    // 初始化前置参数，确保后续创建事件正常。
+    this.before_init(option);
+
+    this.init(option);
+  }
+
+  private before_init(option: TableStateOption) {
+    if (option.pagination) {
+      const { page, size, total } = option.pagination;
+      this.pagination = new TablePagination(page, size, total);
+    }
     this.fixedRowHeight = !isNil(option.rowHeight);
+
+    // 初始化可视窗口
     this.viewport = new Viewport(this);
+    Object.assign(this.viewport, option.viewport ?? {});
+
+    this.childrenColumnName = option.childrenColumnName ?? "children";
+    this.childrenRowName = option.childrenRowName ?? "children";
+
     this.colStateCenter = new TableColStateCenter({ tableState: this });
     this.rowStateCenter = new TableRowStateCenter({
       tableState: this,
       rowHeight: option.rowHeight ?? RowHeight,
       getRowKey: option.getRowKey
-    })
-    this.init(option);
+    });
+
   }
 
   private init(option: TableStateOption) {
     this.init_event();
-    if (option.pagination) {
-      this.pagination = new TablePagination(
-        option.pagination.page,
-        option.pagination.size,
-        option.pagination.total,
-      );
-    }
-    this.childrenColumnName = option.childrenColumnName ?? "children";
-    this.childrenRowName = option.childrenRowName ?? "children";
 
-    Object.assign(this.viewport, option.viewport ?? {});
+
     if (option.columns?.length) {
       this.updateColumns(option.columns);
     }
@@ -130,6 +139,7 @@ export class TableState {
     }
   }
 
+  // 获取可视窗口的行数据
   getViewportDataSource: () => RowData[];
 
   // 初始化事件
@@ -375,16 +385,6 @@ export class TableState {
 
   isEmpty() {
     return !!this.rowStateCenter.flattenRowKeys.length;
-  }
-
-  // 判断垂直滚动是否溢出
-  is_vertical_overflow() {
-
-    const { height, scroll_height } = this.viewport;
-
-    if (height === 0 || scroll_height === 0 || this.scroll.top === 0) return false;
-
-    return this.scroll.top + height >= scroll_height;
   }
 
   getRowDataChildren(rowData: RowData): RowData[] | undefined {

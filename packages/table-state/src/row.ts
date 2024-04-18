@@ -521,6 +521,7 @@ export class TableRowStateCenter {
     return this.rowStateMap.get(rowKey) ?? null;
   }
 
+  // TODO: 需要确认时直接生成rowkey快，还是通过 map 映射快
   getRowKeyByRowData(rowData: RowData): RowKey {
     return this.rowKeyMap.get(rowData) ?? -1;
   }
