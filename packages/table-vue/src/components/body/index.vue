@@ -22,10 +22,11 @@
       </div>
     </div>
 
-    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scrollHeight"
-      :scroll="scroll.top" :is-vertical="true" />
+    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scroll_height"
+      v-model:scroll="scroll.top" :is-vertical="true" />
 
-    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth" :scroll="scroll.left" />
+    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth"
+      v-model:scroll="scroll.left" />
   </div>
 </template>
 
@@ -137,7 +138,7 @@ export default defineComponent({
     }
 
     const getCellPadding = createGetCellPadding();
-    
+
     onUpdated(() => {
       const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
       const metas: OuterRowMeta[] = [];
@@ -194,13 +195,16 @@ export default defineComponent({
     watch(
       () => [
         tableState.value.scroll.top,
-        tableState.value.rowStateCenter.flattenRowKeys
+        tableState.value.rowStateCenter.flattenRowKeys,
+        tableState.value.pagination?.page,
+        tableState.value.pagination?.size,
       ],
       () => {
         getViewportDataSource();
       }
     );
 
+    // 控制表体滚动逻辑
     useTableBodyScroll(bodyInnerRef, tableState, getViewportDataSource);
 
     const bodyLeftRef = shallowRef<HTMLElement>();
@@ -259,7 +263,8 @@ export default defineComponent({
       getRowKey: getRowKey,
       transformCellText: tableProps.transformCellText,
       bodyCell: tableSlots.bodyCell,
-      customRow: tableProps.customRow
+      customRow: tableProps.customRow,
+      childrenRowName: tableProps.childrenRowName
     })
 
     return {

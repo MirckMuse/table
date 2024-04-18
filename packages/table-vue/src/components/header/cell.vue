@@ -95,6 +95,7 @@ export default defineComponent({
       if (!colKey) return;
 
       let sorterStates = tableState.value.rowStateCenter.sorterStates;
+
       if (!sorterState.value) {
         // 无状态 -> 升序
         sorterStates.push({ colKey, direction: SorterDirection.Ascend });

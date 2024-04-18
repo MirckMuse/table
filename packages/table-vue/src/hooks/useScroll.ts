@@ -126,11 +126,19 @@ export function useTableBodyScroll(
     }
   });
   const throttleUpdateScroll = throttle((deltaX: number, deltaY) => {
-    const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
+    const viewport = tableState.value.viewport;
+
+    if (viewport && viewport.scroll_height < viewport.height) {
+      return;
+    }
+    
     let {
       left: scrollLeft,
-      top: scrollTop
+      top: scrollTop,
     } = tableState.value.scroll;
+
+    const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
+
 
     scrollTop = Math.max(
       0,

@@ -1,8 +1,9 @@
 <template>
   <div style="padding: 10px;">
+    <h1>数据量:{{ data_source.length }}</h1>
     <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 700 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
-      :row-height="56">
+      :row-height="56" :pagination="pagination">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
@@ -12,9 +13,9 @@
 
 <script lang="ts" setup>
 import { TableColumn } from "@scode/table-typing";
-import { TransformCellText } from "@scode/table-vue";
+import type { TransformCellText, TablePaginationProps } from "@scode/table-vue";
 import { uniqueId } from "lodash-es";
-import { h, ref } from "vue";
+import { h, reactive, ref } from "vue";
 
 function handleResizeColumn(width: number, col: TableColumn) {
   col.width = width;
@@ -26,6 +27,12 @@ const transformCellText: TransformCellText = ({ text, column }) => {
   }
   return text
 }
+
+const pagination = reactive<TablePaginationProps>({
+  current: 1,
+  pageSize: 10,
+  total: 0,
+})
 
 function customRow(row: any, index: number) {
   if (index === 0) {
@@ -56,10 +63,14 @@ function createItem(_: unknown, index: number) {
 
 const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
 
-const children = Array(10).fill(null).map(createItem) as any[];
+const children = Array(100).fill(null).map(createItem) as any[];
 
-children[0].children = Array(10).fill(null).map(createItem) as any[];
+children[0].children = Array(100).fill(null).map(createItem) as any[];
 data_source.value[0].children = children;
+
+setTimeout(() => {
+  pagination.total = data_source.value.length;
+}, 1000)
 
 const columns = ref<TableColumn[]>([
   {

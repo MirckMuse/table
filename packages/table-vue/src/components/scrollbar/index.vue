@@ -1,17 +1,7 @@
 <template>
-  <div 
-    v-if="content > client + Pixel_Error_Buffer" 
-    class="s-table-scroll__track"
-    :class="{
-      'is-vertical': isVertical,
-      [state?.position ?? 'outer']: true
-    }"
-    :style="{
-      '--table-scroll-size': (state?.size ?? 6) + 'px'
-    }"
-    ref="rootRef"
-  >
-    <div class="s-table-scroll__thumb" :style="thumbStyle"></div>
+  <div v-if="scrollbarVisible" ref="rootRef" class="s-table-scroll__track" :class="scrollbarClass"
+    :style="scrollbarStyle" @mousedown="handleTrackMousedown">
+    <div class="s-table-scroll__thumb" :style="thumbStyle" @mousedown.stop="handleThumbMousedown"></div>
   </div>
 </template>
 
@@ -40,17 +30,26 @@ const props = defineProps({
   isVertical: { type: Boolean, default: false }
 });
 
+const emit = defineEmits(["update:scroll"])
+
 const rootRef = ref<HTMLElement>();
 
-const thunmSize = computed(() => {
-  const { client, content } = props;
-  let ratio = client / content;
-  const thumnSize = ratio * client;
-  return Math.max(thumnSize, 1);
-})
+const MIN_THUMB_SIZE = 30;
+
 
 const sizeKey = props.isVertical ? 'height' : "width"
-const marginKey = props.isVertical ? 'marginTop' : "marginLeft"
+const marginKey = props.isVertical ? 'marginTop' : "marginLeft";
+
+const ratio = computed(() => {
+  const { client, content } = props;
+  return client / content;
+});
+
+// 计算后的滚动条尺寸
+const computedthumbSize = computed(() => Math.max(ratio.value * props.client, 1))
+
+// 校准后的滚动条尺寸
+const thumbSize = computed(() => Math.max(computedthumbSize.value, MIN_THUMB_SIZE));
 
 const thumbStyle = computed(() => {
   let { client, content, scroll } = props;
@@ -63,21 +62,104 @@ const thumbStyle = computed(() => {
     return { [sizeKey]: "0px", [marginKey]: "0px" };
   }
 
-  const ratio = client / content;
-  let offset = Math.max(ratio * scroll, 0);
-  offset = Math.min(offset, client - thunmSize.value);
+  // 因为thumb有最小的尺寸，基于原有的比例计算出来的margin有偏差，需要校准一下
+  const adjustOffset = scroll / (client - thumbSize.value) * (thumbSize.value - computedthumbSize.value);
+  let offset = Math.max(ratio.value * (scroll - adjustOffset), 0);
+  offset = Math.min(offset, client - thumbSize.value);
 
-
+  // thumbSize 应该给个最小尺寸
 
   return {
-    [sizeKey]: thunmSize.value + "px",
+    [sizeKey]: thumbSize.value + "px",
     [marginKey]: offset + "px",
   }
 })
+
+// 当内容大于容器高度时，滚动条显式
+const scrollbarVisible = computed(() => {
+  const { content, client } = props;
+  return content > client + Pixel_Error_Buffer;
+});
+
+// 滚动条样式类
+const scrollbarClass = computed(() => {
+  const { isVertical, state } = props;
+  return {
+    "is-vertical": isVertical,
+    [state?.position ?? 'outer']: true
+  }
+});
+
+// 滚动条样式
+const scrollbarStyle = computed(() => {
+  const { state } = props;
+  return {
+    "--table-scroll-size": (state?.size ?? 6) + "px"
+  }
+});
+
+const getPosition = (function (isVertical: boolean) {
+  return isVertical
+    ? ($event: MouseEvent) => $event.pageY
+    : ($event: MouseEvent) => $event.pageX;
+})(props.isVertical);
+
+const getTrackPosition = (function (isVertical: boolean) {
+  return isVertical
+    ? () => rootRef.value?.getBoundingClientRect().top ?? 0
+    : () => rootRef.value?.getBoundingClientRect().left ?? 0
+})(props.isVertical);
+
+let mousedownStartPagePosition = 0;
+let userSelect = "";
+let start_scroll = 0;
+
+// 鼠标按下 thumb 时，记录了当前的位置
+function handleThumbMousedown($event: MouseEvent) {
+  mousedownStartPagePosition = getPosition($event);
+  userSelect = document.body.style.userSelect;
+  start_scroll = props.scroll;
+  document.body.style.userSelect = 'none';
+  document.addEventListener("mousemove", handleMousemove);
+  document.addEventListener("mouseup", handleMouseup);
+}
+
+// 在滚动条轨道点击时，需要计算相对于track的整体比例，来计算滚动距离
+function handleTrackMousedown($event: MouseEvent) {
+  const { content, client } = props;
+  let mouseDownPosition = getPosition($event);
+  let trackPosition = getTrackPosition();
+  let newScroll = mouseDownPosition - trackPosition;
+  newScroll = Math.min(newScroll, content - client);
+  newScroll = Math.max(newScroll, 0);
+
+
+
+  emit('update:scroll', newScroll / ratio.value);
+}
+
+function handleMousemove($event: MouseEvent) {
+  const { content, client } = props;
+  const moveLength = getPosition($event) - mousedownStartPagePosition;
+
+  // 移动距离需要处理比例 + 起始滚动距离
+  let newScroll = moveLength / ratio.value + start_scroll;
+  newScroll = Math.min(newScroll, content - client);
+  newScroll = Math.max(newScroll, 0);
+
+  emit('update:scroll', newScroll);
+}
+
+function handleMouseup() {
+  document.body.style.userSelect = userSelect;
+  document.removeEventListener("mousemove", handleMousemove);
+  document.removeEventListener("mouseup", handleMouseup);
+}
 </script>
 
 <style lang="less" scoped>
 .is-vertical.s-table-scroll {
+
   &__track,
   &__thumb {
     width: var(--table-scroll-size);
@@ -94,7 +176,7 @@ const thumbStyle = computed(() => {
   }
 }
 
-.s-table-scroll__track:not(.is-vertical){
+.s-table-scroll__track:not(.is-vertical) {
   left: 0;
   bottom: 0;
 }
@@ -115,6 +197,7 @@ const thumbStyle = computed(() => {
 }
 
 .s-table-scroll {
+
   &__track,
   &__thumb {
     display: block;
@@ -125,12 +208,16 @@ const thumbStyle = computed(() => {
     width: 100%;
     background-color: var(--table-scroll-track-bg);
     position: fixed;
-    
+
   }
 
   &__thumb {
     background-color: var(--table-scroll-thumb-bg);
     border-radius: var(--table-scroll-radius);
+  }
+
+  &__thumb:hover {
+    background-color: var(--table-scroll-thumb-hover-bg);
   }
 }
 </style>

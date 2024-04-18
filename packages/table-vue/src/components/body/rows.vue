@@ -48,8 +48,10 @@ export default defineComponent({
           isHover: tableState.value.hoverState.rowKey === rowKey,
           hoverState: hoverState,
           customRow: props.customRow,
-          bodyCell: props.bodyCell,
-          transformCellText: props.transformCellText
+          ...Object.keys(BodyCellInheritProps).reduce<Record<string, unknown>>((bind, key) => {
+            bind[key] = (props as any)[key];
+            return bind;
+          }, {})
         }
       );
     }

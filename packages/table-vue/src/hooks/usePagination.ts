@@ -1,31 +1,30 @@
 import type { TablePaginationProps, TableProps } from "../typing";
-import { computed, reactive } from "vue";
+import { ref, toRef, type Ref } from "vue";
+import { DefaultPagination } from '../config'
 
 // 默认 10 条数据每页
 export const Default_Page_Size = 10;
 
 export function usePagination(tableProps: TableProps) {
-  const props = computed<TablePaginationProps>(() => {
-    // TODO:
-    return {
-      vertical: "bottom",
-      horizontal: "right"
-    }
-  });
+  // 初始化 pagination 属性。
+  const pagination = typeof tableProps.pagination === "object"
+    ? toRef(tableProps, "pagination") as Ref<TablePaginationProps>
+    : ref<TablePaginationProps>(tableProps.pagination ? { ...DefaultPagination } : {})
 
-  const state = reactive({
-    page: 1,
-    size: Default_Page_Size
-  });
+  if (typeof tableProps.pagination) {
+    Object.assign(pagination.value, DefaultPagination, tableProps.pagination)
+  }
 
   // 分页事件
   function onChange(page: number, size: number) {
-    // TODO:
-    console.log(state);
+    if (typeof tableProps.pagination === 'object') {
+      tableProps.pagination.current = page;
+      tableProps.pagination.pageSize = size;
+    }
   }
 
   return {
-    props,
+    props: pagination,
     onChange
   }
 }

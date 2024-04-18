@@ -1,7 +1,6 @@
 import type { TableColumn, RowData, GetRowKey, RowKey } from "@scode/table-typing";
 import type { TooltipProps } from "ant-design-vue";
 
-
 // 插槽相关
 export * from "./slot";
 
@@ -12,9 +11,18 @@ export * from "./emit";
 
 
 export type TablePaginationProps = {
-  vertical: 'top' | 'bottom';
+  vertical?: 'top' | 'bottom';
 
-  horizontal: 'left' | 'right';
+  horizontal?: 'left' | 'right';
+
+  // 当前分页位置
+  current?: number;
+
+  // 分页大小
+  pageSize?: number;
+
+  // 数据总量
+  total?: number;
 };
 
 export interface TableScroll {
@@ -66,10 +74,14 @@ export interface TableProps {
 
   transformCellText?: TransformCellText;
 
-  // 缩进尺寸，传入数字时，这里的单位位 px。
+  // 缩进尺寸，传入数字时，这里的单位为 px。
   indentSize?: number | string;
 
+  // 表头列数据的 key
   childrenColumnName?: string;
+
+  // 行数据的 children key
+  childrenRowName?: string;
 }
 
 export type TransformCellText = (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;

@@ -5,6 +5,7 @@ import { adjustScrollOffset, rowKeyCompare } from "./shared";
 import { Viewport, type IViewport } from "./viewport";
 import type { RowData, GetRowKey, TableColumn, RowKey, FilterState, SorterState } from "@scode/table-typing"
 import { binaryFindIndexRange } from "@scode/table-shared";
+import { TablePagination, type ITablePagination } from "./pagination";
 
 export interface TableStateOption {
   rowDatas?: RowData[];
@@ -13,11 +14,15 @@ export interface TableStateOption {
 
   columns?: TableColumn[];
 
+  pagination?: ITablePagination;
+
   viewport?: IViewport;
 
   rowHeight?: number;
 
   childrenColumnName?: string;
+
+  childrenRowName?: string;
 }
 
 
@@ -55,6 +60,8 @@ export class TableState {
 
   scroll: Scroll = { left: 0, top: 0 };
 
+  pagination?: TablePagination;
+
   colStateCenter: TableColStateCenter;
 
   rowStateCenter: TableRowStateCenter;
@@ -72,6 +79,8 @@ export class TableState {
 
   childrenColumnName = "children";
 
+  childrenRowName = "children";
+
   private fixedRowHeight = false;
 
   get isFixedRowHeight() {
@@ -79,7 +88,7 @@ export class TableState {
   }
 
   constructor(option: TableStateOption) {
-    this.viewport = new Viewport();
+    this.viewport = new Viewport(this);
     this.colStateCenter = new TableColStateCenter({ tableState: this });
     this.fixedRowHeight = !isNil(option.rowHeight);
     this.rowStateCenter = new TableRowStateCenter({
@@ -91,7 +100,16 @@ export class TableState {
   }
 
   private init(option: TableStateOption) {
+    if (option.pagination) {
+      this.pagination = new TablePagination(
+        option.pagination.page,
+        option.pagination.size,
+        option.pagination.total,
+      );
+    }
     this.childrenColumnName = option.childrenColumnName ?? "children";
+    this.childrenRowName = option.childrenRowName ?? "children";
+
     Object.assign(this.viewport, option.viewport ?? {});
     if (option.columns?.length) {
       this.updateColumns(option.columns);
@@ -147,11 +165,7 @@ export class TableState {
     if (offsetHeight === 0) return;
 
     if (firstRowState) {
-      // let start = performance.now();
-
       this.rowStateCenter.resetYIndexes();
-      // console.log(`resetYIndexes spend Time ${performance.now() - start}ms`)
-
     }
     this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
   }
@@ -161,7 +175,10 @@ export class TableState {
   }
 
   updateScroll() {
-    const { scrollHeight, scrollWidth, width, height } = this.viewport;
+    const { scroll_height, scrollHeight, scrollWidth, width, height } = this.viewport;
+
+    if (height >= scroll_height) return;
+
     const maxXMove = Math.max(0, scrollWidth - width);
     const maxYMove = Math.max(0, scrollHeight - height);
     Object.assign(this.scroll, {
@@ -187,11 +204,9 @@ export class TableState {
     }
 
     // 筛选后需要更新可滚动距离
-    const { flattenRowKeys, flattenYIndexes } = this.rowStateCenter;
-    const lastRowKey = flattenRowKeys[flattenRowKeys.length - 1];
+    const { flattenYIndexes } = this.rowStateCenter;
     const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
-    const lastRowHeight = this.rowStateCenter.getStateByRowKey(lastRowKey)?.getMeta().height ?? 0;
-    this.viewport.scrollHeight = lastRowY + lastRowHeight;
+    this.viewport.scrollHeight = lastRowY;
   }
 
   updateSorterStates(sorterStates: SorterState[]) {
@@ -252,26 +267,42 @@ export class TableState {
 
   // 根据可视索引，更新上下的偏移距离。
   updateRowOffsetByRange(range: RowDataRange) {
+    const { page = 1, size = 10 } = this.pagination ?? {};
+    let offset = this._calculateRowOffset((page - 1) * size - 1);
     const dataSourceLength = this.rowStateCenter.flattenRowKeys.length;
     // 这里计算获取的时候同时计算行偏移量，有点不够干净
     Object.assign(this.rowOffset, {
-      top: this._calculateRowOffset(range.startIndex - 1),
+      top: this._calculateRowOffset(range.startIndex - 1) - offset,
       bottom: this._calculateRowOffset(dataSourceLength - 1) - this._calculateRowOffset(range.endIndex)
     });
   }
 
   // 后驱可视窗口的数据 - 固定行高
   private getViewportDataSourceByFixRowHeight(): RowData[] {
+    let preIndex = 0;
+
+    if (this.pagination) {
+      const { page, size } = this.pagination;
+      preIndex = (page - 1) * size;
+    }
+
+
     const range: RowDataRange = { startIndex: 0, endIndex: 0 };
     const { rowHeight, flattenRowKeys } = this.rowStateCenter;
+    // 分页的偏差高度
+    let offsetHeight = preIndex * rowHeight;
 
-    range.startIndex = Math.floor(this.scroll.top / rowHeight) - 1;
-    range.endIndex = Math.floor((this.scroll.top + this.viewport.height) / rowHeight) + 1;
+    range.startIndex = Math.floor((this.scroll.top + offsetHeight) / rowHeight) - 1;
+    range.endIndex = Math.floor((this.scroll.top + this.viewport.height + offsetHeight) / rowHeight) + 1;
 
-    range.startIndex = Math.max(range.startIndex, 0);
+    range.startIndex = Math.max(
+      range.startIndex,
+      preIndex
+    );
+
     range.endIndex = Math.min(
       Math.max(range.startIndex, range.endIndex),
-      flattenRowKeys.length - 1
+      this.pagination ? this.pagination.page * this.pagination.size - 1 : flattenRowKeys.length - 1,
     );
 
     this.updateRowOffsetByRange(range);
@@ -310,7 +341,6 @@ export class TableState {
 
   // 获取可视范围的数据, // TODO: 可以优化的，减少一次 if 判断
   getViewportDataSource(): RowData[] {
-    console.log('getViewportDataSource')
     if (this.isFixedRowHeight) {
       return this.getViewportDataSourceByFixRowHeight();
     }
@@ -338,57 +368,54 @@ export class TableState {
   updateExpandedRowKeys(expandedRowKeys: RowKey[]) {
     const rowStateCenter = this.rowStateCenter;
 
-    const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => {
-      return (rowStateCenter.getStateByRowKey(prev)?.getMeta()?.deep ?? -1) - (rowStateCenter.getStateByRowKey(next)?.getMeta()?.deep ?? -1)
-    });
+    // 获取行的深度, 用作排序
+    const getRowDeep = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()?.deep ?? -1;
 
-    // FIXME: 这里需要重写。
+    // 获取排序后的的 rowKey，确保子数据一定在父数据之后
+    const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => getRowDeep(prev) - getRowDeep(next));
+
     const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
 
-    const insertedRowKeySet = new Set<RowKey>([]);
-
+    // 将展开的子数据生成 state 塞入 center。
     while (expandedRowKeySet.size) {
       const rowKey = Array.from(expandedRowKeySet).find(key => rowStateCenter.getRowDataByRowKey(key));
 
       if (!isNil(rowKey)) {
         expandedRowKeySet.delete(rowKey);
-        const record = rowStateCenter.getRowDataByRowKey(rowKey);
 
-        if (record) {
+        const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
+
+        if (rowData) {
           const parentMeta = rowStateCenter.getStateByRowKey(rowKey)?.getMeta();
-          const children = this.getRowDataChildren(record) ?? [];
+          const children = this.getRowDataChildren(rowData) ?? [];
 
           if (children.length) {
+
             children.forEach((row, rowIndex) => {
-              const rowState = rowStateCenter.insertRowState(row, {
+              rowStateCenter.insertRowState(row, {
                 index: rowIndex,
                 deep: parentMeta ? (parentMeta.deep + 1) : 0,
                 _sort: `${parentMeta ? parentMeta._sort : "0"}-${String(rowIndex)}`
-              })
-              insertedRowKeySet.add(rowState.getMeta().key)
-            })
+              });
+            });
           }
         }
       }
     }
-
-    // FIXME: 展开和收缩后 y 的变化
 
     // 最后才更新展开列
     this.expandedRowKeys = expandedRowKeys;
     this.updateFlattenRowKeysByExpandedRowKeys();
   }
 
+  // 更新展开后的行数据
   private updateFlattenRowKeysByExpandedRowKeys() {
     const rowStateCenter = this.rowStateCenter;
 
-    function _getSort(rowKey: RowKey) {
-      return rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? ''
-    }
+    // 获取行的排序权重
+    const _getRowSort = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? '';
 
-    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => {
-      return rowKeyCompare(_getSort(prev), _getSort(next))
-    })
+    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => rowKeyCompare(_getRowSort(prev), _getRowSort(next)))
 
     const newflattenRowKeys: RowKey[] = [];
     let children: RowData[] = [];

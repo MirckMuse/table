@@ -82,11 +82,19 @@ enum CompareResult {
   Greater = 1,
 }
 
+// FIXME: 目前行控制器的功能太重了，需要精简，
+// FIXME: 精简目标：只负责维护的元数据
 export class TableRowStateCenter {
   // 原始行 keys
   rawRowKeys: RowKey[] = [];
 
-  // 展开行的 key值
+  // 筛选后的 keys, 根据 rawRowKeys 得来的。
+  private filteredRowKeys: RowKey[] = [];
+
+  // 排序后的 keys，根据 filteredRowKeys 得来的。
+  private sorteredRowKeys: RowKey[] = [];
+
+  // 展开行的 key值, 根据 sorteredRowKeys 计算得来的，包含展开数据
   flattenRowKeys: RowKey[] = [];
 
   // 展示行的 Y 坐标值
@@ -119,6 +127,8 @@ export class TableRowStateCenter {
   private init() {
     this.rowStateMap.clear();
     this.rawRowKeys = [];
+    this.filteredRowKeys = [];
+    this.sorteredRowKeys = [];
     this.flattenRowKeys = [];
     this.flattenYIndexes = [];
     this.rowKeyMap = new WeakMap<RowData, RowKey>();
@@ -182,7 +192,14 @@ export class TableRowStateCenter {
 
   // 更新排序状态
   updateSorterStates(sorterStates: SorterState[]) {
-    if (!sorterStates.length) return;
+    if (!sorterStates.length) {
+      this.flattenRowKeys = Array.from(toRaw(this.rawRowKeys));
+      this.sorterStates = [];
+      return;
+    };
+
+    // 判断是否为固定高度的表格。
+    const isFixedRowHeight = this.tableState.isFixedRowHeight;
 
     this.sorterStates = sorterStates;
 
@@ -197,15 +214,22 @@ export class TableRowStateCenter {
 
         if (rowData) {
           rowDatas.push(rowData);
+        }
+
+        if (!isFixedRowHeight) {
           const rowMeta = this.getStateByRowKey(rowKey)?.getMeta();
           flattenYIndexes.push(height);
           height = height + (rowMeta?.height ?? 0);
         }
+
         return rowDatas;
       }, []))
       .map(rowData => this.getRowKeyByRowData(rowData));
 
-    this.flattenYIndexes = flattenYIndexes;
+    // 固定高度直接算。
+    this.flattenYIndexes = isFixedRowHeight
+      ? Array(this.flattenRowKeys.length).fill(null).map((_, index) => (index + 1) * this.roughRowHeight)
+      : flattenYIndexes;
   }
 
   //  获取排序后的行数据
@@ -225,6 +249,19 @@ export class TableRowStateCenter {
     });
   }
 
+  private getRowDatasByRowKeys(rowKeys: RowKey[]) {
+    return rowKeys.reduce<RowData[]>((rowDatas, rowKey) => {
+      const rowData = this.getRowDataByRowKey(rowKey);
+
+      if (rowData) {
+        rowDatas.push(rowData);
+      }
+      return rowDatas;
+    }, []);
+
+    // return rowKeys.map(rowKey => this.getRowDataByRowKey(rowKey)).filter(rowData => rowData) as RowData[]
+  }
+
   // 更新筛选状态
   updateFilterStates(filterStates: FilterState[]) {
     this.filterStates = filterStates;
@@ -239,18 +276,10 @@ export class TableRowStateCenter {
       height = height + (rowMeta?.height ?? 0);
     }
 
-    this.flattenRowKeys = this
-      .getFilteredRowDatas(
-        this.rawRowKeys.reduce<RowData[]>((rowDatas, rowKey) => {
-          const rowData = this.getRowDataByRowKey(rowKey);
+    const _rowDatas = this.getRowDatasByRowKeys(this.rawRowKeys);
 
-          if (rowData) {
-            rowDatas.push(rowData);
-          }
-          return rowDatas;
-        }, []),
-        _filterCallback
-      )
+    this.flattenRowKeys = this
+      .getFilteredRowDatas(_rowDatas, _filterCallback)
       .map(rowData => this.getRowKeyByRowData(rowData));
 
     this.flattenYIndexes = flattenYIndexes;
@@ -378,7 +407,7 @@ export class TableRowStateCenter {
   updateRawPoolRow() { }
 
   // 更新行数据 - 固定行高
-  private updateRowDatasByFixedRowHeight(rowDatas: RowData[]) {
+  private createUpdateRowDatasByFixedRowHeightTask() {
     // 生成行数据的 meta
     const _createRowStateMeta = (rowKey: RowKey, index: number): RowMeta => {
       return {
@@ -401,29 +430,19 @@ export class TableRowStateCenter {
       })
     };
 
-    const _task = (oneChunk: RowData[], chunkIndex: number) => {
+    return (oneChunk: RowData[], chunkIndex: number) => {
       oneChunk.forEach((rowData, index) => {
         let i = index + chunkIndex * ChunkSize;
-        const rowKey = this.getRowKey ? this.getRowKey(rowData) : `0-${i}`;
+        const rowKey = this.getRowKey ? this.getRowKey(rowData, i) : `0-${i}`;
         const state = _createRowState(rowData, rowKey, i);
-
-        this.rawRowKeys.push(rowKey);
-        this.flattenRowKeys.push(rowKey);
         this.rowStateMap.set(rowKey, state);
         this.rowKeyMap.set(rowData, rowKey);
       });
     }
-
-    const chunks = chunk(rowDatas, ChunkSize);
-
-    _task(chunks[0], 0);
-    for (let i = 1; i < chunks.length; i++) {
-      runIdleTask(() => _task(chunks[i], i));
-    }
   }
 
   // 更新行数据 - 不定行高
-  private updateRowDatasByAutoRowHeight(rowDatas: RowData[]) {
+  private createUpdateRowDatasByAutoRowHeightTask() {
     // 生成行数据的 meta
     const _createRowStateMeta = (rowData: RowData, index: number): RowMeta => {
       return {
@@ -445,24 +464,14 @@ export class TableRowStateCenter {
         rowStateCenter: this,
       });
     };
-    const _task = (oneChunk: RowData[], chunkIndex: number) => {
+    return (oneChunk: RowData[], chunkIndex: number) => {
       oneChunk.forEach((rowData, index) => {
         const state = _createRowState(rowData, index + chunkIndex * ChunkSize);
-
         const rowKey = state.getMeta().key;
-        this.rawRowKeys.push(rowKey);
         this.rowStateMap.set(rowKey, state);
-        this.flattenRowKeys.push(rowKey);
         this.rowKeyMap.set(rowData, rowKey);
       });
     };
-
-    const chunks = chunk(rowDatas, ChunkSize);
-
-    _task(chunks[0], 0);
-    for (let i = 1; i < chunks.length; i++) {
-      runIdleTask(() => _task(chunks[i], i));
-    }
   }
 
   // 更新行数据
@@ -470,15 +479,33 @@ export class TableRowStateCenter {
     this.init();
 
     this.tableState.viewport.scrollHeight = rowDatas.length * this.roughRowHeight;
-    this.flattenYIndexes = Array(rowDatas.length)
-      .fill(null)
-      .map((_, i) => (i + 1) * this.roughRowHeight);
+    this.flattenYIndexes = Array(rowDatas.length).fill(null).map((_, i) => (i + 1) * this.roughRowHeight);
 
-    const isFixedRowHeight = this.tableState.isFixedRowHeight;
-    if (isFixedRowHeight) {
-      this.updateRowDatasByFixedRowHeight(rowDatas);
+    // 生成最初的 key 值
+    const getRowKey = this.getRowKey ?? ((_: RowData, rowIndex: number) => `0-${rowIndex}`);
+    const rawRowDatas = toRaw(rowDatas);
+    this.rawRowKeys = rawRowDatas.map(getRowKey);
+    this.filteredRowKeys = rawRowDatas.map(getRowKey);
+    this.sorteredRowKeys = rawRowDatas.map(getRowKey);
+    this.flattenRowKeys = rawRowDatas.map(getRowKey);
+
+    // 分策略更新 state。
+    const _task = this.tableState.isFixedRowHeight
+      ? this.createUpdateRowDatasByFixedRowHeightTask()
+      : this.createUpdateRowDatasByAutoRowHeightTask();
+
+    if (rowDatas.length > ChunkSize) {
+      _task(rowDatas.slice(0, ChunkSize), 0);
+
+      // 放入微队列中，不影响第一次渲染
+      setTimeout(() => {
+        const chunks = chunk(rowDatas, ChunkSize);
+        for (let i = 1; i < chunks.length; i++) {
+          runIdleTask(() => _task(chunks[i], i));
+        }
+      });
     } else {
-      this.updateRowDatasByAutoRowHeight(rowDatas)
+      _task(rowDatas, 0);
     }
   }
 
@@ -543,16 +570,15 @@ export class TableRowStateCenter {
   }
 
   insertRowState(rowData: RowData, meta: Partial<RowMeta>): TableRowState {
-    const rowKey = this.getRowKey
-      ? this.getRowKey(rowData)
-      : `${meta.deep}-${meta.index}`;
+    // 首先判断是否有存在的 state，如果有，则直接返回
+    const existState = this.getStateByRowData(rowData);
+    if (existState) return existState;
+
+    const rowKey = this.getRowKey ? this.getRowKey(rowData) : `${meta.deep}-${meta.index}`;
 
     const newMeta = Object.assign(
       {},
-      {
-        key: rowKey,
-        height: this.roughRowHeight,
-      },
+      { key: rowKey, height: this.roughRowHeight },
       meta,
     ) as RowMeta;
 

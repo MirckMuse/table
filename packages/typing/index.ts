@@ -9,7 +9,7 @@ export type RowKey = string | number;
 // 列 key
 export type ColKey = string;
 
-export type GetRowKey = (record: RowData) => RowKey;
+export type GetRowKey = (rowData: RowData, rowIndex?: number) => RowKey;
 
 export type TableColumnAlign = 'left' | 'right' | 'center';
 
