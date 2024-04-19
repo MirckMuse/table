@@ -54,6 +54,15 @@ export type OuterRowMeta = {
   height: number;
 }
 
+function get_max_scroll(viewport: Viewport): [number, number] {
+  const { scroll_height, scrollWidth, width, height } = viewport;
+
+  const maxXMove = Math.max(0, scrollWidth - width);
+  const maxYMove = Math.max(0, scroll_height - height);
+
+  return [maxXMove, maxYMove];
+}
+
 // 表格的状态类
 export class TableState {
   viewport: Viewport;
@@ -88,29 +97,39 @@ export class TableState {
   }
 
   constructor(option: TableStateOption) {
-    this.viewport = new Viewport(this);
-    this.colStateCenter = new TableColStateCenter({ tableState: this });
+    // 初始化前置参数，确保后续创建事件正常。
+    this.before_init(option);
+
+    this.init(option);
+  }
+
+  private before_init(option: TableStateOption) {
+    if (option.pagination) {
+      const { page, size, total } = option.pagination;
+      this.pagination = new TablePagination(page, size, total);
+    }
     this.fixedRowHeight = !isNil(option.rowHeight);
+
+    // 初始化可视窗口
+    this.viewport = new Viewport(this);
+    Object.assign(this.viewport, option.viewport ?? {});
+
+    this.childrenColumnName = option.childrenColumnName ?? "children";
+    this.childrenRowName = option.childrenRowName ?? "children";
+
+    this.colStateCenter = new TableColStateCenter({ tableState: this });
     this.rowStateCenter = new TableRowStateCenter({
       tableState: this,
       rowHeight: option.rowHeight ?? RowHeight,
       getRowKey: option.getRowKey
-    })
-    this.init(option);
+    });
+
   }
 
   private init(option: TableStateOption) {
-    if (option.pagination) {
-      this.pagination = new TablePagination(
-        option.pagination.page,
-        option.pagination.size,
-        option.pagination.total,
-      );
-    }
-    this.childrenColumnName = option.childrenColumnName ?? "children";
-    this.childrenRowName = option.childrenRowName ?? "children";
+    this.init_event();
 
-    Object.assign(this.viewport, option.viewport ?? {});
+
     if (option.columns?.length) {
       this.updateColumns(option.columns);
     }
@@ -118,6 +137,17 @@ export class TableState {
     if (option.rowDatas?.length) {
       this.updateRowDatas(option.rowDatas)
     }
+  }
+
+  // 获取可视窗口的行数据
+  getViewportDataSource: () => RowData[];
+
+  // 初始化事件
+  private init_event() {
+    // 初始化获取可视窗口数据的事件
+    this.getViewportDataSource = this.isFixedRowHeight
+      ? this.getViewportDataSourceByFixRowHeight
+      : this.getViewportDataSourceByAutoRowHeight
   }
 
   updateColumns(columns: TableColumn[]) {
@@ -174,13 +204,21 @@ export class TableState {
     Object.assign(this.viewport ?? {}, { width, height });
   }
 
-  updateScroll() {
-    const { scroll_height, scrollHeight, scrollWidth, width, height } = this.viewport;
+  // 更新滚动距离
+  updateScroll(deltaX: number, deltaY: number) {
+    const { left, top } = this.scroll;
+    Object.assign(this.scroll, {
+      left: left + deltaX,
+      top: top + deltaY
+    });
 
-    if (height >= scroll_height) return;
+    this.adjustScroll();
+  }
 
-    const maxXMove = Math.max(0, scrollWidth - width);
-    const maxYMove = Math.max(0, scrollHeight - height);
+  // 校准滚动，确保不会滚动溢出
+  adjustScroll() {
+    const [maxXMove, maxYMove] = get_max_scroll(this.viewport);
+
     Object.assign(this.scroll, {
       left: adjustScrollOffset(this.scroll.left, maxXMove),
       top: adjustScrollOffset(this.scroll.top, maxYMove)
@@ -286,7 +324,6 @@ export class TableState {
       preIndex = (page - 1) * size;
     }
 
-
     const range: RowDataRange = { startIndex: 0, endIndex: 0 };
     const { rowHeight, flattenRowKeys } = this.rowStateCenter;
     // 分页的偏差高度
@@ -306,6 +343,7 @@ export class TableState {
     );
 
     this.updateRowOffsetByRange(range);
+
 
     return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
       const rowIndex = range.startIndex + index;
@@ -337,15 +375,6 @@ export class TableState {
 
       return result;
     }, []);
-  }
-
-  // 获取可视范围的数据, // TODO: 可以优化的，减少一次 if 判断
-  getViewportDataSource(): RowData[] {
-    if (this.isFixedRowHeight) {
-      return this.getViewportDataSourceByFixRowHeight();
-    }
-
-    return this.getViewportDataSourceByAutoRowHeight();
   }
 
   getViewportHeightList(viewportDataSource: RowData[]): number[] {

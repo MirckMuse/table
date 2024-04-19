@@ -27,11 +27,10 @@ export class Viewport implements IViewport {
       const { page, size, total } = pagination;
 
       // 固定高度的表格，最大滚动高度为数据的高度，小于最后一页，为size * rowHeight, 最后一页，为剩余数据的高度
-
       if (isFixedRowHeight) {
         return Math.ceil(total / size) > page
           ? size * rowStateCenter.rowHeight
-          : (total - page * size) * rowStateCenter.rowHeight;
+          : (total - (page - 1) * size) * rowStateCenter.rowHeight;
       }
 
       // 不定行高的情况，则需要累加得到滚动高度
