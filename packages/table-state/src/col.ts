@@ -1,6 +1,6 @@
 import type { ColKey, TableColumn } from "@scode/table-typing";
 import { TableState } from "./table";
-import { isNil } from "lodash-es";
+import { isNil, throttle } from "lodash-es";
 
 export type TableColumnOrNull = TableColumn | null;
 
@@ -16,7 +16,7 @@ export const ColKeySplitWord = "__$$__";
 export interface ColMeta {
   key: ColKey;
 
-  width: string | number;
+  width: number;
 
   deep?: number;
 
@@ -282,8 +282,37 @@ export class TableColStateCenter {
       }
     }
 
-    this.leftColKeys.forEach(_updateSpan)
-    this.centerColKeys.forEach(_updateSpan)
-    this.rightColKeys.forEach(_updateSpan)
+    this.leftColKeys.forEach(_updateSpan);
+    this.centerColKeys.forEach(_updateSpan);
+    this.rightColKeys.forEach(_updateSpan);
+  }
+
+  // 更新列宽
+  updateColWidth(colKey: ColKey, width: number) {
+    const state = this.getStateByColKey(colKey);
+    state?.updateMeta({ width });
+  }
+
+  updateColWidthByColumn(column: TableColumn, width: number) {
+    const state = this.getStateByColumn(column);
+    if (width === state?.getMeta().width) return;
+
+    state?.updateMeta({ width });
+
+    this.tableState.updateViewport(this.tableState.viewport.width, this.tableState.viewport.height);
+  }
+
+  updateViewportContentWidth() {
+    const lastColKeys = [
+      ...this.lastLeftColKeys,
+      ...this.lastCenterColKeys,
+    ];
+
+    const contentWidth = lastColKeys.reduce((width, colKey) => {
+      const colState = this.getStateByColKey(colKey);
+      return width + (colState?.getMeta().width ?? 0);
+    }, 0);
+
+    Object.assign(this.tableState.viewport, { scrollWidth: Math.round(contentWidth) });
   }
 }

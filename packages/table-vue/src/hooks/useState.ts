@@ -187,6 +187,8 @@ export function useStateProvide({
 			tableRef.value.style.userSelect = "none";
 		}
 
+		state.value.colStateCenter.updateColWidthByColumn(column, resizedWidth);
+		state.value.colStateCenter.updateViewportContentWidth();
 		props.onResizeColumn?.(resizedWidth, column);
 		revertTableUserSelect();
 	}

@@ -31,18 +31,26 @@ export default defineComponent({
 
       const {
         rowSpan = 1,
-        colSpan = 1
+        colSpan = 1,
+        isLeaf,
+        key
       } = colStateCenter.getStateByColumn(column)?.getMeta() || {};
 
       style.gridColumn = `span ${colSpan}`;
       style.gridRow = `span ${rowSpan}`;
+
+      const dataset: any = { "data-col-key": key };
+      if (isLeaf) {
+        dataset["data-isLeaf"] = "true"
+      }
 
       return h(
         Cell,
         {
           column,
           style,
-          ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined
+          ellipsis: column.ellipsis as TableColumnEllipsisObject | undefined,
+          ...dataset
         }
       )
     }

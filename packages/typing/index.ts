@@ -139,7 +139,7 @@ export interface TableColumn {
 
   minWidth?: number;
 
-  width?: number | string;
+  width?: number;
 
   maxWidth?: number;
 

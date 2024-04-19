@@ -25,7 +25,7 @@
 import type { ColKey, TableColumn } from "@scode/table-typing";
 import type { StyleValue } from "vue";
 import { throttle } from "lodash-es";
-import { computed, onMounted, shallowRef, nextTick } from "vue";
+import { computed, onMounted, shallowRef, onUnmounted } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";
 import { genGridTemplateColumns } from "../../utils";
 import HeaderCells from "./cells.vue";
@@ -41,22 +41,39 @@ const headerCenterRef = shallowRef<HTMLElement>();
 const headerRef = shallowRef<HTMLElement>();
 const headerLeftRef = shallowRef<HTMLElement>();
 const headerRightRef = shallowRef<HTMLElement>();
+
+
 const updateViewportWidth = throttle(function () {
-  const viewport = {
-    width: headerRef.value?.offsetWidth ?? 0,
-    scrollWidth: headerCenterRef.value?.scrollWidth ?? 0
-  }
+  const cells: HTMLElement[] = Array.from(headerRef.value?.querySelectorAll(".s-table-header-cell") ?? []);
 
-
-  Object.assign(tableState.value.viewport, viewport)
+  cells.filter(cell => cell.dataset['isleaf']).forEach(el => {
+    const colKey = el.dataset["colKey"];
+    if (colKey) {
+      tableState.value.colStateCenter.updateColWidth(colKey, el.getBoundingClientRect().width)
+    }
+  });
   tableState.value.adjustScroll();
-}, 16)
+  tableState.value.colStateCenter.updateViewportContentWidth();
+
+  console.log('updateColWidth')
+}, 16);
+
+const resize = new ResizeObserver(updateViewportWidth);
 
 onMounted(() => {
-  nextTick(() => {
-    updateViewportWidth()
-  })
+  headerLeftRef.value && resize.observe(headerLeftRef.value);
+  headerCenterRef.value && resize.observe(headerCenterRef.value);
+  headerRightRef.value && resize.observe(headerRightRef.value);
+  updateViewportWidth()
+});
+
+onUnmounted(() => {
+  headerLeftRef.value && resize.unobserve(headerLeftRef.value);
+  headerCenterRef.value && resize.unobserve(headerCenterRef.value);
+  headerRightRef.value && resize.unobserve(headerRightRef.value);
+  resize.disconnect();
 })
+
 
 const { headerLeftBBox, headerRightBBox } = useTableHeaderScroll(
   headerRef,
@@ -155,7 +172,8 @@ const rightStyle = computed<StyleValue>(() => {
 });
 
 const maxXMove = computed(() => {
-  return tableState.value.viewport.scrollWidth - tableState.value.viewport.width
+  const { scrollWidth, width } = tableState.value.viewport;
+  return scrollWidth - width
 });
 
 </script>
