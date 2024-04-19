@@ -89,10 +89,10 @@ export class TableRowStateCenter {
   rawRowKeys: RowKey[] = [];
 
   // 筛选后的 keys, 根据 rawRowKeys 得来的。
-  private filteredRowKeys: RowKey[] = [];
+  filteredRowKeys: RowKey[] = [];
 
   // 排序后的 keys，根据 filteredRowKeys 得来的。
-  private sorteredRowKeys: RowKey[] = [];
+  sorteredRowKeys: RowKey[] = [];
 
   // 展开行的 key值, 根据 sorteredRowKeys 计算得来的，包含展开数据
   flattenRowKeys: RowKey[] = [];

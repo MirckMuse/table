@@ -174,6 +174,6 @@ dist
 # Finder (MacOS) folder config
 .DS_Store
 
-esm
-packages/**/esm
+esm/
+packages/**/esm/
 dev-dist/
