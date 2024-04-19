@@ -125,6 +125,13 @@ export class TableColStateCenter {
     return this.colKeyMap.get(column) ?? null
   }
 
+  // 获取列宽度
+  getColWidthByColKey(colKey: ColKey) {
+    const colState = this.getStateByColKey(colKey);
+
+    return colState?.getMeta().width ?? 0;
+  }
+
   maxTableHeaderDeep = 0;
 
   updateColumns(columns: TableColumn[]) {

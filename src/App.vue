@@ -1,7 +1,7 @@
 <template>
   <div style="padding: 10px;">
     <h1>数据量:{{ data_source.length }}</h1>
-    <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 700 }"
+    <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 400 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
       :row-height="56">
       <template v-slot:bodyCell="{ text, column }">
