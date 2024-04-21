@@ -4,16 +4,16 @@
       <template v-if="!isEmpty">
         <div v-if="leftColumnsVisible" ref="bodyLeftRef" class="s-table-body__inner-fixedLeft s-table-fixedLeft"
           :class="{ 'shadow': scroll.left > 0 }" :style="leftStyle">
-          <body-rows :columns="leftColumns" v-bind="commonRowProps" />
+          <body-rows :grid="leftGrid" :columns="leftColumns" v-bind="commonRowProps" />
         </div>
 
         <div ref="bodyCenterRef" class="s-table-body__inner-center" :style="centerStyle">
-          <body-rows :columns="centerColumns" v-bind="commonRowProps" />
+          <body-rows :grid="centerGrid" :columns="centerColumns" v-bind="commonRowProps" />
         </div>
 
         <div v-if="rightColumnsVisible" ref="bodyRightRef" class="s-table-body__inner-fixedRight s-table-fixedRight"
           :class="{ 'shadow': scroll.left < maxXMove }" :style="rightStyle">
-          <body-rows :columns="rightColumns" v-bind="commonRowProps" />
+          <body-rows :grid="rightGrid" :columns="rightColumns" v-bind="commonRowProps" />
         </div>
       </template>
 
@@ -45,7 +45,7 @@ import {
 } from "vue";
 import { resize } from "../../directives";
 import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
-import { px2Number } from "../../utils";
+import { genColumnGrid, px2Number } from "../../utils";
 import Scrollbar from "../scrollbar/index.vue";
 import BodyRows from "./rows.vue";
 
@@ -90,6 +90,38 @@ export default defineComponent({
       return tableState.value.getViewportHeightList(dataSource.value).map(height => height + 'px').join(" ");
     })
 
+    function getColWidth(column: TableColumn) {
+      return tableState.value.colStateCenter.getColWidthByColumn(column);
+    }
+
+    const leftColumns = computed(() => {
+      const colStateCenter = tableState.value.colStateCenter;
+
+      return _map2Columns(colStateCenter.lastLeftColKeys);
+    });
+
+
+    const leftWidth = computed(() => {
+      return tableState.value.colStateCenter.lastLeftColKeys.reduce((width, colKey) => {
+        return width + tableState.value.colStateCenter.getColWidthByColKey(colKey);
+      }, 0)
+    });
+
+    const leftGrid = computed(() => {
+      return genColumnGrid(leftColumns.value, getColWidth, leftWidth.value).map(meta => meta.width)
+    });
+
+
+    const rightWidth = computed(() => {
+      return tableState.value.colStateCenter.lastRightColKeys.reduce((width, colKey) => {
+        return width + tableState.value.colStateCenter.getColWidthByColKey(colKey);
+      }, 0)
+    });
+
+    const centerWidth = computed(() => {
+      return tableState.value.viewport.width - leftWidth.value - rightWidth.value;
+    });
+
     function _map2Columns(colKeys: ColKey[]) {
       const colStateCenter = tableState.value.colStateCenter;
 
@@ -102,12 +134,6 @@ export default defineComponent({
         return columns;
       }, [])
     }
-
-    const leftColumns = computed(() => {
-      const colStateCenter = tableState.value.colStateCenter;
-
-      return _map2Columns(colStateCenter.lastLeftColKeys);
-    });
 
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
@@ -160,6 +186,11 @@ export default defineComponent({
 
       return _map2Columns(colStateCenter.lastRightColKeys);
     });
+
+    const rightGrid = computed(() => {
+      return genColumnGrid(rightColumns.value, getColWidth, rightWidth.value).map(meta => meta.width)
+    });
+
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
       const style: StyleValue = {};
@@ -219,6 +250,12 @@ export default defineComponent({
 
       return _map2Columns(colStateCenter.lastCenterColKeys);
     });
+
+
+    const centerGrid = computed(() => {
+      return genColumnGrid(centerColumns.value, getColWidth, centerWidth.value).map(meta => meta.width);
+    });
+
     const centerStyle = computed(() => {
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
@@ -274,11 +311,11 @@ export default defineComponent({
 
       bodyRef, bodyInnerRef, bodyClass, bodyStyle,
 
-      bodyLeftRef, leftColumns, leftColumnsVisible, leftStyle,
+      bodyLeftRef, leftColumns, leftColumnsVisible, leftStyle, leftGrid,
 
-      bodyRightRef, rightColumns, rightColumnsVisible, rightStyle,
+      bodyRightRef, rightColumns, rightColumnsVisible, rightStyle, rightGrid,
 
-      centerColumns, centerStyle, bodyCenterRef,
+      centerColumns, centerStyle, bodyCenterRef, centerGrid,
 
       handleMouseenter, handleMouseleave,
 

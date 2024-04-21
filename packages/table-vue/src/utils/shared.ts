@@ -22,14 +22,47 @@ export function px2Number(target: string): number {
 
 export function noop() { }
 
-export function genGridTemplateColumns(lastColumns: TableColumn[]) {
-  return lastColumns.map(column => {
-    let width = column.width;
-    if (typeof width === "number") {
-      width = `${width}px`;
+export function genColumnGrid(
+  lastColumns: TableColumn[],
+  getWidth: (column: TableColumn) => number | undefined,
+  viewport_width?: number
+) {
+  viewport_width = viewport_width || 0;
+
+  const widthMeta = lastColumns.map(col => ({ col, width: getWidth(col) ?? 0 }));
+
+  // 计算的列宽大于容器宽度则，则按照设置的宽度渲染
+  if (!(widthMeta.reduce((width, meta) => width + meta.width, 0) > viewport_width)) {
+    // 小于则走均分逻辑
+    let setupWidthCols = widthMeta.filter(meta => Number(meta.col.width) > 0);
+    let nonWidthCols = widthMeta.filter(meta => !(Number(meta.col.width) > 0));
+
+    const residualWidth = viewport_width - setupWidthCols.reduce((width, meta) => width + meta.width, 0);
+    let allNonWidth = nonWidthCols.reduce((width, meta) => width + meta.width, 0);
+    nonWidthCols.forEach((meta) => {
+      meta.width = Math.round(meta.width * residualWidth / allNonWidth);
+    });
+    allNonWidth = nonWidthCols.reduce((width, meta) => width + meta.width, 0);
+    const lastNonWidthCol = nonWidthCols[nonWidthCols.length - 1];
+    if (lastNonWidthCol) {
+      lastNonWidthCol.width = residualWidth - allNonWidth + lastNonWidthCol.width;
     }
-    return width ?? 'minmax(120px, 1fr)'
-  }).join(" ");
+  }
+
+  return widthMeta;
+}
+
+// 有设置宽度则按照设置宽度来，没有设置，则均分
+export function genGridTemplateColumns(
+  lastColumns: TableColumn[],
+  getWidth: (column: TableColumn) => number | undefined,
+  viewport_width?: number
+) {
+  return genColumnGrid(
+    lastColumns,
+    getWidth,
+    viewport_width
+  ).map(meta => `${meta.width}px`).join(' ');
 }
 
 /**

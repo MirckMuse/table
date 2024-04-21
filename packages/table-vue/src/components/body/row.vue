@@ -32,6 +32,8 @@ export default defineComponent({
 
     expandIcon: { type: Function as PropType<ExpandIconSlot>, default: renderExpandIcon },
 
+    grid: { type: Array as PropType<number[]> },
+
     isHover: { type: Boolean, default: false },
 
     ...BodyCellInheritProps,
@@ -39,7 +41,7 @@ export default defineComponent({
 
 
   setup(props) {
-    const { handleRowExpand, expandedKeys } = useStateInject();
+    const { handleRowExpand, expandedKeys, tableState } = useStateInject();
 
     const expanded = computed(() => {
       const { rowKey } = props;
@@ -51,6 +53,10 @@ export default defineComponent({
       const { childrenRowName, record } = props;
       return !!childrenRowName && !isNil(get(record, childrenRowName))
     });
+
+    function getColWidth(column: TableColumn) {
+      return tableState.value.colStateCenter.getColWidthByColumn(column);
+    }
 
     function onInternalTriggerExpand($event: Event, record: RowData) {
       handleRowExpand($event, record)
@@ -99,8 +105,9 @@ export default defineComponent({
 
     const PrefixClass = 's-table-body-row';
     const gridTemplateColumns = computed(() => {
-      const { columns } = props;
-      return genGridTemplateColumns(columns ?? []);
+      const { grid } = props;
+
+      return (grid ?? []).map(width => `${width}px`).join(' ');
     })
 
     const rowRef = ref<HTMLElement>();

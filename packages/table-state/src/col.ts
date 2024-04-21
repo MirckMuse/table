@@ -132,6 +132,13 @@ export class TableColStateCenter {
     return colState?.getMeta().width ?? 0;
   }
 
+  // 根据列配置获取列宽
+  getColWidthByColumn(column: TableColumn) {
+    const colState = this.getStateByColumn(column);
+
+    return colState?.getMeta().width;
+  }
+
   maxTableHeaderDeep = 0;
 
   updateColumns(columns: TableColumn[]) {
@@ -306,6 +313,7 @@ export class TableColStateCenter {
     const lastColKeys = [
       ...this.lastLeftColKeys,
       ...this.lastCenterColKeys,
+      ...this.lastRightColKeys,
     ];
 
     const contentWidth = lastColKeys.reduce((width, colKey) => {

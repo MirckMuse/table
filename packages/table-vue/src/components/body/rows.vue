@@ -21,6 +21,8 @@ export default defineComponent({
 
     customRow: { type: Function as PropType<CustomRow> },
 
+    grid: { type: Array as PropType<number[]> },
+
     ...BodyCellInheritProps,
   },
 
@@ -45,6 +47,7 @@ export default defineComponent({
           expandIcon: props.expandIcon,
           columns,
           record,
+          grid: props.grid,
           isHover: tableState.value.hoverState.rowKey === rowKey,
           hoverState: hoverState,
           customRow: props.customRow,
