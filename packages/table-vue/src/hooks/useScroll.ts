@@ -52,9 +52,7 @@ export function useTableHeaderScroll(
     const el = tableHeader.value;
     if (!el) return;
 
-    const { offsetWidth } = el;
-
-    tableState.value.viewport.width = offsetWidth;
+    tableState.value.viewport.set_width(el.offsetWidth);
     tableState.value.adjustScroll();
   }
 
@@ -63,7 +61,7 @@ export function useTableHeaderScroll(
 
   useBBox(tableHeader, throttle(immediateUpdateClientWidth, 16)); // 计算水平方向的宽度和滚动宽度;
 
-  const maxXMove = computed(() => tableState.value.viewport.scrollWidth - tableState.value.viewport.width);
+  const maxXMove = computed(() => tableState.value.viewport.get_content_width() - tableState.value.viewport.get_width());
 
   onMounted(() => {
     if (!tableCenterHeader.value) return;
@@ -104,9 +102,9 @@ export function useTableBodyScroll(
 
   useBBox(tableInnerBody, (el) => {
     const { offsetHeight } = el;
-    if (offsetHeight === tableState.value.viewport.height) return;
+    if (offsetHeight === tableState.value.viewport.get_height()) return;
 
-    tableState.value.viewport.height = offsetHeight;
+    tableState.value.viewport.set_height(offsetHeight);
     tableState.value.adjustScroll();
     heightChangeCallback?.()
   }); // 计算垂直

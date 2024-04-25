@@ -1,45 +1,51 @@
-import { TableState } from "./table";
-
 export interface IViewport {
   width: number,
 
   height: number,
 
-  scrollWidth: number,
+  content_width: number,
 
-  scrollHeight: number,
+  content_height: number,
 }
 
-export class Viewport implements IViewport {
-  width = 0;
+export class Viewport {
+  private width = 0;
 
-  height = 0;
+  private height = 0;
 
-  scrollWidth = 0;
+  private content_width = 0;
 
-  scrollHeight = 0;
+  private content_height = 0;
 
-  constructor(readonly table_state: TableState) { }
+  get_width() {
+    return this.width;
+  }
 
-  get scroll_height() {
-    const { pagination, isFixedRowHeight, rowStateCenter } = this.table_state;
-    if (pagination) {
-      const { page, size, total } = pagination;
+  set_width(new_width: number) {
+    this.width = new_width;
+  }
 
-      // 固定高度的表格，最大滚动高度为数据的高度，小于最后一页，为size * rowHeight, 最后一页，为剩余数据的高度
-      if (isFixedRowHeight) {
-        return Math.ceil(total / size) > page
-          ? size * rowStateCenter.rowHeight
-          : (total - (page - 1) * size) * rowStateCenter.rowHeight;
-      }
+  get_height() {
+    return this.height;
+  }
 
-      // 不定行高的情况，则需要累加得到滚动高度
-      return pagination.get_pagination_row_keys(rowStateCenter.flattenRowKeys).reduce<number>((acc, rowKey) => {
-        const rowHeight = rowStateCenter.getRowHeightByRowKey(rowKey);
-        return acc + rowHeight;
-      }, 0);
-    }
+  set_height(new_height: number) {
+    this.height = new_height;
+  }
 
-    return this.scrollHeight;
+  get_content_width() {
+    return this.content_width;
+  }
+
+  set_content_width(width: number) {
+    this.content_width = width;
+  }
+
+  get_content_height() {
+    return this.content_height;
+  }
+
+  set_content_height(height: number) {
+    this.content_height = height;
   }
 }

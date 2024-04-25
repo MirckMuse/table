@@ -20,7 +20,7 @@ const slots = defineSlots<TableSlot>();
 
 const props = withDefaults(defineProps<TableProps>(), {
   childrenColumnName: "children",
-  childrenRowName: "children"
+  rowChildrenName: "children"
 });
 
 const emit = defineEmits<TableEmit>()

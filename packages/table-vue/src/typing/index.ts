@@ -81,7 +81,7 @@ export interface TableProps {
   childrenColumnName?: string;
 
   // 行数据的 children key
-  childrenRowName?: string;
+  rowChildrenName?: string;
 }
 
 export type TransformCellText = (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;

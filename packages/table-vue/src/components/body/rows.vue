@@ -31,7 +31,7 @@ export default defineComponent({
 
     function renderRow(columns: TableColumn[], record: RowData): VNode {
 
-      const rowMeta = tableState.value.rowStateCenter.getStateByRowData(record)?.getMeta()
+      const rowMeta = tableState.value.row_state.get_meta_by_row_data(record) ?? undefined;
 
       const hoverState = tableState.value.hoverState;
 

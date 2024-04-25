@@ -1,6 +1,6 @@
 import type { ColKey, TableColumn } from "@scode/table-typing";
 import { TableState } from "./table";
-import { isNil, throttle } from "lodash-es";
+import { isNil } from "lodash-es";
 
 export type TableColumnOrNull = TableColumn | null;
 
@@ -306,7 +306,9 @@ export class TableColStateCenter {
 
     state?.updateMeta({ width });
 
-    this.tableState.updateViewport(this.tableState.viewport.width, this.tableState.viewport.height);
+    const viewport = this.tableState.viewport;
+
+    this.tableState.update_viewport(viewport.get_width(), viewport.get_height());
   }
 
   updateViewportContentWidth() {
@@ -321,6 +323,6 @@ export class TableColStateCenter {
       return width + (colState?.getMeta().width ?? 0);
     }, 0);
 
-    Object.assign(this.tableState.viewport, { scrollWidth: Math.round(contentWidth) });
+    this.tableState.viewport.set_content_width(Math.round(contentWidth));
   }
 }

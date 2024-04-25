@@ -46,7 +46,7 @@ export default defineComponent({
 
     const computedColKey = computed(() => tableState.value.colStateCenter.getColKeyByColumn(props.column));
 
-    const computedFilterState = computed(() => tableState.value.rowStateCenter.filterStates.find(state => state.colKey === computedColKey.value))
+    const computedFilterState = computed(() => tableState.value.filter_states.find(state => state.colKey === computedColKey.value))
 
     // 渲染用户配置的 title
     function renderColumnTitle(column?: TableColumn) {
@@ -61,7 +61,7 @@ export default defineComponent({
       const colKey = computedColKey.value;
       if (!colKey) return;
 
-      let filterStates = tableState.value.rowStateCenter.filterStates;
+      let filterStates = tableState.value.filter_states;
 
 
       if (!filterKeys.length) {
@@ -86,7 +86,7 @@ export default defineComponent({
 
       if (!column?.sorter) return;
 
-      return tableState.value.rowStateCenter.sorterStates.find(state => state.colKey === computedColKey.value);
+      return tableState.value.sorter_states.find(state => state.colKey === computedColKey.value);
     })
 
     // 执行排序
@@ -94,7 +94,7 @@ export default defineComponent({
       const colKey = computedColKey.value;
       if (!colKey) return;
 
-      let sorterStates = tableState.value.rowStateCenter.sorterStates;
+      let sorterStates = tableState.value.sorter_states;
 
       if (!sorterState.value) {
         // 无状态 -> 升序

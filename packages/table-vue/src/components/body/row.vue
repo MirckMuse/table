@@ -50,8 +50,8 @@ export default defineComponent({
 
     // 是否存在嵌套子表格
     const hasNestChildren = computed(() => {
-      const { childrenRowName, record } = props;
-      return !!childrenRowName && !isNil(get(record, childrenRowName))
+      const { rowChildrenName, record } = props;
+      return !!rowChildrenName && !isNil(get(record, rowChildrenName))
     });
 
     function getColWidth(column: TableColumn) {

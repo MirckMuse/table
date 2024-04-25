@@ -42,9 +42,4 @@ export class TablePagination implements ITablePagination {
   update_total(total: number) {
     this.total = total;
   }
-
-  // 获取当前分页的行key；
-  get_pagination_row_keys(row_keys: RowKey[]): RowKey[] {
-    return row_keys.slice((this.page - 1) * this.size, this.page * this.size);
-  }
 }

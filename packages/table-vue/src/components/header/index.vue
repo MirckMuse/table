@@ -118,7 +118,7 @@ const rightWidth = computed(() => {
 });
 
 const centerWidth = computed(() => {
-  return tableState.value.viewport.width - leftWidth.value - rightWidth.value;
+  return tableState.value.viewport.get_width() - leftWidth.value - rightWidth.value;
 });
 
 const leftColumnsVisible = computed(() => leftColumns.value.length);
@@ -193,8 +193,8 @@ const rightStyle = computed<StyleValue>(() => {
 });
 
 const maxXMove = computed(() => {
-  const { scrollWidth, width } = tableState.value.viewport;
-  return scrollWidth - width
+  const viewport = tableState.value.viewport;
+  return viewport.get_content_width() - viewport.get_width();
 });
 
 </script>

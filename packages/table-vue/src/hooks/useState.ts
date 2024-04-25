@@ -156,6 +156,7 @@ export function useStateProvide({
 			getRowKey: getRowKey.value,
 			rowHeight: props.rowHeight,
 			childrenColumnName: childrenColumnName,
+			row_children_name: props.rowChildrenName,
 			pagination: pagination
 		});
 	}
@@ -165,7 +166,7 @@ export function useStateProvide({
 	watch(
 		() => props.dataSource ?? [],
 		(dataSource) => {
-			state.value.updateRowDatas(dataSource);
+			state.value.update_row_datas(dataSource);
 		},
 	);
 
@@ -210,8 +211,7 @@ export function useStateProvide({
 		tableProps: props,
 		getRowKey(record) {
 			return (
-				state.value.rowStateCenter.getStateByRowData(record)?.getMeta().key ??
-				-1
+				state.value.row_state.get_meta_by_row_data(record)?.key ?? -1
 			);
 		},
 		afterHandleRowExpand(expanded, record, expandedRows) {

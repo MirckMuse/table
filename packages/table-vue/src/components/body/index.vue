@@ -22,10 +22,10 @@
       </div>
     </div>
 
-    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.height" :content="viewport.scroll_height"
-      v-model:scroll="scroll.top" :is-vertical="true" />
+    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.get_height()"
+      :content="viewport.get_content_height()" v-model:scroll="scroll.top" :is-vertical="true" />
 
-    <Scrollbar :state="scrollState" :client="viewport.width" :content="viewport.scrollWidth"
+    <Scrollbar :state="scrollState" :client="viewport.get_width()" :content="viewport.get_content_width()"
       v-model:scroll="scroll.left" />
   </div>
 </template>
@@ -87,7 +87,7 @@ export default defineComponent({
 
     const dataSource = ref<RowData[]>([]);
     const gridTemplateRows = computed(() => {
-      return tableState.value.getViewportHeightList(dataSource.value).map(height => height + 'px').join(" ");
+      return tableState.value.get_row_heights_by_row_datas(dataSource.value).map(height => height + 'px').join(" ");
     })
 
     function getColWidth(column: TableColumn) {
@@ -119,7 +119,7 @@ export default defineComponent({
     });
 
     const centerWidth = computed(() => {
-      return tableState.value.viewport.width - leftWidth.value - rightWidth.value;
+      return tableState.value.viewport.get_width() - leftWidth.value - rightWidth.value;
     });
 
     function _map2Columns(colKeys: ColKey[]) {
@@ -139,8 +139,7 @@ export default defineComponent({
     const leftStyle = computed<StyleValue>(() => {
       const style: StyleValue = {}
       const { top: scrollTop } = scroll.value;
-      style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
-      style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
+      style.paddingTop = tableState.value.get_viewport_offset_top() + 'px'
       style.transform = `translateY(${-scrollTop}px)`
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
@@ -178,7 +177,7 @@ export default defineComponent({
           height: Math.floor(element.getBoundingClientRect().height) + top + bottom
         })
       }
-      tableState.value.updateRowMetas(metas);
+      tableState.value.update_row_metas(metas);
     });
 
     const rightColumns = computed(() => {
@@ -197,8 +196,7 @@ export default defineComponent({
       const { top: scrollTop } = scroll.value;
       style.transform = `translateY(${-scrollTop}px)`;
       style.gridTemplateRows = gridTemplateRows.value;
-      style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
-      style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
+      style.paddingTop = tableState.value.get_viewport_offset_top() + 'px'
       return style;
     });
 
@@ -220,18 +218,22 @@ export default defineComponent({
     });
 
     function getViewportDataSource() {
-      dataSource.value = tableState.value.getViewportDataSource();
+      dataSource.value = tableState.value.get_viewport_row_datas();
     }
 
     watch(
       () => [
         tableState.value.scroll.top,
-        tableState.value.rowStateCenter.flattenRowKeys,
+        tableState.value.flatten_row_keys,
         tableState.value.pagination?.page,
         tableState.value.pagination?.size,
       ],
       () => {
         getViewportDataSource();
+      },
+      {
+        immediate: true,
+        deep: true
       }
     );
 
@@ -260,8 +262,7 @@ export default defineComponent({
       const style: StyleValue = {}
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
       style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
-      style.paddingTop = (tableState.value.rowOffset.top ?? 0) + 'px'
-      style.paddingBottom = (tableState.value.rowOffset.bottom ?? 0) + 'px'
+      style.paddingTop = tableState.value.get_viewport_offset_top() + 'px'
       style.gridTemplateRows = gridTemplateRows.value;
       const { left: scrollLeft, top: scrollTop } = scroll.value;
       style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
@@ -292,7 +293,7 @@ export default defineComponent({
       handleTooltipLeave($event)
     }
 
-    const maxXMove = computed(() => viewport.value.scrollWidth - viewport.value.width);
+    const maxXMove = computed(() => viewport.value.get_content_width() - viewport.value.get_width());
 
     // 通用，需要向下传递的属性
     const commonRowProps = reactive({
@@ -301,7 +302,7 @@ export default defineComponent({
       transformCellText: tableProps.transformCellText,
       bodyCell: tableSlots.bodyCell,
       customRow: tableProps.customRow,
-      childrenRowName: tableProps.childrenRowName
+      rowChildrenName: tableProps.rowChildrenName
     })
 
     return {
@@ -320,7 +321,7 @@ export default defineComponent({
       handleMouseenter, handleMouseleave,
 
       isEmpty: computed(() => {
-        return !tableState.value.isEmpty()
+        return tableState.value.is_empty()
       }),
 
       commonRowProps,

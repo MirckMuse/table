@@ -1,11 +1,11 @@
-import { groupBy, isNil } from "lodash-es";
+import type { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterState, TableColumn } from "@scode/table-typing";
+import { groupBy } from "lodash-es";
+import { toRaw } from "vue";
 import { TableColStateCenter } from "./col";
-import { TableRowStateCenter, type TableRowStateOrNull } from "./row";
-import { adjustScrollOffset, rowKeyCompare } from "./shared";
-import { Viewport, type IViewport } from "./viewport";
-import type { RowData, GetRowKey, TableColumn, RowKey, FilterState, SorterState } from "@scode/table-typing"
-import { binaryFindIndexRange } from "@scode/table-shared";
 import { TablePagination, type ITablePagination } from "./pagination";
+import { TableRowState } from "./row";
+import { adjustScrollOffset } from "./shared";
+import { Viewport, type IViewport } from "./viewport";
 
 export interface TableStateOption {
   rowDatas?: RowData[];
@@ -22,7 +22,7 @@ export interface TableStateOption {
 
   childrenColumnName?: string;
 
-  childrenRowName?: string;
+  row_children_name?: string;
 }
 
 
@@ -54,31 +54,16 @@ export type OuterRowMeta = {
   height: number;
 }
 
+// 获取最大滚动距离。
 function get_max_scroll(viewport: Viewport): [number, number] {
-  const { scroll_height, scrollWidth, width, height } = viewport;
-
-  const maxXMove = Math.max(0, scrollWidth - width);
-  const maxYMove = Math.max(0, scroll_height - height);
-
+  const maxXMove = Math.max(0, viewport.get_content_width() - viewport.get_width());
+  const maxYMove = Math.max(0, viewport.get_content_height() - viewport.get_height());
   return [maxXMove, maxYMove];
 }
 
 // 表格的状态类
 export class TableState {
-  viewport: Viewport;
-
-  scroll: Scroll = { left: 0, top: 0 };
-
-  pagination?: TablePagination;
-
   colStateCenter: TableColStateCenter;
-
-  rowStateCenter: TableRowStateCenter;
-
-  rowOffset = {
-    top: 0,
-    bottom: 0
-  };
 
   hoverState: HoverState = {
     rowIndex: -1,
@@ -87,14 +72,6 @@ export class TableState {
   }
 
   childrenColumnName = "children";
-
-  childrenRowName = "children";
-
-  private fixedRowHeight = false;
-
-  get isFixedRowHeight() {
-    return this.fixedRowHeight;
-  }
 
   constructor(option: TableStateOption) {
     // 初始化前置参数，确保后续创建事件正常。
@@ -108,22 +85,21 @@ export class TableState {
       const { page, size, total } = option.pagination;
       this.pagination = new TablePagination(page, size, total);
     }
-    this.fixedRowHeight = !isNil(option.rowHeight);
 
     // 初始化可视窗口
-    this.viewport = new Viewport(this);
+    this.viewport = new Viewport();
     Object.assign(this.viewport, option.viewport ?? {});
 
     this.childrenColumnName = option.childrenColumnName ?? "children";
-    this.childrenRowName = option.childrenRowName ?? "children";
+    this.row_children_name = option.row_children_name ?? "children";
 
     this.colStateCenter = new TableColStateCenter({ tableState: this });
-    this.rowStateCenter = new TableRowStateCenter({
-      tableState: this,
-      rowHeight: option.rowHeight ?? RowHeight,
-      getRowKey: option.getRowKey
-    });
 
+    this.row_state = new TableRowState({
+      row_height: option.rowHeight ?? RowHeight,
+      is_fixed_row_height: !!option.rowHeight,
+      get_row_key: option.getRowKey
+    });
   }
 
   private init(option: TableStateOption) {
@@ -135,73 +111,23 @@ export class TableState {
     }
 
     if (option.rowDatas?.length) {
-      this.updateRowDatas(option.rowDatas)
+      this.update_row_datas(option.rowDatas)
     }
   }
 
   // 获取可视窗口的行数据
   getViewportDataSource: () => RowData[];
 
+
   // 初始化事件
   private init_event() {
-    // 初始化获取可视窗口数据的事件
-    this.getViewportDataSource = this.isFixedRowHeight
-      ? this.getViewportDataSourceByFixRowHeight
-      : this.getViewportDataSourceByAutoRowHeight
+    this.get_viewport_row_datas = this.row_state.is_fixed_row_height()
+      ? this.get_viewport_row_datas_by_fixed_row_height
+      : this.get_viewport_row_datas_by_auto_row_height;
   }
 
   updateColumns(columns: TableColumn[]) {
     this.colStateCenter.updateColumns(columns);
-  }
-
-  // 更新行数据
-  updateRowDatas(rowDatas: RowData[]) {
-    this.rowStateCenter.updateRowDatas(rowDatas);
-  }
-
-  updateRowMetas(rowMetas: OuterRowMeta[]) {
-
-    // 固定行高，无需更新行 meta。
-    if (this.isFixedRowHeight) return;
-
-    const groupedCellMetas = groupBy(rowMetas, "rowKey");
-
-    let offsetHeight = 0;
-    let firstRowState: TableRowStateOrNull = null;
-
-    const rowKeys = Object.keys(groupedCellMetas)
-    for (const rowKey of rowKeys) {
-      const rowState = this.rowStateCenter.getStateByRowKey(rowKey);
-      if (rowState) {
-        firstRowState = firstRowState || rowState;
-        const fistStateMeta = firstRowState.getMeta();
-        const currentStateMeta = rowState.getMeta();
-
-        if (firstRowState.getMeta().deep > currentStateMeta.deep) {
-          firstRowState = rowState;
-        } else if (fistStateMeta.deep === currentStateMeta.deep && fistStateMeta.index > currentStateMeta.index) {
-          firstRowState = rowState;
-        }
-
-        const outerRowMetas = groupedCellMetas[rowKey];
-        const rowHeight = Math.max(...outerRowMetas.map(meta => meta.height));
-
-        offsetHeight = offsetHeight + (rowHeight - rowState.getMeta().height);
-        rowState.updateHeight(rowHeight);
-      }
-    }
-
-
-    if (offsetHeight === 0) return;
-
-    if (firstRowState) {
-      this.rowStateCenter.resetYIndexes();
-    }
-    this.viewport.scrollHeight = this.viewport.scrollHeight + offsetHeight;
-  }
-
-  updateViewport(width: number, height: number) {
-    Object.assign(this.viewport ?? {}, { width, height });
   }
 
   // 更新滚动距离
@@ -235,242 +161,370 @@ export class TableState {
    */
 
   updateFilterStates(filterStates: FilterState[]) {
-    this.rowStateCenter.updateFilterStates(filterStates);
+    // this.rowStateCenter.updateFilterStates(filterStates);
 
-    if (this.scrollToTopAfterFilterOrSorter) {
-      this.scroll.top = 0;
-    }
+    // if (this.scrollToTopAfterFilterOrSorter) {
+    //   this.scroll.top = 0;
+    // }
 
-    // 筛选后需要更新可滚动距离
-    const { flattenYIndexes } = this.rowStateCenter;
-    const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
-    this.viewport.scrollHeight = lastRowY;
+    // // 筛选后需要更新可滚动距离
+    // const { flattenYIndexes } = this.rowStateCenter;
+    // const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
+    // this.viewport.scrollHeight = lastRowY;
   }
 
   updateSorterStates(sorterStates: SorterState[]) {
-    this.rowStateCenter.updateSorterStates(sorterStates);
-    if (this.scrollToTopAfterFilterOrSorter) {
-      this.scroll.top = 0;
-    }
-  }
-
-  getViewportRowDataRange() {
-    const range: RowDataRange = { startIndex: 0, endIndex: 0 };
-
-    const _createCompare = (targetY: number) => {
-      return (y: number) => {
-        return targetY - y;
-      }
-    }
-
-    const { flattenYIndexes, flattenRowKeys } = this.rowStateCenter;
-
-    const dataSourceLength = flattenRowKeys.length;
-
-    range.startIndex = binaryFindIndexRange(flattenYIndexes, _createCompare(this.scroll.top));
-
-    if (range.startIndex === -1) {
-      range.startIndex = flattenYIndexes.length - 1
-    }
-
-    const endY = this.scroll.top + this.viewport.height;
-
-    const getY = (index: number) => {
-      const y = flattenYIndexes[index] ?? (flattenYIndexes[index - 1] + this.rowStateCenter.getRowHeightByRowKey(flattenRowKeys[index]))
-      flattenYIndexes[index] = y;
-      return y;
-    }
-
-    for (let i = range.startIndex; i < flattenRowKeys.length - 1; i++) {
-      range.endIndex = i;
-      const currntY = getY(i)
-      if (endY < currntY) {
-        break;
-      }
-    }
-
-    this.rowStateCenter.flattenYIndexes = flattenYIndexes;
-
-    range.endIndex = Math.max(range.endIndex, 0);
-
-    const buffer = Math.ceil((range.endIndex - range.startIndex + 1) / 2);
-    range.startIndex = Math.max(0, range.startIndex - buffer);
-    range.endIndex = Math.min(dataSourceLength - 1, range.endIndex + buffer);
-    return range;
-  }
-
-  _calculateRowOffset(rowIndex: number) {
-    return this.rowStateCenter.flattenYIndexes[rowIndex] ?? 0;
-  }
-
-  // 根据可视索引，更新上下的偏移距离。
-  updateRowOffsetByRange(range: RowDataRange) {
-    const { page = 1, size = 10 } = this.pagination ?? {};
-    let offset = this._calculateRowOffset((page - 1) * size - 1);
-    const dataSourceLength = this.rowStateCenter.flattenRowKeys.length;
-    // 这里计算获取的时候同时计算行偏移量，有点不够干净
-    Object.assign(this.rowOffset, {
-      top: this._calculateRowOffset(range.startIndex - 1) - offset,
-      bottom: this._calculateRowOffset(dataSourceLength - 1) - this._calculateRowOffset(range.endIndex)
-    });
-  }
-
-  // 后驱可视窗口的数据 - 固定行高
-  private getViewportDataSourceByFixRowHeight(): RowData[] {
-    let preIndex = 0;
-
-    if (this.pagination) {
-      const { page, size } = this.pagination;
-      preIndex = (page - 1) * size;
-    }
-
-    const range: RowDataRange = { startIndex: 0, endIndex: 0 };
-    const { rowHeight, flattenRowKeys } = this.rowStateCenter;
-    // 分页的偏差高度
-    let offsetHeight = preIndex * rowHeight;
-
-    range.startIndex = Math.floor((this.scroll.top + offsetHeight) / rowHeight) - 1;
-    range.endIndex = Math.floor((this.scroll.top + this.viewport.height + offsetHeight) / rowHeight) + 1;
-
-    range.startIndex = Math.max(
-      range.startIndex,
-      preIndex
-    );
-
-    range.endIndex = Math.min(
-      Math.max(range.startIndex, range.endIndex),
-      this.pagination ? this.pagination.page * this.pagination.size - 1 : flattenRowKeys.length - 1,
-    );
-
-    this.updateRowOffsetByRange(range);
-
-
-    return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
-      const rowIndex = range.startIndex + index;
-
-      const rowData = this.rowStateCenter.getRowDataByFlattenIndex(rowIndex);
-
-      if (rowData) {
-        result.push(rowData);
-      }
-
-      return result;
-    }, []);
-  }
-
-  // 获取可视窗口的数据 - 自动行高
-  private getViewportDataSourceByAutoRowHeight(): RowData[] {
-    const range = this.getViewportRowDataRange();
-
-    this.updateRowOffsetByRange(range);
-
-    return Array(range.endIndex - range.startIndex + 1).fill(null).reduce((result, _, index) => {
-      const rowIndex = range.startIndex + index;
-
-      const rowData = this.rowStateCenter.getRowDataByFlattenIndex(rowIndex);
-
-      if (rowData) {
-        result.push(rowData);
-      }
-
-      return result;
-    }, []);
-  }
-
-  getViewportHeightList(viewportDataSource: RowData[]): number[] {
-    return viewportDataSource.map(rowData => {
-      return this.rowStateCenter.getRowHeightByRowData(rowData);
-    });
-  }
-
-  isEmpty() {
-    return !!this.rowStateCenter.flattenRowKeys.length;
+    // this.rowStateCenter.updateSorterStates(sorterStates);
+    // if (this.scrollToTopAfterFilterOrSorter) {
+    //   this.scroll.top = 0;
+    // }
   }
 
   getRowDataChildren(rowData: RowData): RowData[] | undefined {
     return rowData[this.childrenColumnName] as RowData[]
   }
 
-  private expandedRowKeys: RowKey[] = [];
+  expandedRowKeys: RowKey[] = [];
 
   // 更新展开列
   updateExpandedRowKeys(expandedRowKeys: RowKey[]) {
-    const rowStateCenter = this.rowStateCenter;
+    // const rowStateCenter = this.rowStateCenter;
 
-    // 获取行的深度, 用作排序
-    const getRowDeep = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()?.deep ?? -1;
+    // // 获取行的深度, 用作排序
+    // const getRowDeep = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()?.deep ?? -1;
 
-    // 获取排序后的的 rowKey，确保子数据一定在父数据之后
-    const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => getRowDeep(prev) - getRowDeep(next));
+    // // 获取排序后的的 rowKey，确保子数据一定在父数据之后
+    // const sortedExpandedRowKeysByDeep = expandedRowKeys.sort((prev, next) => getRowDeep(prev) - getRowDeep(next));
 
-    const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
+    // const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
 
-    // 将展开的子数据生成 state 塞入 center。
-    while (expandedRowKeySet.size) {
-      const rowKey = Array.from(expandedRowKeySet).find(key => rowStateCenter.getRowDataByRowKey(key));
+    // // 将展开的子数据生成 state 塞入 center。
+    // while (expandedRowKeySet.size) {
+    //   const rowKey = Array.from(expandedRowKeySet).find(key => rowStateCenter.getRowDataByRowKey(key));
 
-      if (!isNil(rowKey)) {
-        expandedRowKeySet.delete(rowKey);
+    //   if (!isNil(rowKey)) {
+    //     expandedRowKeySet.delete(rowKey);
 
-        const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
+    //     const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
 
-        if (rowData) {
-          const parentMeta = rowStateCenter.getStateByRowKey(rowKey)?.getMeta();
-          const children = this.getRowDataChildren(rowData) ?? [];
+    //     if (rowData) {
+    //       const parentMeta = rowStateCenter.getStateByRowKey(rowKey)?.getMeta();
+    //       const children = this.getRowDataChildren(rowData) ?? [];
 
-          if (children.length) {
+    //       if (children.length) {
 
-            children.forEach((row, rowIndex) => {
-              rowStateCenter.insertRowState(row, {
-                index: rowIndex,
-                deep: parentMeta ? (parentMeta.deep + 1) : 0,
-                _sort: `${parentMeta ? parentMeta._sort : "0"}-${String(rowIndex)}`
-              });
-            });
-          }
-        }
-      }
-    }
+    //         children.forEach((row, rowIndex) => {
+    //           rowStateCenter.insertRowState(row, {
+    //             index: rowIndex,
+    //             deep: parentMeta ? (parentMeta.deep + 1) : 0,
+    //             _sort: `${parentMeta ? parentMeta._sort : "0"}-${String(rowIndex)}`
+    //           });
+    //         });
+    //       }
+    //     }
+    //   }
+    // }
 
-    // 最后才更新展开列
-    this.expandedRowKeys = expandedRowKeys;
-    this.updateFlattenRowKeysByExpandedRowKeys();
+    // // 最后才更新展开列
+    // this.expandedRowKeys = expandedRowKeys;
+    // this.updateFlattenRowKeysByExpandedRowKeys();
   }
 
   // 更新展开后的行数据
   private updateFlattenRowKeysByExpandedRowKeys() {
-    const rowStateCenter = this.rowStateCenter;
+    // const rowStateCenter = this.rowStateCenter;
 
-    // 获取行的排序权重
-    const _getRowSort = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? '';
+    // // 获取行的排序权重
+    // const _getRowSort = (rowKey: RowKey) => rowStateCenter.getStateByRowKey(rowKey)?.getMeta()._sort ?? '';
 
-    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => rowKeyCompare(_getRowSort(prev), _getRowSort(next)))
+    // const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => rowKeyCompare(_getRowSort(prev), _getRowSort(next)))
 
-    const newflattenRowKeys: RowKey[] = [];
-    let children: RowData[] = [];
-    let _rawRowIndex = 0;
-    let _expandRowIndedx = 0;
-    while (_rawRowIndex < rowStateCenter.rawRowKeys.length || children.length) {
-      const childrenTop = children.shift();
-      const rowKey = childrenTop
-        ? rowStateCenter.getStateByRowData(childrenTop)?.getMeta().key
-        : rowStateCenter.rawRowKeys[_rawRowIndex];
-      if (!childrenTop) {
-        _rawRowIndex++;
-      }
+    // const newflattenRowKeys: RowKey[] = [];
+    // let children: RowData[] = [];
+    // let _rawRowIndex = 0;
+    // let _expandRowIndedx = 0;
+    // while (_rawRowIndex < rowStateCenter.rawRowKeys.length || children.length) {
+    //   const childrenTop = children.shift();
+    //   const rowKey = childrenTop
+    //     ? rowStateCenter.getStateByRowData(childrenTop)?.getMeta().key
+    //     : rowStateCenter.rawRowKeys[_rawRowIndex];
+    //   if (!childrenTop) {
+    //     _rawRowIndex++;
+    //   }
 
-      if (rowKey === sortedExpandedRowKeys[_expandRowIndedx]) {
-        _expandRowIndedx++;
+    //   if (rowKey === sortedExpandedRowKeys[_expandRowIndedx]) {
+    //     _expandRowIndedx++;
 
-        const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
-        if (rowData) {
-          children = (this.getRowDataChildren(rowData) ?? []).concat(children);
-        }
+    //     const rowData = rowStateCenter.getRowDataByRowKey(rowKey);
+    //     if (rowData) {
+    //       children = (this.getRowDataChildren(rowData) ?? []).concat(children);
+    //     }
 
-      }
-      rowKey && newflattenRowKeys.push(rowKey);
+    //   }
+    //   rowKey && newflattenRowKeys.push(rowKey);
+    // }
+
+    // this.rowStateCenter.flattenRowKeys = newflattenRowKeys;
+  }
+
+  // =============== TODO: 重构 =============================
+  viewport: Viewport;
+
+  scroll: Scroll = { left: 0, top: 0 };
+
+  pagination?: TablePagination;
+
+  row_state: TableRowState;
+
+  row_children_name = "children";
+
+  get_row_data_children(row_data: RowData): RowData[] | null {
+    const children = row_data[this.row_children_name];
+    if (Array.isArray(children)) {
+      return children as RowData[];
     }
 
-    this.rowStateCenter.flattenRowKeys = newflattenRowKeys;
+    return null;
   }
+
+
+  // 上一次根据纵向滚动状态计算出来的 scrollTop, from, y
+  private pre_row: PreRow | null = null;
+
+  // TODO:
+  filter_states: FilterState[] = [];
+
+  sorter_states: SorterState[] = [];
+
+  get_viewport_offset_top() {
+    return this.pre_row?.from_y ?? 0;
+  }
+
+  // TODO: 上一次根据
+  private pre_col: PreCol | null = null;
+
+
+  // 最后扁平后的数据
+  flatten_row_keys: RowKey[] = [];
+
+  is_empty() {
+    return !this.flatten_row_keys.length;
+  }
+
+  // 获取当前分页的行 key
+  get_current_page_row_keys() {
+    if (!this.pagination) {
+      return this.flatten_row_keys;
+    }
+
+    const { size, page } = this.pagination;
+    return this.flatten_row_keys.slice((page - 1) * size, page * size);
+  }
+
+  update_viewport(width: number, height: number) {
+    this.viewport.set_width(width)
+    this.viewport.set_height(height)
+  }
+
+  // 更新行数据
+  update_row_datas(row_datas: RowData[]) {
+    // FIXME: 分页情况下可能有问题，主要发生问题的地方是不定高度。
+    const _row_datas = row_datas;
+    this.viewport.set_content_height(_row_datas.length * this.row_state.get_row_height());
+
+    const done_callback = () => {
+      const raw_row_keys = toRaw(this.row_state.get_raw_row_keys());
+
+      if (!this.row_state.is_fixed_row_height()) {
+        const row_state = this.row_state;
+        const content_height = raw_row_keys.reduce<number>((content_height, row_key) => {
+          return content_height + (row_state.get_meta_by_row_key(row_key)?.height ?? 0);
+        }, 0);
+
+        this.viewport.set_content_height(content_height);
+      }
+
+      this.flatten_row_keys = ([] as RowKey[]).concat(raw_row_keys);
+    }
+    this.row_state.update_row_datas(row_datas, done_callback);
+
+    setTimeout(() => {
+      // TODO: 筛选和排序字段需要赋值;
+    })
+  }
+
+  // 更新行的原数据
+  update_row_metas(row_metas: OuterRowMeta[]) {
+    // 固定行高，无需更新行 meta。
+    if (this.row_state.is_fixed_row_height()) return;
+
+    const grouped_cell_metas = groupBy(row_metas, "rowKey");
+
+    let offset_height = 0;
+    let offset_from_y = 0;
+
+    const row_keys = Object.keys(grouped_cell_metas);
+    const is_fixed_row_height = this.row_state.is_fixed_row_height();
+
+    for (const row_key of row_keys) {
+      const row_meta = this.row_state.get_meta_by_row_key(row_key);
+      if (row_meta) {
+        const outer_row_metas = grouped_cell_metas[row_key];
+        const row_height = Math.max(...outer_row_metas.map(meta => meta.height));
+        const current_row_offset_height = row_height - (row_meta.height ?? 0);
+        offset_height = offset_height + current_row_offset_height;
+        if (!is_fixed_row_height) {
+          offset_from_y = offset_from_y + current_row_offset_height;
+        }
+        this.row_state.update_row_height_by_row_key(row_key, row_height);
+      }
+    }
+
+    if (offset_height !== 0) {
+      this.viewport.set_content_height(this.viewport.get_content_height() + offset_height);
+    };
+
+    if (offset_from_y !== 0 && this.pre_row) {
+      this.pre_row.from_y = this.pre_row.from_y + offset_from_y;
+    }
+  }
+
+  // 根据数据获取行高列表
+  get_row_heights_by_row_datas(row_datas: RowData[]): number[] {
+    return row_datas.map(row_data => this.row_state.get_meta_by_row_data(row_data)?.height ?? 0)
+  }
+
+  get_viewport_row_datas: () => RowData[];
+
+  private get_row_datas_by_pre_row(pre_row: PreRow, flatten_row_keys: RowKey[]) {
+    let { from, to } = pre_row;
+    let buffer = Math.ceil((to - from) / 2);
+    let new_from = Math.max(0, from - buffer);
+    from = new_from;
+    to = Math.min(to + buffer, flatten_row_keys.length - 1);
+
+    return Array(to - from + 1).fill(null).reduce((result, _, index) => {
+      const row_index = from + index;
+      const rowData = this.row_state.get_row_data_by_row_key(flatten_row_keys[row_index]);
+      if (rowData) {
+        result.push(rowData);
+      }
+      return result;
+    }, []);
+  }
+
+  private get_viewport_row_datas_by_fixed_row_height(): RowData[] {
+    const flatten_row_keys = this.flatten_row_keys;
+    const fixed_row_height = this.row_state.get_row_height();
+
+    if (this.pre_row) {
+      const pre_scroll_top = this.pre_row?.top ?? 0;
+      const new_scroll_top = this.scroll.top ?? 0;
+      const scroll_offset = new_scroll_top - pre_scroll_top;
+      let index_offset = Math.floor(scroll_offset / fixed_row_height);
+      const viewport_height = this.viewport.get_height();
+
+      if (index_offset < 0) {
+        index_offset += 1;
+      }
+
+      const y_offset = index_offset * fixed_row_height;
+
+      this.pre_row.from = this.pre_row.from + index_offset;
+      this.pre_row.to = this.pre_row.from + Math.ceil(viewport_height / fixed_row_height);
+      this.pre_row.from_y = this.pre_row.from_y + y_offset;
+      this.pre_row.top = this.pre_row.top + y_offset;
+
+      adjustPreRow(this.pre_row);
+      return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+    }
+
+    // 首次获取
+    this.pre_row = { top: 0, from: 0, to: 0, from_y: 0 };
+    const viewport_height = this.viewport.get_height();
+    this.pre_row.to = Math.ceil(viewport_height / fixed_row_height);
+    adjustPreRow(this.pre_row);
+    return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+  }
+
+  private get_viewport_row_datas_by_auto_row_height(): RowData[] {
+    const flatten_row_keys = this.flatten_row_keys;
+
+    if (this.pre_row) {
+      const pre_scroll_top = this.pre_row?.top ?? 0;
+      const new_scroll_top = this.scroll.top ?? 0;
+      let scroll_offset = new_scroll_top - pre_scroll_top;
+      // 方向
+      const direction = scroll_offset > 0 ? 1 : -1;
+      scroll_offset = Math.abs(scroll_offset);
+      let index_offset = 0;
+      let y_offset = 0;
+
+      while (0 <= this.pre_row.to + index_offset && this.pre_row.to + index_offset < flatten_row_keys.length) {
+        const row_key = flatten_row_keys[this.pre_row.to + index_offset];
+        const height = this.row_state.get_meta_by_row_key(row_key)?.height ?? 0;
+        scroll_offset -= height;
+
+        if (scroll_offset < 0) {
+          break;
+        }
+        index_offset += direction;
+        y_offset += (direction * height);
+      }
+
+      this.pre_row.from = this.pre_row.from + index_offset;
+      this.pre_row.from_y = this.pre_row.from_y + y_offset;
+      // FIXME: 需要考虑 from 和 to 不同步问题。
+      this.pre_row.to = this.pre_row.to + index_offset;
+      adjustPreRow(this.pre_row);
+      return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+    }
+
+    // 首次获取
+    this.pre_row = { top: 0, from: 0, to: 0, from_y: 0 };
+    let viewport_height = this.viewport.get_height();
+    let to_index = 0;
+
+    while (1) {
+      const row_key = flatten_row_keys[to_index];
+      const height = this.row_state.get_meta_by_row_key(row_key)?.height ?? 0;
+      viewport_height -= height;
+
+      if (viewport_height < 0) {
+        break;
+      }
+      to_index += 1;
+    }
+
+    this.pre_row.to = to_index;
+    adjustPreRow(this.pre_row);
+    return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+  }
+}
+
+function adjustPreRow(pre_row: PreRow) {
+  pre_row.from = Math.min(pre_row.from, pre_row.to);
+  pre_row.from = Math.max(0, pre_row.from);
+  pre_row.to = Math.max(pre_row.from, pre_row.to);
+  pre_row.top = Math.max(pre_row.top, 0);
+  pre_row.from_y = Math.max(pre_row.from_y, 0);
+
+  // TODO: 需要校准 from，to，from_y
+}
+
+// TODO: 因为分页，可以考虑添加一个 max_from 和 max_to。
+export type PreRow = {
+  top: number,
+  from: number,
+  max_from?: number,
+  to: number,
+  from_y: number,
+  max_to?: number,
+}
+
+export type PreCol = {
+  left: number,
+  from: ColKey,
+  to: ColKey,
+  from_x: number,
 }
