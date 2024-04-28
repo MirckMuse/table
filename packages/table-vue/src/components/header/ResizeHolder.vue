@@ -1,10 +1,6 @@
 <template>
-  <div
-    ref="rootRef" 
-    class="s-table-header-cell-resizeHolder"
-    :class="{ dragging: isDragging }"
-    @mousedown="handleMousedown"
-  >
+  <div ref="rootRef" class="s-table-header-cell-resizeHolder" :class="{ dragging: isDragging }"
+    @mousedown="handleMousedown">
   </div>
 </template>
 

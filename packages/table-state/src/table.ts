@@ -397,11 +397,7 @@ export class TableState {
   get_viewport_row_datas: () => RowData[];
 
   private get_row_datas_by_pre_row(pre_row: PreRow, flatten_row_keys: RowKey[]) {
-    let { from, to } = pre_row;
-    let buffer = Math.ceil((to - from) / 2);
-    let new_from = Math.max(0, from - buffer);
-    from = new_from;
-    to = Math.min(to + buffer, flatten_row_keys.length - 1);
+    const { from, to } = pre_row;
 
     return Array(to - from + 1).fill(null).reduce((result, _, index) => {
       const row_index = from + index;
@@ -416,34 +412,19 @@ export class TableState {
   private get_viewport_row_datas_by_fixed_row_height(): RowData[] {
     const flatten_row_keys = this.flatten_row_keys;
     const fixed_row_height = this.row_state.get_row_height();
+    const scroll_top = this.scroll.top;
 
-    if (this.pre_row) {
-      const pre_scroll_top = this.pre_row?.top ?? 0;
-      const new_scroll_top = this.scroll.top ?? 0;
-      const scroll_offset = new_scroll_top - pre_scroll_top;
-      let index_offset = Math.floor(scroll_offset / fixed_row_height);
-      const viewport_height = this.viewport.get_height();
-
-      if (index_offset < 0) {
-        index_offset += 1;
-      }
-
-      const y_offset = index_offset * fixed_row_height;
-
-      this.pre_row.from = this.pre_row.from + index_offset;
-      this.pre_row.to = this.pre_row.from + Math.ceil(viewport_height / fixed_row_height);
-      this.pre_row.from_y = this.pre_row.from_y + y_offset;
-      this.pre_row.top = this.pre_row.top + y_offset;
-
-      adjustPreRow(this.pre_row);
-      return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+    let from = Math.floor(scroll_top / fixed_row_height);
+    let to = Math.ceil(this.viewport.get_height() / fixed_row_height) + from;
+    const buffer = Math.floor((to - from) / 2);
+    from = Math.max(from - buffer, 0);
+    to = Math.max(to + buffer, flatten_row_keys.length - 1);
+    this.pre_row = {
+      top: scroll_top,
+      from,
+      to,
+      from_y: from * fixed_row_height
     }
-
-    // 首次获取
-    this.pre_row = { top: 0, from: 0, to: 0, from_y: 0 };
-    const viewport_height = this.viewport.get_height();
-    this.pre_row.to = Math.ceil(viewport_height / fixed_row_height);
-    adjustPreRow(this.pre_row);
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 
@@ -476,7 +457,7 @@ export class TableState {
       this.pre_row.from_y = this.pre_row.from_y + y_offset;
       // FIXME: 需要考虑 from 和 to 不同步问题。
       this.pre_row.to = this.pre_row.to + index_offset;
-      adjustPreRow(this.pre_row);
+      adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
       return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
     }
 
@@ -497,19 +478,32 @@ export class TableState {
     }
 
     this.pre_row.to = to_index;
-    adjustPreRow(this.pre_row);
+    adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 }
 
-function adjustPreRow(pre_row: PreRow) {
+function adjustPreRow(pre_row: PreRow, flatten_row_keys: RowKey[], row_state: TableRowState) {
   pre_row.from = Math.min(pre_row.from, pre_row.to);
   pre_row.from = Math.max(0, pre_row.from);
   pre_row.to = Math.max(pre_row.from, pre_row.to);
   pre_row.top = Math.max(pre_row.top, 0);
-  pre_row.from_y = Math.max(pre_row.from_y, 0);
 
-  // TODO: 需要校准 from，to，from_y
+  let { from, to } = pre_row;
+  let buffer = Math.ceil((to - from) / 2);
+  let new_from = Math.max(0, from - buffer);
+  // TODO: 需要校准 from_y
+
+  const direction = new_from - from > 0 ? 1 : -1;
+
+  for (let i = from; i < direction * new_from; i += direction) {
+    const row_key = flatten_row_keys[i];
+    pre_row.from_y += direction * row_state.get_row_height_by_row_key(row_key)
+  }
+
+  pre_row.from = new_from;
+  pre_row.to = Math.min(to + buffer, flatten_row_keys.length - 1);
+  pre_row.from_y = Math.max(pre_row.from_y, 0);
 }
 
 // TODO: 因为分页，可以考虑添加一个 max_from 和 max_to。

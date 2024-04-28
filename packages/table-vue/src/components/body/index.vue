@@ -164,21 +164,25 @@ export default defineComponent({
 
     const getCellPadding = createGetCellPadding();
 
-    onUpdated(() => {
-      const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
-      const metas: OuterRowMeta[] = [];
-      for (const element of innserElements) {
-        const cellElement = element.parentElement as HTMLElement;
-        const { top, bottom } = getCellPadding(cellElement)
-        const { rowKey } = cellElement.dataset
-        metas.push({
-          // 以行的索引作为 key 值。
-          rowKey: rowKey!,
-          height: Math.floor(element.getBoundingClientRect().height) + top + bottom
-        })
-      }
-      tableState.value.update_row_metas(metas);
-    });
+    if (!tableState.value.row_state.is_fixed_row_height()) {
+      onUpdated(() => {
+        const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
+        const metas: OuterRowMeta[] = [];
+        for (const element of innserElements) {
+          const cellElement = element.parentElement as HTMLElement;
+          const { top, bottom } = getCellPadding(cellElement)
+          const { rowKey } = cellElement.dataset
+          metas.push({
+            // 以行的索引作为 key 值。
+            rowKey: rowKey!,
+            height: Math.floor(element.getBoundingClientRect().height) + top + bottom
+          })
+        }
+        tableState.value.update_row_metas(metas);
+      });
+    }
+
+
 
     const rightColumns = computed(() => {
       const colStateCenter = tableState.value.colStateCenter;

@@ -16,6 +16,7 @@ import { debounce, isNil, isObject } from "lodash-es";
 import { getDFSLastColumns, noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
 import { TableState } from "@scode/table-state";
+import { runIdleTask } from "@scode/table-shared";
 
 interface ITableContext {
 	tableState: Ref<TableState>;
@@ -188,10 +189,13 @@ export function useStateProvide({
 			tableRef.value.style.userSelect = "none";
 		}
 
-		state.value.colStateCenter.updateColWidthByColumn(column, resizedWidth);
-		state.value.colStateCenter.updateViewportContentWidth();
 		props.onResizeColumn?.(resizedWidth, column);
 		revertTableUserSelect();
+
+		runIdleTask(() => {
+			state.value.colStateCenter.updateColWidthByColumn(column, resizedWidth);
+			state.value.colStateCenter.updateViewportContentWidth();
+		})
 	}
 
 	// 集中处理 tooltip 的逻辑

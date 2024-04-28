@@ -61,7 +61,7 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(1000).fill(null).map(createItem));
 
 const children = Array(100).fill(null).map(createItem) as any[];
 

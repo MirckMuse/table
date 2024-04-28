@@ -302,13 +302,10 @@ export class TableColStateCenter {
 
   updateColWidthByColumn(column: TableColumn, width: number) {
     const state = this.getStateByColumn(column);
+
     if (width === state?.getMeta().width) return;
 
     state?.updateMeta({ width });
-
-    const viewport = this.tableState.viewport;
-
-    this.tableState.update_viewport(viewport.get_width(), viewport.get_height());
   }
 
   updateViewportContentWidth() {
