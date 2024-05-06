@@ -3,7 +3,6 @@ import { dirname, join } from "path";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue"
 
-
 export default defineConfig({
   build: {
     lib: {
@@ -11,7 +10,7 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["vue"]
+      external: ["vue", "@remixicon/vue"]
     },
     outDir: "./esm"
   },

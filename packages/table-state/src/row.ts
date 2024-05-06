@@ -1,15 +1,10 @@
 import { runIdleTask } from "@scode/table-shared";
 import {
-  ColKey,
-  FilterState,
   GetRowKey,
   RowData,
-  RowKey,
-  SorterDirection,
-  SorterState,
-  TableColumnFilter,
+  RowKey
 } from "@scode/table-typing";
-import { chunk, get, isNil } from "lodash-es";
+import { chunk } from "lodash-es";
 import { toRaw } from "vue";
 
 export interface RowMeta {

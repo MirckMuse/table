@@ -346,7 +346,9 @@ export class TableState {
 
       this.flatten_row_keys = ([] as RowKey[]).concat(raw_row_keys);
     }
+
     this.row_state.update_row_datas(row_datas, done_callback);
+    this.flatten_row_keys = ([] as RowKey[]).concat(this.row_state.get_raw_row_keys());
 
     setTimeout(() => {
       // TODO: 筛选和排序字段需要赋值;
