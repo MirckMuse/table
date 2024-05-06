@@ -38,6 +38,7 @@ import type { StyleValue } from "vue";
 import {
   computed,
   defineComponent,
+  onUnmounted,
   onUpdated,
   reactive, ref, shallowRef,
   toRef,
@@ -86,6 +87,14 @@ export default defineComponent({
     })
 
     const dataSource = ref<RowData[]>([]);
+    function getViewportDataSource() {
+      dataSource.value = tableState.value.get_viewport_row_datas();
+    }
+    tableState.value.add_scroll_callback(getViewportDataSource);
+    onUnmounted(() => {
+      tableState.value.remove_scroll_callback(getViewportDataSource);
+    })
+
     const gridTemplateRows = computed(() => {
       return tableState.value.get_row_heights_by_row_datas(dataSource.value).map(height => height + 'px').join(" ");
     })
@@ -220,26 +229,6 @@ export default defineComponent({
     const bodyStyle = computed(() => {
       return {};
     });
-
-    function getViewportDataSource() {
-      dataSource.value = tableState.value.get_viewport_row_datas();
-    }
-
-    watch(
-      () => [
-        tableState.value.scroll.top,
-        tableState.value.flatten_row_keys,
-        tableState.value.pagination?.page,
-        tableState.value.pagination?.size,
-      ],
-      () => {
-        getViewportDataSource();
-      },
-      {
-        immediate: true,
-        deep: true
-      }
-    );
 
     // 控制表体滚动逻辑
     useTableBodyScroll(bodyInnerRef, tableState, getViewportDataSource);

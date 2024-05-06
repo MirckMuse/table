@@ -1,11 +1,14 @@
 import type { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterState, TableColumn } from "@scode/table-typing";
-import { groupBy } from "lodash-es";
+import { groupBy, uniqueId } from "lodash-es";
 import { toRaw } from "vue";
 import { TableColStateCenter } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
 import { TableRowState } from "./row";
 import { adjustScrollOffset } from "./shared";
 import { Viewport, type IViewport } from "./viewport";
+import { Scroll } from "./scroll";
+
+type Noop = () => void;
 
 export interface TableStateOption {
   rowDatas?: RowData[];
@@ -35,12 +38,6 @@ export type HoverState = {
 }
 
 const RowHeight = 55;
-
-export type Scroll = {
-  left: number;
-
-  top: number,
-}
 
 export type RowDataRange = {
   startIndex: number;
@@ -130,6 +127,14 @@ export class TableState {
     this.colStateCenter.updateColumns(columns);
   }
 
+  add_scroll_callback(event: Noop) {
+    this.scroll.add_callback(event);
+  }
+
+  remove_scroll_callback(event: Noop) {
+    this.scroll.remove_callback(event);
+  }
+
   // 更新滚动距离
   updateScroll(deltaX: number, deltaY: number) {
     const { left, top } = this.scroll;
@@ -139,6 +144,8 @@ export class TableState {
     });
 
     this.adjustScroll();
+
+    this.scroll.run_callback();
   }
 
   // 校准滚动，确保不会滚动溢出
@@ -270,7 +277,7 @@ export class TableState {
   // =============== TODO: 重构 =============================
   viewport: Viewport;
 
-  scroll: Scroll = { left: 0, top: 0 };
+  scroll = new Scroll();
 
   pagination?: TablePagination;
 
@@ -420,13 +427,14 @@ export class TableState {
     let to = Math.ceil(this.viewport.get_height() / fixed_row_height) + from;
     const buffer = Math.floor((to - from) / 2);
     from = Math.max(from - buffer, 0);
-    to = Math.max(to + buffer, flatten_row_keys.length - 1);
+    to = Math.min(to + buffer, flatten_row_keys.length - 1);
     this.pre_row = {
       top: scroll_top,
       from,
       to,
       from_y: from * fixed_row_height
     }
+
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 

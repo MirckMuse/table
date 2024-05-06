@@ -1,5 +1,5 @@
 import type { ComputedRef, InjectionKey, Ref } from "vue";
-import { computed, inject, provide, ref, watch } from "vue";
+import { computed, inject, provide, ref, shallowRef, watch } from "vue";
 import type {
 	GetRowKey,
 	RowData,
@@ -12,11 +12,10 @@ import type {
 	TableProps,
 	TableSlot,
 } from "../typing";
-import { debounce, isNil, isObject } from "lodash-es";
+import { debounce, isNil, isObject, throttle } from "lodash-es";
 import { getDFSLastColumns, noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
 import { TableState } from "@scode/table-state";
-import { runIdleTask } from "@scode/table-shared";
 
 interface ITableContext {
 	tableState: Ref<TableState>;
@@ -192,10 +191,14 @@ export function useStateProvide({
 		props.onResizeColumn?.(resizedWidth, column);
 		revertTableUserSelect();
 
-		runIdleTask(() => {
-			state.value.colStateCenter.updateColWidthByColumn(column, resizedWidth);
-			state.value.colStateCenter.updateViewportContentWidth();
-		})
+		const colStateCenter = state.value.colStateCenter;
+
+		console.time('updateColWidthByColumn');
+		colStateCenter.updateColWidthByColumn(column, resizedWidth);
+		console.timeEnd('updateColWidthByColumn');
+		throttle(() => {
+			colStateCenter.updateViewportContentWidth();
+		}, 60)
 	}
 
 	// 集中处理 tooltip 的逻辑

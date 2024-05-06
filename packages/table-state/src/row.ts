@@ -1,4 +1,3 @@
-import { runIdleTask } from "@scode/table-shared";
 import {
   GetRowKey,
   RowData,
@@ -6,6 +5,7 @@ import {
 } from "@scode/table-typing";
 import { chunk } from "lodash-es";
 import { toRaw } from "vue";
+import { runIdleTask } from '@scode/table-shared';
 
 export interface RowMeta {
   key: RowKey;
@@ -153,7 +153,6 @@ export class TableRowState {
     };
 
     const _task = (oneChunk: RowData[], chunkIndex: number) => {
-      const get_row_key = this.get_row_key;
       oneChunk.forEach((row_data, index) => {
         let i = index + chunkIndex * ChunkSize;
         const row_key = get_row_key(row_data, i);
@@ -170,6 +169,7 @@ export class TableRowState {
       // 放入微队列中，不影响第一次渲染
       setTimeout(() => {
         const chunks = chunk(row_datas, ChunkSize);
+
         for (let i = 1; i < chunks.length; i++) {
           runIdleTask(() => {
             _task(chunks[i], i)

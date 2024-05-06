@@ -79,10 +79,13 @@ function processDrag($event: DragEvent) {
     maxWidth.value,
   );
 
+  console.log('adjustedWidth', adjustedWidth)
+
   handleResizeColumn(adjustedWidth, props.column)
 }
 
 function handleDragMove($event: DragEvent) {
+  console.log('handleDragMove')
   processDrag($event);
 }
 
