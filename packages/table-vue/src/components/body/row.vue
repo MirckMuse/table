@@ -7,7 +7,6 @@ import { computed, defineComponent, h, mergeProps, ref } from 'vue';
 import { useStateInject } from '../../hooks';
 import type { CustomRow, ExpandIconSlot } from '../../typing';
 import { BodyCellInheritProps } from '../../typing';
-import { genGridTemplateColumns } from '../../utils';
 import { renderExpandIcon } from '../../utils/constant';
 import BodyCell from "./cell.vue";
 

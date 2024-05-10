@@ -34,8 +34,7 @@ const emit = defineEmits(["update:scroll"])
 
 const rootRef = ref<HTMLElement>();
 
-const MIN_THUMB_SIZE = 30;
-
+const MIN_THUMB_SIZE = 16;
 
 const sizeKey = props.isVertical ? 'height' : "width"
 const marginKey = props.isVertical ? 'marginTop' : "marginLeft";
@@ -132,9 +131,6 @@ function handleTrackMousedown($event: MouseEvent) {
   let newScroll = mouseDownPosition - trackPosition;
   newScroll = Math.min(newScroll, content - client);
   newScroll = Math.max(newScroll, 0);
-
-
-
   emit('update:scroll', newScroll / ratio.value);
 }
 

@@ -2,8 +2,7 @@
   <div style="padding: 10px;">
     <h1>数据量:{{ data_source.length }}</h1>
     <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 400 }"
-      :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
-      :row-height="56">
+      :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
@@ -61,7 +60,7 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
 
 const children = Array(100).fill(null).map(createItem) as any[];
 

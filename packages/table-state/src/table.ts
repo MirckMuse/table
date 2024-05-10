@@ -313,6 +313,7 @@ export class TableState {
 
   // 最后扁平后的数据
   flatten_row_keys: RowKey[] = [];
+  flatten_row_key_map_index = new Map();
 
   is_empty() {
     return !this.flatten_row_keys.length;
@@ -339,6 +340,12 @@ export class TableState {
     const _row_datas = row_datas;
     this.viewport.set_content_height(_row_datas.length * this.row_state.get_row_height());
 
+    const reset_index_map = (flatten_row_keys: RowKey[]) => {
+      this.flatten_row_keys.forEach((row_key, index) => {
+        this.flatten_row_key_map_index.set(row_key, index);
+      })
+    }
+
     const done_callback = () => {
       const raw_row_keys = toRaw(this.row_state.get_raw_row_keys());
 
@@ -352,10 +359,12 @@ export class TableState {
       }
 
       this.flatten_row_keys = ([] as RowKey[]).concat(raw_row_keys);
+      reset_index_map(this.flatten_row_keys);
     }
 
     this.row_state.update_row_datas(row_datas, done_callback);
     this.flatten_row_keys = ([] as RowKey[]).concat(this.row_state.get_raw_row_keys());
+    reset_index_map(this.flatten_row_keys);
 
     setTimeout(() => {
       // TODO: 筛选和排序字段需要赋值;
@@ -373,7 +382,6 @@ export class TableState {
     let offset_from_y = 0;
 
     const row_keys = Object.keys(grouped_cell_metas);
-    const is_fixed_row_height = this.row_state.is_fixed_row_height();
 
     for (const row_key of row_keys) {
       const row_meta = this.row_state.get_meta_by_row_key(row_key);
@@ -382,7 +390,9 @@ export class TableState {
         const row_height = Math.max(...outer_row_metas.map(meta => meta.height));
         const current_row_offset_height = row_height - (row_meta.height ?? 0);
         offset_height = offset_height + current_row_offset_height;
-        if (!is_fixed_row_height) {
+
+        const current_row_index = this.flatten_row_key_map_index.get(row_key);
+        if (current_row_index < (this.pre_row?.from ?? 0)) {
           offset_from_y = offset_from_y + current_row_offset_height;
         }
         this.row_state.update_row_height_by_row_key(row_key, row_height);
@@ -448,27 +458,52 @@ export class TableState {
       // 方向
       const direction = scroll_offset > 0 ? 1 : -1;
       scroll_offset = Math.abs(scroll_offset);
+
       let index_offset = 0;
       let y_offset = 0;
+      let adjust_scroll = 0;
 
       while (0 <= this.pre_row.to + index_offset && this.pre_row.to + index_offset < flatten_row_keys.length) {
         const row_key = flatten_row_keys[this.pre_row.to + index_offset];
         const height = this.row_state.get_meta_by_row_key(row_key)?.height ?? 0;
+
         scroll_offset -= height;
 
+
         if (scroll_offset < 0) {
+          if (index_offset !== 0) {
+            this.pre_row.top = this.pre_row.top + adjust_scroll * direction;
+          }
           break;
         }
+        adjust_scroll = adjust_scroll + height;
         index_offset += direction;
         y_offset += (direction * height);
       }
 
       this.pre_row.from = this.pre_row.from + index_offset;
-      this.pre_row.from_y = this.pre_row.from_y + y_offset;
       // FIXME: 需要考虑 from 和 to 不同步问题。
       this.pre_row.to = this.pre_row.to + index_offset;
-      adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
-      return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+
+      if (index_offset !== 0) {
+        this.pre_row.from_y = this.pre_row.from_y + y_offset;
+      }
+
+      const pre_row = { ...this.pre_row }
+      adjustPreRow(pre_row, flatten_row_keys, this.row_state);
+
+      console.log("before", pre_row.from_y)
+
+      for (let i = pre_row.from; i < this.pre_row.from; i++) {
+        const row_key = flatten_row_keys[this.pre_row.to + index_offset];
+        const height = this.row_state.get_meta_by_row_key(row_key)?.height ?? 0;
+        pre_row.from_y -= height;
+      }
+
+      console.log("after", pre_row, pre_row.from_y)
+
+
+      return this.get_row_datas_by_pre_row(pre_row, flatten_row_keys);
     }
 
     // 首次获取

@@ -23,7 +23,8 @@
     </div>
 
     <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.get_height()"
-      :content="viewport.get_content_height()" v-model:scroll="scroll.top" :is-vertical="true" />
+      :content="viewport.get_content_height()" v-model:scroll="scroll.top" :is-vertical="true"
+      @update:scroll="handleVerticalScrollChange" />
 
     <Scrollbar :state="scrollState" :client="viewport.get_width()" :content="viewport.get_content_width()"
       v-model:scroll="scroll.left" />
@@ -41,8 +42,7 @@ import {
   onUnmounted,
   onUpdated,
   reactive, ref, shallowRef,
-  toRef,
-  watch
+  toRef
 } from "vue";
 import { resize } from "../../directives";
 import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
@@ -72,6 +72,29 @@ export default defineComponent({
       handleTooltipLeave,
       getRowKey
     } = useStateInject();
+
+    const bodyCommonStyle = ref({
+      transform: `translateY(0)`,
+      transformCenter: `translate(0, 0)`,
+      paddingTop: '0'
+    })
+    function updateBodyCommonStyle() {
+      const { scroll } = tableState.value;
+      Object.assign(bodyCommonStyle.value, {
+        transform: `translateY(${-scroll.top}px)`,
+        transformCenter: `translate(${-scroll.left}px, ${-scroll.top}px)`,
+        paddingTop: tableState.value.get_viewport_offset_top() + 'px',
+      })
+    }
+
+    tableState.value.add_scroll_callback(updateBodyCommonStyle);
+    onUnmounted(() => {
+      tableState.value.remove_scroll_callback(updateBodyCommonStyle);
+    })
+
+    function handleVerticalScrollChange() {
+      tableState.value.updateScroll(0, 0);
+    }
 
     const scrollState = computed(() => {
       const {
@@ -146,10 +169,8 @@ export default defineComponent({
 
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
-      const style: StyleValue = {}
-      const { top: scrollTop } = scroll.value;
-      style.paddingTop = tableState.value.get_viewport_offset_top() + 'px'
-      style.transform = `translateY(${-scrollTop}px)`
+      const { transform, paddingTop } = bodyCommonStyle.value;
+      const style: StyleValue = { transform, paddingTop }
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
     });
@@ -191,8 +212,6 @@ export default defineComponent({
       });
     }
 
-
-
     const rightColumns = computed(() => {
       const colStateCenter = tableState.value.colStateCenter;
 
@@ -205,11 +224,9 @@ export default defineComponent({
 
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
-      const style: StyleValue = {};
-      const { top: scrollTop } = scroll.value;
-      style.transform = `translateY(${-scrollTop}px)`;
+      const { transform, paddingTop } = bodyCommonStyle.value;
+      const style: StyleValue = { transform, paddingTop }
       style.gridTemplateRows = gridTemplateRows.value;
-      style.paddingTop = tableState.value.get_viewport_offset_top() + 'px'
       return style;
     });
 
@@ -246,19 +263,16 @@ export default defineComponent({
       return _map2Columns(colStateCenter.lastCenterColKeys);
     });
 
-
     const centerGrid = computed(() => {
       return genColumnGrid(centerColumns.value, getColWidth, centerWidth.value).map(meta => meta.width);
     });
 
     const centerStyle = computed(() => {
-      const style: StyleValue = {}
+      const { transformCenter, paddingTop } = bodyCommonStyle.value;
+      const style: StyleValue = { transform: transformCenter, paddingTop }
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
       style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
-      style.paddingTop = tableState.value.get_viewport_offset_top() + 'px'
       style.gridTemplateRows = gridTemplateRows.value;
-      const { left: scrollLeft, top: scrollTop } = scroll.value;
-      style.transform = `translate(${-scrollLeft}px, ${-scrollTop}px)`
       return style;
     });
 
@@ -311,7 +325,7 @@ export default defineComponent({
 
       centerColumns, centerStyle, bodyCenterRef, centerGrid,
 
-      handleMouseenter, handleMouseleave,
+      handleMouseenter, handleMouseleave, handleVerticalScrollChange,
 
       isEmpty: computed(() => {
         return tableState.value.is_empty()
