@@ -1,4 +1,4 @@
-import {
+import type {
   GetRowKey,
   RowData,
   RowKey
@@ -31,11 +31,11 @@ export interface TableRowStateOption {
 
 const ChunkSize = 100;
 
-enum CompareResult {
-  Less = -1,
-  Equal = 0,
-  Greater = 1,
-}
+// enum CompareResult {
+//   Less = -1,
+//   Equal = 0,
+//   Greater = 1,
+// }
 
 export class TableRowState {
   // 原始行的 keys

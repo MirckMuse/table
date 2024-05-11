@@ -1,6 +1,6 @@
 <template>
   <div style="padding: 10px;">
-    <h1>数据量:{{ data_source.length }}</h1>
+    <h1>数据量:{{ data_source_length }}</h1>
     <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 400 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow">
       <template v-slot:bodyCell="{ text, column }">
@@ -14,7 +14,7 @@
 import { TableColumn } from "@scode/table-typing";
 import type { TransformCellText, TablePaginationProps } from "@scode/table-vue";
 import { uniqueId } from "lodash-es";
-import { h, reactive, ref } from "vue";
+import { computed, h, reactive, ref } from "vue";
 
 function handleResizeColumn(width: number, col: TableColumn) {
   col.width = width;
@@ -60,7 +60,9 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
+
+const data_source_length = computed(() => data_source.value.length.toLocaleString())
 
 const children = Array(100).fill(null).map(createItem) as any[];
 

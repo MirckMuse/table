@@ -1,6 +1,6 @@
 <template>
   <div v-if="scrollbarVisible" ref="rootRef" class="s-table-scroll__track" :class="scrollbarClass"
-    :style="scrollbarStyle" @mousedown="handleTrackMousedown">
+    :style="scrollbarStyle">
     <div class="s-table-scroll__thumb" :style="thumbStyle" @mousedown.stop="handleThumbMousedown"></div>
   </div>
 </template>
@@ -123,15 +123,36 @@ function handleThumbMousedown($event: MouseEvent) {
   document.addEventListener("mouseup", handleMouseup);
 }
 
+let interval: NodeJS.Timeout | null = null;
+
+function cancelInterval() {
+  interval && clearInterval(interval);
+}
+
 // 在滚动条轨道点击时，需要计算相对于track的整体比例，来计算滚动距离
 function handleTrackMousedown($event: MouseEvent) {
-  const { content, client } = props;
+
+  interval = setInterval(() => {
+    handleTrackClick($event)
+  }, 200);
+
+
+  // const { content, client } = props;
+  // let mouseDownPosition = getPosition($event);
+  // let trackPosition = getTrackPosition();
+  // let newScroll = mouseDownPosition - trackPosition;
+  // newScroll = Math.min(newScroll, content - client);
+  // newScroll = Math.max(newScroll, 0);
+  // emit('update:scroll', newScroll / ratio.value);
+}
+
+function handleTrackClick($event: MouseEvent) {
+  const { client } = props;
   let mouseDownPosition = getPosition($event);
   let trackPosition = getTrackPosition();
-  let newScroll = mouseDownPosition - trackPosition;
-  newScroll = Math.min(newScroll, content - client);
-  newScroll = Math.max(newScroll, 0);
-  emit('update:scroll', newScroll / ratio.value);
+  if (mouseDownPosition > trackPosition) {
+    emit('update:scroll', props.scroll + client);
+  }
 }
 
 function handleMousemove($event: MouseEvent) {

@@ -87,7 +87,6 @@ export default defineComponent({
       })
     }
 
-    tableState.value.add_scroll_callback(updateBodyCommonStyle);
     onUnmounted(() => {
       tableState.value.remove_scroll_callback(updateBodyCommonStyle);
     })
@@ -114,6 +113,8 @@ export default defineComponent({
       dataSource.value = tableState.value.get_viewport_row_datas();
     }
     tableState.value.add_scroll_callback(getViewportDataSource);
+    tableState.value.add_scroll_callback(updateBodyCommonStyle);
+
     onUnmounted(() => {
       tableState.value.remove_scroll_callback(getViewportDataSource);
     })

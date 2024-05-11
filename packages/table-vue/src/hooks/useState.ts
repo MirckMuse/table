@@ -161,7 +161,7 @@ export function useStateProvide({
 		});
 	}
 
-	const state = ref<TableState>(createTableState());
+	const state = shallowRef<TableState>(createTableState());
 
 	watch(
 		() => props.dataSource ?? [],

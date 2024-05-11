@@ -40,7 +40,7 @@ export default defineComponent({
 
 
   setup(props) {
-    const { handleRowExpand, expandedKeys, tableState } = useStateInject();
+    const { handleRowExpand, expandedKeys } = useStateInject();
 
     const expanded = computed(() => {
       const { rowKey } = props;
@@ -53,9 +53,9 @@ export default defineComponent({
       return !!rowChildrenName && !isNil(get(record, rowChildrenName))
     });
 
-    function getColWidth(column: TableColumn) {
-      return tableState.value.colStateCenter.getColWidthByColumn(column);
-    }
+    // function getColWidth(column: TableColumn) {
+    //   return tableState.value.colStateCenter.getColWidthByColumn(column);
+    // }
 
     function onInternalTriggerExpand($event: Event, record: RowData) {
       handleRowExpand($event, record)

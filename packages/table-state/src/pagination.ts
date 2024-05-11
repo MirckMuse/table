@@ -1,5 +1,3 @@
-import { RowKey } from "@scode/table-typing";
-
 export interface ITablePagination {
   page: number;
   size: number;

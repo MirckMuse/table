@@ -8,7 +8,7 @@ import { Dropdown, Button, Empty, Menu, Checkbox, Radio, Tree } from "ant-design
 import { RiFilter2Fill } from "@remixicon/vue";
 import { stopPropagation } from "../../utils"
 import { isEqual, isNil } from "lodash-es";
-import { flattenKeys } from "@scode/table-shared";
+// import { flattenKeys } from "@scode/table-shared";
 import FilterSearch from "./Search.vue";
 
 type VNodeOrNull = VNode | null;
@@ -150,15 +150,15 @@ export default defineComponent({
     }, { immediate: true });
 
     // TODO: 扁平的筛选keys，提供树组件使用
-    const flattenFilteredKeys = computed(() => {
-      const { options, mode } = mergedFilter.value;
+    // const flattenFilteredKeys = computed(() => {
+    //   const { options, mode } = mergedFilter.value;
 
-      if (mode !== "tree") {
-        return []
-      }
+    //   if (mode !== "tree") {
+    //     return []
+    //   }
 
-      return flattenKeys<TableColumnFilterValue>(options)
-    });
+    //   return flattenKeys<TableColumnFilterValue>(options)
+    // });
 
     const onFilterDropdownOpenChange = computed(() => props.filter.onOpenChange)
 
