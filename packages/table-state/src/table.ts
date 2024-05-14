@@ -145,7 +145,6 @@ export class TableState {
     });
 
     this.adjustScroll();
-    console.log('updateScroll', JSON.parse(JSON.stringify(this.pre_row)))
     this.scroll.run_callback();
   }
 
@@ -494,7 +493,6 @@ export class TableState {
       }
     }
 
-    console.log("scroll", this.scroll.top)
     const flatten_row_keys = this.flatten_row_keys;
     const flatten_row_y = this.flatten_row_y;
     const from = binaryFindIndexRange(flatten_row_y, _createCompare(this.scroll.top));
@@ -505,11 +503,9 @@ export class TableState {
         break
       }
     }
-    console.log(from, to)
     this.pre_row = { top: 0, from, to, from_y: 0 };
     adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
     this.pre_row.from_y = flatten_row_y[this.pre_row.from];
-    console.log(this.pre_row.from_y, this.pre_row)
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 }
