@@ -1,5 +1,4 @@
 import type { ColKey, TableColumn } from "@scode/table-typing";
-import { TableState } from "./table";
 import { isNil } from "lodash-es";
 
 export type TableColumnOrNull = TableColumn | null;
@@ -9,8 +8,11 @@ export type ColKeyOrNull = ColKey | null;
 export type TableColStateOrNull = TableColState | null;
 
 export const DefaultColWidth = 120;
+export const DefaultColHeight = 52;
 
 export const ColKeySplitWord = "__$$__";
+
+export type ColMetaFixed = false | "left" | "right";
 
 // 列的元信息
 export interface ColMeta {
@@ -18,308 +20,189 @@ export interface ColMeta {
 
   width: number;
 
-  deep?: number;
+  height: number;
 
-  colSpan?: number;
+  deep: number;
 
-  rowSpan?: number;
+  fixed: ColMetaFixed;
 
-  isLeaf?: boolean;
+  col_span: number;
+
+  row_span: number;
+
+  sort: number;
+
+  is_leaf: boolean;
 }
+
+export type ColMetaOrNull = ColMeta | null;
+
 
 export interface TableColStateOption {
-  column: TableColumn;
-
-  meta: ColMeta;
-
-  colStateCenter: TableColStateCenter;
 }
 
-// 列信息状态
 export class TableColState {
-  column: TableColumn;
+  seed = 0;
 
-  private meta: ColMeta;
+  private column_map_col_key = new WeakMap<TableColumn, ColKey>();
 
-  getMeta() {
-    return Object.assign({}, this.meta);
-  }
+  private col_key_map_column = new Map<ColKey, TableColumn>();
 
-  updateMeta(meta: Partial<ColMeta>) {
-    Object.assign(this.meta, meta);
-  }
+  private col_key_map_children = new Map<ColKey, ColKey[]>();
 
-  public colStateCenter: TableColStateCenter;
+  private col_key_map_parent = new Map<ColKey, ColKey | null>();
+
+  private col_key_map_col_meta = new Map<ColKey, ColMeta>();
 
   constructor(option: TableColStateOption) {
-    this.colStateCenter = option.colStateCenter;
-    this.meta = option.meta;
-    this.column = option.column;
   }
 
-  updateColWidth(width: number) {
-    this.updateMeta({ width })
-  }
-}
-
-export interface TableColStateCenterOption {
-  tableState: TableState;
-}
-
-export class TableColStateCenter {
-  tableState: TableState;
-
-  // 左侧
-  leftColKeys: ColKey[] = [];
-  lastLeftColKeys: ColKey[] = [];
-
-  // 中间
-  centerColKeys: ColKey[] = [];
-  lastCenterColKeys: ColKey[] = [];
-
-  // 右侧
-  rightColKeys: ColKey[] = [];
-  lastRightColKeys: ColKey[] = [];
-
-  // 列 key 的映射
-  colKeyMap = new WeakMap<TableColumn, ColKey>();
-
-  childrenMap = new WeakMap<TableColumn, TableColumn[]>();
-
-  parentMap = new WeakMap<TableColumn, TableColumnOrNull>();
-
-  colStateMap = new Map<ColKey, TableColState>();
-
-  constructor(option: TableColStateCenterOption) {
-    this.tableState = option.tableState;
+  private init() {
+    this.seed = 0;
+    this.col_key_map_column.clear();
+    this.col_key_map_children.clear();
+    this.col_key_map_parent.clear();
+    this.col_key_map_col_meta.clear();
   }
 
-  init() {
-    this.leftColKeys = [];
-    this.lastLeftColKeys = [];
-    this.centerColKeys = [];
-    this.lastCenterColKeys = [];
-    this.rightColKeys = [];
-    this.lastRightColKeys = [];
+  /// 获取最大 deep。
+  get_max_deep() {
+    return Math.max(...Array.from(this.col_key_map_col_meta.values()).map(meta => meta.deep))
   }
 
-  getStateByColKey(colKey: ColKey): TableColStateOrNull {
-    return this.colStateMap.get(colKey) ?? null;
+  get_all_meta(): ColMeta[] {
+    return Array.from(this.col_key_map_col_meta.values());
   }
 
-  getStateByColumn(column?: TableColumnOrNull): TableColStateOrNull {
+  /// 根据 col_key 获取列的元数据，没有则返回 null。
+  get_meta_by_col_key(col_key: ColKey): ColMetaOrNull {
+    return this.col_key_map_col_meta.get(col_key) ?? null;
+  }
+
+  get_meta_by_column(column?: TableColumnOrNull): ColMetaOrNull {
     if (isNil(column)) return null;
 
-    const colKey = this.colKeyMap.get(column);
+    const col_key = this.column_map_col_key.get(column);
 
-    if (isNil(colKey)) return null;
+    if (isNil(col_key)) return null;
 
-    return this.getStateByColKey(colKey);
+    return this.get_meta_by_col_key(col_key);
   }
 
-  getColumnByColKey(colKey: ColKey): TableColumnOrNull {
-    return this.getStateByColKey(colKey)?.column ?? null;
+  get_column_by_col_key(col_key: ColKey): TableColumnOrNull {
+    return this.col_key_map_column.get(col_key) ?? null;
   }
 
-  getColKeyByColumn(column: TableColumn): ColKeyOrNull {
-    return this.colKeyMap.get(column) ?? null
+  get_col_key_by_column(column?: TableColumnOrNull): ColKeyOrNull {
+    if (isNil(column)) return null;
+
+    return this.column_map_col_key.get(column) ?? null;
   }
 
-  // 获取列宽度
-  getColWidthByColKey(colKey: ColKey) {
-    const colState = this.getStateByColKey(colKey);
-
-    return colState?.getMeta().width ?? 0;
+  get_col_width_by_col_key(col_key: ColKey): number {
+    return this.get_meta_by_col_key(col_key)?.width ?? 0;
   }
 
-  // 根据列配置获取列宽
-  getColWidthByColumn(column: TableColumn) {
-    const colState = this.getStateByColumn(column);
-
-    return colState?.getMeta().width;
+  get_col_height_by_col_key(col_key: ColKey): number {
+    return this.get_meta_by_col_key(col_key)?.height ?? 0;
   }
 
-  maxTableHeaderDeep = 0;
+  get_col_width_by_column(column?: TableColumnOrNull): number {
+    return this.get_meta_by_column(column)?.width ?? 0;
+  }
 
-  updateColumns(columns: TableColumn[]) {
+  get_col_height_by_column(column?: TableColumnOrNull): number {
+    return this.get_meta_by_column(column)?.height ?? 0;
+  }
+
+  get_parent_meta_by_col_key(col_key: ColKey): ColMetaOrNull {
+    const parent_col_key = this.col_key_map_parent.get(col_key)
+
+    return parent_col_key
+      ? this.get_meta_by_col_key(parent_col_key) ?? null
+      : null;
+  }
+
+  get_children_meta_by_col_key(col_key: ColKey): ColMetaOrNull[] {
+    return (this.col_key_map_children.get(col_key) ?? []).map((col_key) => this.get_meta_by_col_key(col_key));
+  }
+
+  private create_col_meta(column: TableColumn, col_index: number, parent: TableColumnOrNull): ColMeta {
+    const parent_col_meta = this.get_meta_by_column(parent);
+    const deep = (parent_col_meta?.deep ?? -1) + 1;
+    const col_key = [column.key ?? column.dataIndex ?? "", col_index, deep].join(ColKeySplitWord);
+
+    const fixed = (column.fixed ? column.fixed : false) as ColMetaFixed;
+
+    return {
+      key: col_key,
+      width: column.width ?? DefaultColWidth,
+      height: DefaultColHeight,
+      deep,
+      sort: ++this.seed,
+      col_span: column.colSpan ?? 1,
+      row_span: 1,
+      fixed: fixed && typeof column.fixed === "boolean" ? "left" : fixed,
+      is_leaf: !column.children?.length,
+    }
+  }
+
+  private update_columns_meta(columns: TableColumn[], parent: TableColumnOrNull) {
+    const parent_col_key = this.get_meta_by_column(parent)?.key ?? null;
+    const children: ColKey[] = [];
+
+    columns.forEach((column, col_index) => {
+      const col_meta = this.create_col_meta(column, col_index, parent);
+      const col_key = col_meta.key;
+
+      this.column_map_col_key.set(column, col_key);
+      this.col_key_map_column.set(col_key, column);
+      this.col_key_map_parent.set(col_key, parent_col_key);
+      this.col_key_map_col_meta.set(col_key, col_meta);
+      if (parent_col_key) {
+        children.push(col_key);
+      }
+
+      if (column.children?.length) {
+        this.update_columns_meta(column.children, column);
+      }
+    });
+
+    if (parent_col_key) {
+      this.col_key_map_children.set(parent_col_key, children);
+    }
+  }
+
+
+  update_columns(columns: TableColumn[]) {
     this.init();
 
-    let maxDeep = -1;
-
-    const _createColMeta = (column: TableColumn, index: number, parent: TableColumnOrNull): ColMeta => {
-      const parentColState = this.getStateByColumn(parent);
-
-      const deep = (parentColState?.getMeta().deep ?? -1) + 1;
-
-      maxDeep = Math.max(maxDeep, deep);
-
-      const key = [column.key ?? column.dataIndex ?? "", index, deep].join(ColKeySplitWord);
-
-      return {
-        key,
-        width: column.width ?? DefaultColWidth,
-        deep: deep,
-        isLeaf: !column.children?.length,
-        colSpan: isNil(column.colSpan) ? 1 : column.colSpan
-      }
-
-    }
-
-    const _createState = (column: TableColumn, index: number, parent: TableColumnOrNull): TableColState => {
-      const meta = _createColMeta(column, index, parent);
-
-      return new TableColState({
-        column,
-        meta,
-        colStateCenter: this,
-      });
-    }
-
-    const _initState = (column: TableColumn, index: number, parent: TableColumnOrNull) => {
-      const state = _createState(column, index, parent);
-
-      const colKey = state.getMeta().key;
-
-      this.colKeyMap.set(column, colKey);
-      this.parentMap.set(column, parent);
-      if (parent) {
-        const children = this.childrenMap.get(parent) ?? [];
-        children.push(column);
-        this.childrenMap.set(parent, children)
-      }
-      this.colStateMap.set(colKey, state);
-    }
-
-    const _notFixedColumn = (column: TableColumn) => {
-      return column.fixed !== true && column.fixed !== "left" && column.fixed !== "right";
-    }
-
-    const fixedLeftIndex = columns.findIndex(_notFixedColumn) - 1;
-    const fixedRightIndex = columns.findLastIndex(_notFixedColumn) + 1;
-
-    const leftColKeyMap = new Map<number, ColKey[]>();
-    const centerColKeyMap = new Map<number, ColKey[]>();
-    const rightColKeyMap = new Map<number, ColKey[]>();
-
-    const _isLeft = (index: number, root: TableColumnOrNull) => {
-      if (root) {
-        const colKeys = leftColKeyMap.get(0) ?? [];
-        const colKey = this.colKeyMap.get(root)
-        return colKey ? colKeys.includes(colKey) : false;
-      }
-
-      return fixedLeftIndex >= index
-    }
-
-    const _isRight = (index: number, root: TableColumnOrNull) => {
-      if (root) {
-        const colKeys = rightColKeyMap.get(0) ?? [];
-        const colKey = this.colKeyMap.get(root)
-        return colKey ? colKeys.includes(colKey) : false;
-      }
-
-      return index >= fixedRightIndex;
-    }
-
-    const _updateKeyMap = (map: Map<number, ColKey[]>, state: TableColState) => {
-      const deep = state.getMeta().deep ?? 0;
-      const colKeys = map.get(deep) ?? [];
-      colKeys.push(state.getMeta().key);
-      map.set(deep, colKeys)
-    }
-
-
-    const _task = (colums: TableColumn[], parent: TableColumnOrNull = null, root: TableColumnOrNull = null) => {
-      colums.forEach((column, index) => {
-        _initState(column, index, parent);
-
-        const state = this.getStateByColumn(column);
-
-        if (state) {
-          const colKey = state.getMeta().key;
-
-          if (_isLeft(index, root)) {
-            _updateKeyMap(leftColKeyMap, state);
-            if (!column.children?.length) {
-              this.lastLeftColKeys.push(colKey);
-            }
-          } else if (_isRight(index, root)) {
-            _updateKeyMap(rightColKeyMap, state);
-            if (!column.children?.length) {
-              this.lastRightColKeys.push(colKey);
-            }
-          } else {
-            _updateKeyMap(centerColKeyMap, state);
-            if (!column.children?.length) {
-              this.lastCenterColKeys.push(colKey);
-            }
-          }
-        }
-
-        if (column.children?.length) {
-          _task(column.children, column, root || column)
-        }
-      })
-    }
-    _task(columns);
-
-    this.maxTableHeaderDeep = maxDeep;
-
-    this.leftColKeys = Array.from(leftColKeyMap.values()).flat(1);
-    this.centerColKeys = Array.from(centerColKeyMap.values()).flat(1);
-    this.rightColKeys = Array.from(rightColKeyMap.values()).flat(1);
-
-    const _updateSpan = (colKey: ColKey) => {
-      const state = this.getStateByColKey(colKey);
-      if (!state) return;
-
-      const children = this.childrenMap.get(state.column);
-
-      if (children?.length) {
-        state.updateMeta({
-          colSpan: children.reduce((prev, next) => {
-            return (this.getStateByColumn(next)?.getMeta().colSpan ?? 1) + prev;
-          }, 0)
-        })
-      }
-      if (state.getMeta().isLeaf) {
-        state.updateMeta({
-          rowSpan: maxDeep + 1 - (state.getMeta().deep ?? 0)
-        })
-      }
-    }
-
-    this.leftColKeys.forEach(_updateSpan);
-    this.centerColKeys.forEach(_updateSpan);
-    this.rightColKeys.forEach(_updateSpan);
+    this.update_columns_meta(columns, null);
   }
 
-  // 更新列宽
-  updateColWidth(colKey: ColKey, width: number) {
-    const state = this.getStateByColKey(colKey);
-    state?.updateMeta({ width });
+  update_col_width_by_col_key(col_key: ColKey, new_width: number) {
+    const meta = this.get_meta_by_col_key(col_key);
+
+    if (!meta) return;
+
+    meta.width = new_width;
+    let parent_col_meta: ColMetaOrNull = this.get_parent_meta_by_col_key(col_key)
+
+    while (parent_col_meta) {
+
+      parent_col_meta.width = this.get_children_meta_by_col_key(parent_col_meta.key).reduce((width, meta) => {
+        return width + (meta?.width ?? 0)
+      }, 0);
+
+      parent_col_meta = this.get_parent_meta_by_col_key(parent_col_meta.key);
+    }
   }
 
-  updateColWidthByColumn(column: TableColumn, width: number) {
-    const state = this.getStateByColumn(column);
+  /// TODO: 高度的计算比较麻烦，需要考虑一下怎么确保高度保持一致。
+  update_col_height_by_col_key(col_key: ColKey, new_height: number) {
+    const meta = this.get_meta_by_col_key(col_key);
+    if (!meta) return;
 
-    if (width === state?.getMeta().width) return;
-
-    state?.updateMeta({ width });
-  }
-
-  updateViewportContentWidth() {
-    const lastColKeys = [
-      ...this.lastLeftColKeys,
-      ...this.lastCenterColKeys,
-      ...this.lastRightColKeys,
-    ];
-
-    const contentWidth = lastColKeys.reduce((width, colKey) => {
-      const colState = this.getStateByColKey(colKey);
-      return width + (colState?.getMeta().width ?? 0);
-    }, 0);
-
-    this.tableState.viewport.set_content_width(Math.round(contentWidth));
+    meta.height = new_height;
   }
 }

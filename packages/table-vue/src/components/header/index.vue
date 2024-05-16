@@ -42,10 +42,7 @@ const headerRef = shallowRef<HTMLElement>();
 const headerLeftRef = shallowRef<HTMLElement>();
 const headerRightRef = shallowRef<HTMLElement>();
 
-const updateViewportWidth = throttle(function () {
-  tableState.value.adjustScroll();
-  tableState.value.colStateCenter.updateViewportContentWidth();
-}, 16);
+const updateViewportWidth = throttle(() => tableState.value.adjust_scroll(), 16);
 
 const resize = new ResizeObserver(updateViewportWidth);
 
@@ -79,14 +76,14 @@ const headerStyle = computed(() => {
 });
 
 function getColWidth(column: TableColumn) {
-  return tableState.value.colStateCenter.getColWidthByColumn(column)
+  return tableState.value.col_state.get_col_width_by_column(column)
 }
 
 function _map2Columns(colKeys: ColKey[]) {
-  const colStateCenter = tableState.value.colStateCenter;
+  const colStateCenter = tableState.value.col_state;
 
   return colKeys.reduce<TableColumn[]>((columns, colKey) => {
-    const column = colStateCenter.getColumnByColKey(colKey);
+    const column = colStateCenter.get_column_by_col_key(colKey);
     if (column) {
       columns.push(column);
     }
@@ -94,27 +91,19 @@ function _map2Columns(colKeys: ColKey[]) {
   }, [])
 }
 
-const leftColumns = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
-
-  return _map2Columns(colStateCenter.lastLeftColKeys ?? []);
-});
-const leftFlattenColumns = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
-
-  return _map2Columns(colStateCenter.leftColKeys ?? []);
-});
+const leftColumns = computed(() => _map2Columns(tableState.value.last_left_col_keys ?? []));
+const leftFlattenColumns = computed(() => _map2Columns(tableState.value.left_col_keys ?? []));
 
 const leftWidth = computed(() => {
-  return tableState.value.colStateCenter.lastLeftColKeys.reduce((width, colKey) => {
-    return width + tableState.value.colStateCenter.getColWidthByColKey(colKey);
-  }, 0)
+  const col_state = tableState.value.col_state;
+
+  return tableState.value.last_left_col_keys.reduce((width, colKey) => width + col_state.get_col_width_by_col_key(colKey), 0)
 });
 
 const rightWidth = computed(() => {
-  return tableState.value.colStateCenter.lastRightColKeys.reduce((width, colKey) => {
-    return width + tableState.value.colStateCenter.getColWidthByColKey(colKey);
-  }, 0)
+  const col_state = tableState.value.col_state;
+
+  return tableState.value.last_right_col_keys.reduce((width, colKey) => width + col_state.get_col_width_by_col_key(colKey), 0)
 });
 
 const centerWidth = computed(() => {
@@ -123,44 +112,35 @@ const centerWidth = computed(() => {
 
 const leftColumnsVisible = computed(() => leftColumns.value.length);
 const leftStyle = computed<StyleValue>(() => {
-  const colStateCenter = tableState.value.colStateCenter;
   const style: StyleValue = {}
-  const maxDeep = colStateCenter.maxTableHeaderDeep + 1;
+  const maxDeep = tableState.value.col_state.get_max_deep() + 1;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
   style.gridTemplateColumns = genGridTemplateColumns(
-    _map2Columns(colStateCenter.lastLeftColKeys ?? []),
+    _map2Columns(tableState.value.last_left_col_keys ?? []),
     getColWidth,
     leftWidth.value
   );
   return style;
 });
 
-const centerColumns = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
-
-  return _map2Columns(colStateCenter.lastCenterColKeys ?? [])
-});
+const centerColumns = computed(() => _map2Columns(tableState.value.last_center_col_keys ?? []));
 
 const scroll = computed(() => tableState.value.scroll);
 
-const centerFlattenColumns = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
-
-  return _map2Columns(colStateCenter.centerColKeys ?? [])
-});
+const centerFlattenColumns = computed(() => _map2Columns(tableState.value.center_col_keys ?? []));
 
 const centerStyle = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
+  const col_state = tableState.value.col_state;
 
   const style: StyleValue = {};
   const { left: scrollLeft } = scroll.value;
   style.paddingLeft = `${headerLeftBBox.value.width}px`;
   style.paddingRight = `${headerRightBBox.value.width}px`;
   style.transform = `translateX(${-scrollLeft}px)`
-  const maxDeep = colStateCenter.maxTableHeaderDeep + 1;
+  const maxDeep = col_state.get_max_deep() + 1;
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
   style.gridTemplateColumns = genGridTemplateColumns(
-    _map2Columns(colStateCenter.lastCenterColKeys ?? []),
+    _map2Columns(tableState.value.last_center_col_keys ?? []),
     getColWidth,
     centerWidth.value
   );
@@ -168,24 +148,17 @@ const centerStyle = computed(() => {
 });
 
 
-const rightColumns = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
+const rightColumns = computed(() => _map2Columns(tableState.value.last_right_col_keys ?? []));
+const rightFlattenColumns = computed(() => _map2Columns(tableState.value.right_col_keys ?? []));
 
-  return _map2Columns(colStateCenter.lastRightColKeys ?? [])
-});
-const rightFlattenColumns = computed(() => {
-  const colStateCenter = tableState.value.colStateCenter;
-  return _map2Columns(colStateCenter.rightColKeys ?? [])
-});
 const rightColumnsVisible = computed(() => leftColumns.value.length);
 const rightStyle = computed<StyleValue>(() => {
-  const colStateCenter = tableState.value.colStateCenter;
   const style: StyleValue = {}
-  const maxDeep = colStateCenter.maxTableHeaderDeep + 1;
+  const maxDeep = tableState.value.col_state.get_max_deep() + 1;
 
   style.gridTemplateRows = "repeat(" + maxDeep + ", 52px)";
   style.gridTemplateColumns = genGridTemplateColumns(
-    _map2Columns(colStateCenter.lastRightColKeys ?? []),
+    _map2Columns(tableState.value.last_right_col_keys ?? []),
     getColWidth,
     rightWidth.value
   );

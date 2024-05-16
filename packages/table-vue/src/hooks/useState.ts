@@ -161,7 +161,7 @@ export function useStateProvide({
 		});
 	}
 
-	const state = shallowRef<TableState>(createTableState());
+	const state = ref<TableState>(createTableState());
 
 	watch(
 		() => props.dataSource ?? [],
@@ -180,6 +180,10 @@ export function useStateProvide({
 		tableRef.value.style.userSelect = userSelectState.pre;
 	}, 60);
 
+	const throttle_update_viewport_content_width = throttle(() => {
+		state.value.update_viewport_content_width();
+	}, 60)
+
 	// 处理列的宽度调整
 	function handleResizeColumn(resizedWidth: number, column: TableColumn) {
 		if (!userSelectState.isSet && tableRef.value) {
@@ -191,21 +195,24 @@ export function useStateProvide({
 		props.onResizeColumn?.(resizedWidth, column);
 		revertTableUserSelect();
 
-		const colStateCenter = state.value.colStateCenter;
+		const col_state = state.value.col_state;
 
 		console.time('updateColWidthByColumn');
-		colStateCenter.updateColWidthByColumn(column, resizedWidth);
+		const col_key = col_state.get_col_key_by_column(column);
+		if (col_key) {
+			col_state.update_col_width_by_col_key(col_key, resizedWidth);
+		}
 		console.timeEnd('updateColWidthByColumn');
-		throttle(() => {
-			colStateCenter.updateViewportContentWidth();
-		}, 60)
+
+
+		throttle_update_viewport_content_width();
 	}
 
 	// 集中处理 tooltip 的逻辑
 	const { handleTooltipEnter, handleTooltipLeave } = useCellTooltip({
 		tooltipVisible(cellEl: HTMLElement) {
 			const colKey = cellEl.dataset["colKey"] ?? "";
-			const column = state.value.colStateCenter.getColumnByColKey(colKey);
+			const column = state.value.col_state.get_column_by_col_key(colKey);
 
 			if (isNil(column)) return false;
 

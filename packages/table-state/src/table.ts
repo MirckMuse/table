@@ -1,7 +1,7 @@
 import type { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterState, TableColumn } from "@scode/table-typing";
-import { groupBy, throttle } from "lodash-es";
+import { cloneDeep, groupBy, throttle } from "lodash-es";
 import { toRaw } from "vue";
-import { TableColStateCenter } from "./col";
+import { ColMeta, TableColState } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
 import { TableRowState } from "./row";
 import { adjustScrollOffset } from "./shared";
@@ -61,8 +61,6 @@ function get_max_scroll(viewport: Viewport): [number, number] {
 
 // 表格的状态类
 export class TableState {
-  colStateCenter: TableColStateCenter;
-
   hoverState: HoverState = {
     rowIndex: -1,
     rowKey: -1,
@@ -91,8 +89,7 @@ export class TableState {
     this.childrenColumnName = option.childrenColumnName ?? "children";
     this.row_children_name = option.row_children_name ?? "children";
 
-    this.colStateCenter = new TableColStateCenter({ tableState: this });
-
+    this.col_state = new TableColState({});
     this.row_state = new TableRowState({
       row_height: option.rowHeight ?? RowHeight,
       is_fixed_row_height: !!option.rowHeight,
@@ -125,7 +122,75 @@ export class TableState {
   }
 
   updateColumns(columns: TableColumn[]) {
-    this.colStateCenter.updateColumns(columns);
+    this.col_state.update_columns(columns);
+
+    const all_col_metas = this.col_state.get_all_meta();
+
+    console.log(cloneDeep(all_col_metas))
+
+    const _meta_to_col_key = (col_meta: ColMeta) => {
+      return col_meta.key;
+    }
+
+    const _sort = (prev: ColMeta, next: ColMeta) => {
+      if (prev.deep === next.deep) {
+        return prev.sort - next.sort;
+      }
+      return prev.deep - next.deep;
+    }
+
+    const sorted_left_col_meta = all_col_metas.filter(meta => meta.fixed === 'left');
+    this.left_col_keys = sorted_left_col_meta.sort(_sort).map(_meta_to_col_key);
+    this.last_left_col_keys = sorted_left_col_meta.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
+
+    const sorted_right_meta = all_col_metas.filter(meta => meta.fixed === 'right');
+    this.right_col_keys = sorted_right_meta.sort(_sort).map(_meta_to_col_key);
+    this.last_right_col_keys = sorted_right_meta.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
+
+    const sorted_center_col_meta = all_col_metas.filter(meta => !meta.fixed).sort((a, b) => a.sort - b.sort);
+    this.center_col_keys = sorted_center_col_meta.sort(_sort).map(_meta_to_col_key);
+    this.last_center_col_keys = sorted_center_col_meta.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
+    console.log(cloneDeep(sorted_center_col_meta.sort(_sort)))
+
+    const col_state = this.col_state;
+
+    const _updateSpan = (col_key: ColKey) => {
+      const meta = col_state.get_meta_by_col_key(col_key);
+      if (!meta) return;
+
+      const children = col_state.get_children_meta_by_col_key(col_key);
+
+      if (children?.length) {
+        meta.col_span = children.reduce((prev, next) => {
+          return (col_state.get_meta_by_column(next)?.col_span ?? 1) + prev;
+        }, 0);
+      }
+
+      if (meta.is_leaf) {
+        meta.row_span = col_state.get_max_deep() + 1 - (meta.deep ?? 0);
+      }
+    }
+
+    this.left_col_keys.forEach(_updateSpan);
+    this.right_col_keys.forEach(_updateSpan);
+    this.center_col_keys.forEach(_updateSpan);
+  }
+
+
+  update_viewport_content_width() {
+    const lastColKeys = [
+      ...this.last_left_col_keys,
+      ...this.last_center_col_keys,
+      ...this.last_right_col_keys,
+    ];
+
+    const get_width = (col_key: ColKey) => {
+      return this.col_state.get_col_width_by_col_key(col_key);
+    }
+
+    const contentWidth = lastColKeys.reduce((width, colKey) => width + get_width(colKey), 0);
+
+    this.viewport.set_content_width(contentWidth);
   }
 
   add_scroll_callback(event: Noop) {
@@ -158,6 +223,14 @@ export class TableState {
     })
   }
 
+  adjust_scroll() {
+    const [maxXMove, maxYMove] = get_max_scroll(this.viewport);
+
+    Object.assign(this.scroll, {
+      left: adjustScrollOffset(this.scroll.left, maxXMove),
+      top: adjustScrollOffset(this.scroll.top, maxYMove)
+    })
+  }
 
   // 筛选或者排序后滚动到顶部
   scrollToTopAfterFilterOrSorter = true;
@@ -280,6 +353,20 @@ export class TableState {
   scroll = new Scroll();
 
   pagination?: TablePagination;
+
+  col_state: TableColState;
+
+  // 左侧
+  left_col_keys: ColKey[] = [];
+  last_left_col_keys: ColKey[] = [];
+
+  // 中间
+  center_col_keys: ColKey[] = [];
+  last_center_col_keys: ColKey[] = [];
+
+  // 右侧
+  right_col_keys: ColKey[] = [];
+  last_right_col_keys: ColKey[] = [];
 
   row_state: TableRowState;
 

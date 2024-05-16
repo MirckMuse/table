@@ -56,6 +56,8 @@ function createItem(_: unknown, index: number) {
     "b": "很长很长的一段文本很长很长的一段文本",
     "c": Math.floor(Math.random() * 100),
     "d": index + 1,
+    c1: '123-2',
+    c2: '123-1',
     enums: Enums[(index % Enums.length)].value
   }
 }
@@ -118,8 +120,8 @@ const columns = ref<TableColumn[]>([
   {
     title: "分组",
     children: [
-      { dataIndex: 'd', title: "第三列-2" },
-      { dataIndex: 'c', title: "第三列-3", resizable: true, minWidth: 100 },
+      { dataIndex: 'c1', title: "第三列-c-1" },
+      { dataIndex: 'c2', title: "第三列-c-2", resizable: true, minWidth: 100 },
     ]
   },
   {

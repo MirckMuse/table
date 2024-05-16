@@ -124,19 +124,18 @@ export default defineComponent({
     })
 
     function getColWidth(column: TableColumn) {
-      return tableState.value.colStateCenter.getColWidthByColumn(column);
+      return tableState.value.col_state.get_col_width_by_column(column);
     }
 
-    const leftColumns = computed(() => {
-      const colStateCenter = tableState.value.colStateCenter;
+    function getColWidthByColKey(col_key: ColKey) {
+      return tableState.value.col_state.get_col_width_by_col_key(col_key);
+    }
 
-      return _map2Columns(colStateCenter.lastLeftColKeys);
-    });
-
+    const leftColumns = computed(() => _map2Columns(tableState.value.last_left_col_keys));
 
     const leftWidth = computed(() => {
-      return tableState.value.colStateCenter.lastLeftColKeys.reduce((width, colKey) => {
-        return width + tableState.value.colStateCenter.getColWidthByColKey(colKey);
+      return tableState.value.last_left_col_keys.reduce((width, colKey) => {
+        return width + getColWidthByColKey(colKey);
       }, 0)
     });
 
@@ -146,8 +145,8 @@ export default defineComponent({
 
 
     const rightWidth = computed(() => {
-      return tableState.value.colStateCenter.lastRightColKeys.reduce((width, colKey) => {
-        return width + tableState.value.colStateCenter.getColWidthByColKey(colKey);
+      return tableState.value.last_right_col_keys.reduce((width, colKey) => {
+        return width + getColWidthByColKey(colKey);
       }, 0)
     });
 
@@ -156,10 +155,10 @@ export default defineComponent({
     });
 
     function _map2Columns(colKeys: ColKey[]) {
-      const colStateCenter = tableState.value.colStateCenter;
+      const col_state = tableState.value.col_state;
 
       return colKeys.reduce<TableColumn[]>((columns, colKey) => {
-        const column = colStateCenter.getColumnByColKey(colKey);
+        const column = col_state.get_column_by_col_key(colKey);
         if (column) {
           columns.push(column);
         }
@@ -213,11 +212,7 @@ export default defineComponent({
       });
     }
 
-    const rightColumns = computed(() => {
-      const colStateCenter = tableState.value.colStateCenter;
-
-      return _map2Columns(colStateCenter.lastRightColKeys);
-    });
+    const rightColumns = computed(() => _map2Columns(tableState.value.last_right_col_keys));
 
     const rightGrid = computed(() => {
       return genColumnGrid(rightColumns.value, getColWidth, rightWidth.value).map(meta => meta.width)
@@ -258,11 +253,7 @@ export default defineComponent({
     const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
     const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
 
-    const centerColumns = computed(() => {
-      const colStateCenter = tableState.value.colStateCenter;
-
-      return _map2Columns(colStateCenter.lastCenterColKeys);
-    });
+    const centerColumns = computed(() => _map2Columns(tableState.value.last_center_col_keys));
 
     const centerGrid = computed(() => {
       return genColumnGrid(centerColumns.value, getColWidth, centerWidth.value).map(meta => meta.width);
