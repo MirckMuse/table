@@ -42,7 +42,7 @@ export default defineComponent({
   setup(props) {
     const prefixClass = "s-table-header-cell";
 
-    const { slots: slotsTable, tableState } = useStateInject();
+    const { slots: slotsTable, tableState, callback } = useStateInject();
 
     const computedColKey = computed(() => tableState.value.col_state.get_meta_by_column(props.column)?.key);
 
@@ -110,7 +110,11 @@ export default defineComponent({
         sorterStates = sorterStates.filter(state => state.colKey !== colKey);
       }
 
+      console.time('update_sorter_states')
       tableState.value.update_sorter_states(sorterStates);
+      console.timeEnd('update_sorter_states')
+
+      callback['updateViewportDataSource']?.();
     }
 
     // 渲染排序的图标

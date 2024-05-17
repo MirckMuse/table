@@ -1,5 +1,5 @@
-import type { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterState, TableColumn } from "@scode/table-typing";
-import { groupBy, throttle, isNil, memoize } from "lodash-es";
+import { SorterDirection, type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
+import { groupBy, throttle, isNil, memoize, get } from "lodash-es";
 import { toRaw } from "vue";
 import { ColMeta, TableColState } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
@@ -52,11 +52,22 @@ export type OuterRowMeta = {
   height: number;
 }
 
+enum CompareResult {
+  Less = -1,
+  Equal = 0,
+  Greater = 1,
+}
+
 // 获取最大滚动距离。
 function get_max_scroll(viewport: Viewport): [number, number] {
   const maxXMove = Math.max(0, viewport.get_content_width() - viewport.get_width());
   const maxYMove = Math.max(0, viewport.get_content_height() - viewport.get_height());
   return [maxXMove, maxYMove];
+}
+
+type RowDataMeta = {
+  key: RowKey,
+  data: RowData
 }
 
 // 表格的状态类
@@ -348,14 +359,20 @@ export class TableState {
 
     this.flatten_row_keys = newflattenRowKeys;
 
-    console.time('update_flatten')
-    // 主要耗时
-    this.update_flatten(newflattenRowKeys);
-    console.timeEnd('update_flatten')
 
-    console.time('reset_flatten_row_y')
-    this.reset_flatten_row_y();
-    console.timeEnd('reset_flatten_row_y')
+
+
+
+    if (!this.row_state.is_fixed_row_height()) {
+      // 主要耗时
+      console.time('update_flatten')
+      this.update_flatten(newflattenRowKeys);
+      console.timeEnd('update_flatten')
+
+      console.time('reset_flatten_row_y')
+      this.reset_flatten_row_y();
+      console.timeEnd('reset_flatten_row_y')
+    }
   }
 
   // =============== TODO: 重构 =============================
@@ -403,10 +420,123 @@ export class TableState {
   sorter_states: SorterState[] = [];
 
   update_sorter_states(sorter_states: SorterState[]) {
+    this.sorter_states = sorter_states;
 
+    const is_fixed_row_height = this.row_state.is_fixed_row_height();
+    const _update_y = () => {
+      if (is_fixed_row_height) return;
+
+      this.update_flatten(this.flatten_row_keys);
+      this.reset_flatten_row_y();
+    }
+
+    if (!sorter_states.length) {
+      this.flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
+      _update_y();
+      return;
+    }
+
+    const flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys)
+    // TODO: 获取筛选后的 flatten
+
+    const filtered_flatten_row_keys = flatten_row_keys;
+
+    const row_state = this.row_state;
+
+    console.time("filtered_flatten_row_keys")
+    const filtered_row_data_metas = filtered_flatten_row_keys
+      .map(row_key => {
+        return { key: row_key, data: toRaw(row_state.get_row_data_by_row_key(row_key)) as any }
+      })
+      .filter(meta => meta.data)
+    console.timeEnd("filtered_flatten_row_keys")
+
+    console.time("get_sorted_row_datas")
+    const row_data_metas = this.get_sorted_row_datas(filtered_row_data_metas)
+    console.timeEnd("get_sorted_row_datas")
+
+    this.flatten_row_keys = row_data_metas.map(meta => meta.key);
+
+    _update_y();
+
+    // TODO:
     if (this.scrollToTopAfterFilterOrSorter) {
       this.scroll.top = 0;
     }
+  }
+
+  private get_sorter(sorter_state: SorterState, prev: RowDataMeta, next: RowDataMeta): CompareResult {
+    const { colKey, direction } = sorter_state;
+
+    if (!direction || !colKey) {
+      return CompareResult.Equal;
+    }
+
+    // 排序系数
+    let rate = 0;
+    if (sorter_state.direction === SorterDirection.Ascend) {
+      rate = 1;
+    } else if (sorter_state.direction === SorterDirection.Descend) {
+      rate = -1;
+    }
+
+    return this.order_by(sorter_state, prev, next) * rate;
+  }
+
+  private order_by(sorter_state: SorterState, prev: RowDataMeta, next: RowDataMeta) {
+    const column = this.col_state.get_column_by_col_key(sorter_state.colKey);
+
+    if (!column || !column.dataIndex) return CompareResult.Equal;
+
+    const prevRowDataValue = get(prev.data, column.dataIndex);
+    const nextRowDataValue = get(next.data, column.dataIndex);
+
+    // 空之间的相互对比
+    if (isNil(prevRowDataValue) && isNil(nextRowDataValue))
+      return CompareResult.Equal;
+    if (isNil(prevRowDataValue) && !isNil(nextRowDataValue))
+      return CompareResult.Greater;
+    if (!isNil(prevRowDataValue) && isNil(nextRowDataValue))
+      return CompareResult.Less;
+
+    if (prevRowDataValue === nextRowDataValue) return CompareResult.Equal;
+
+    // number string 之间的相互对比
+    if (
+      typeof prevRowDataValue === "number" &&
+      typeof nextRowDataValue === "number"
+    )
+      return prevRowDataValue - nextRowDataValue;
+    if (
+      typeof prevRowDataValue === "string" &&
+      typeof nextRowDataValue === "string"
+    )
+      return prevRowDataValue > nextRowDataValue
+        ? CompareResult.Greater
+        : CompareResult.Less;
+    if (typeof prevRowDataValue === "number" && typeof next.data === "string")
+      return CompareResult.Greater;
+    if (typeof prevRowDataValue === "string" && typeof next.data === "number")
+      return CompareResult.Less;
+
+    // 其他之间的数据类型对比，则直接判定为相等。
+    return CompareResult.Equal;
+  }
+
+  private get_sorted_row_datas(row_data_metas: RowDataMeta[]): RowDataMeta[] {
+    return row_data_metas.sort((prev, next) => {
+      for (const state of this.sorter_states) {
+        const compareResult = this.get_sorter(state, prev, next);
+
+        if (compareResult === CompareResult.Equal) {
+          continue;
+        }
+
+        return compareResult;
+      }
+
+      return CompareResult.Equal;
+    })
   }
 
   get_viewport_offset_top() {
@@ -433,6 +563,7 @@ export class TableState {
     this.flatten_row_y = flatten_row_y;
     this.viewport.set_content_height(y);
   }
+
   private throttle_reset_flatten_row_y = throttle(this.reset_flatten_row_y, 16);
 
   is_empty() {
@@ -480,7 +611,9 @@ export class TableState {
     const done_callback = () => {
       const raw_row_keys = toRaw(this.row_state.get_raw_row_keys());
 
-      if (!this.row_state.is_fixed_row_height()) {
+      const is_fixed_row_height = this.row_state.is_fixed_row_height();
+
+      if (!is_fixed_row_height) {
         const row_state = this.row_state;
         const content_height = raw_row_keys.reduce<number>((content_height, row_key) => {
           return content_height + (row_state.get_meta_by_row_key(row_key)?.height ?? 0);
@@ -490,11 +623,19 @@ export class TableState {
       }
 
       this.flatten_row_keys = ([] as RowKey[]).concat(raw_row_keys);
-      this.update_flatten(this.flatten_row_keys);
-      this.reset_flatten_row_y();
+
+      if (!is_fixed_row_height) {
+        this.update_flatten(this.flatten_row_keys);
+        this.reset_flatten_row_y();
+      }
     }
 
-    this.row_state.update_row_datas(row_datas, done_callback);
+    this.row_state.update_row_datas(row_datas, () => {
+      done_callback();
+      setTimeout(() => {
+        this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
+      })
+    });
     done_callback();
   }
 
