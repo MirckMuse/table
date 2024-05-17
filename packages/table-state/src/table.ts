@@ -276,7 +276,9 @@ export class TableState {
 
     // 最后才更新展开列
     this.expandedRowKeys = expanded_row_keys;
+    console.time("update_flatten_row_keys_by_expanded_row_keys")
     this.update_flatten_row_keys_by_expanded_row_keys();
+    console.timeEnd('update_flatten_row_keys_by_expanded_row_keys')
   }
 
   // 更新展开后的行数据
@@ -286,15 +288,20 @@ export class TableState {
     // // 获取行的排序权重
     const _get_row_sort = (row_key: RowKey) => row_state.get_meta_by_row_key(row_key)?.sort ?? '';
 
+    console.time("sortedExpandedRowKeys");
     const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => rowKeyCompare(_get_row_sort(prev), _get_row_sort(next)))
+    console.timeEnd("sortedExpandedRowKeys");
 
     const newflattenRowKeys: RowKey[] = [];
     let children: RowData[] = [];
     let _rawRowIndex = 0;
     let _expandRowIndedx = 0;
 
-    const rawRowKeys = row_state.get_raw_row_keys()
+    console.time("get_raw_row_keys");
+    const rawRowKeys = row_state.get_raw_row_keys();
+    console.timeEnd("get_raw_row_keys");
 
+    console.time('while')
     while (_rawRowIndex < rawRowKeys.length || children.length) {
       const childrenTop = children.shift();
 
@@ -322,10 +329,18 @@ export class TableState {
         newflattenRowKeys.push(row_key)
       }
     }
+    console.timeEnd('while')
 
     this.flatten_row_keys = newflattenRowKeys;
+
+    console.time('update_flatten')
+    // 主要耗时
     this.update_flatten(newflattenRowKeys);
+    console.timeEnd('update_flatten')
+
+    console.time('reset_flatten_row_y')
     this.reset_flatten_row_y();
+    console.timeEnd('reset_flatten_row_y')
   }
 
   // =============== TODO: 重构 =============================
@@ -418,10 +433,18 @@ export class TableState {
   }
 
   private update_flatten(flatten_row_keys: RowKey[]) {
-    flatten_row_keys.forEach((row_key, index) => {
-      this.flatten_row_key_map_index.set(row_key, index);
-      this.flatten_row_heights[index] = this.row_state.get_row_height_by_row_key(row_key);
-    })
+    const row_state = this.row_state;
+
+    const map = new Map();
+    const flatten_row_heights = [];
+    for (let index = 0; index < flatten_row_keys.length; index++) {
+      const row_key = flatten_row_keys[index];
+      map.set(row_key, index);
+      flatten_row_heights[index] = row_state.get_row_height_by_row_key(row_key);
+    }
+
+    this.flatten_row_key_map_index = map;
+    this.flatten_row_heights = flatten_row_heights;
   }
 
   // 更新行数据

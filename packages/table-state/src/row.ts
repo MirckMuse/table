@@ -75,7 +75,7 @@ export class TableRowState {
   }
 
   get_raw_row_keys() {
-    return ([] as RowKey[]).concat(this.raw_row_keys);
+    return Object.freeze(this.raw_row_keys);
   }
 
   get_meta_by_row_key(row_key: RowKey): RowMetaOrNull {
