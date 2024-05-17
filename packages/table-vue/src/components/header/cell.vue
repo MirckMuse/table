@@ -44,7 +44,7 @@ export default defineComponent({
 
     const { slots: slotsTable, tableState } = useStateInject();
 
-    const computedColKey = computed(() => tableState.value.colStateCenter.getColKeyByColumn(props.column));
+    const computedColKey = computed(() => tableState.value.col_state.get_meta_by_column(props.column)?.key);
 
     const computedFilterState = computed(() => tableState.value.filter_states.find(state => state.colKey === computedColKey.value))
 
@@ -110,7 +110,7 @@ export default defineComponent({
         sorterStates = sorterStates.filter(state => state.colKey !== colKey);
       }
 
-      tableState.value.updateSorterStates(sorterStates);
+      tableState.value.update_sorter_states(sorterStates);
     }
 
     // 渲染排序的图标

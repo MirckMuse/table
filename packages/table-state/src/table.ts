@@ -1,5 +1,5 @@
 import type { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterState, TableColumn } from "@scode/table-typing";
-import { groupBy, throttle, isNil } from "lodash-es";
+import { groupBy, throttle, isNil, memoize } from "lodash-es";
 import { toRaw } from "vue";
 import { ColMeta, TableColState } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
@@ -233,12 +233,6 @@ export class TableState {
     // this.viewport.scrollHeight = lastRowY;
   }
 
-  updateSorterStates(sorterStates: SorterState[]) {
-    // this.rowStateCenter.updateSorterStates(sorterStates);
-    // if (this.scrollToTopAfterFilterOrSorter) {
-    //   this.scroll.top = 0;
-    // }
-  }
 
   expandedRowKeys: RowKey[] = [];
 
@@ -281,55 +275,76 @@ export class TableState {
     console.timeEnd('update_flatten_row_keys_by_expanded_row_keys')
   }
 
-  // 更新展开后的行数据
-  private update_flatten_row_keys_by_expanded_row_keys() {
+  get_children_row_keys(row_key: RowKey): RowKey[] {
+    const row_state = this.row_state;
+    const row_data = row_state.get_row_data_by_row_key(row_key);
+
+    if (!row_data) return [];
+
+    return this.get_row_data_children(row_data)
+      ?.map(child_row_data => {
+        return row_state.get_meta_by_row_data(child_row_data)?.key
+      })
+      .filter(row_key => !isNil(row_key)) as RowKey[]
+  }
+
+  memoize_get_children_row_keys = memoize(this.get_children_row_keys);
+
+  private get_flatten_row_keys_by_expanded_row_keys(expanded_row_keys: RowKey[]) {
     const row_state = this.row_state;
 
     // // 获取行的排序权重
     const _get_row_sort = (row_key: RowKey) => row_state.get_meta_by_row_key(row_key)?.sort ?? '';
 
-    console.time("sortedExpandedRowKeys");
-    const sortedExpandedRowKeys = this.expandedRowKeys.sort((prev, next) => rowKeyCompare(_get_row_sort(prev), _get_row_sort(next)))
-    console.timeEnd("sortedExpandedRowKeys");
+    const sortedExpandedRowKeys = expanded_row_keys.sort((prev, next) => rowKeyCompare(_get_row_sort(prev), _get_row_sort(next)))
 
     const newflattenRowKeys: RowKey[] = [];
-    let children: RowData[] = [];
+    let children_row_keys: RowKey[] = [];
     let _rawRowIndex = 0;
     let _expandRowIndedx = 0;
 
-    console.time("get_raw_row_keys");
     const rawRowKeys = row_state.get_raw_row_keys();
-    console.timeEnd("get_raw_row_keys");
 
     console.time('while')
-    while (_rawRowIndex < rawRowKeys.length || children.length) {
-      const childrenTop = children.shift();
+    while (_rawRowIndex < rawRowKeys.length || children_row_keys.length) {
+      const top_children_row_key = children_row_keys.shift();
 
-      const row_key = childrenTop
-        ? this.row_state.get_meta_by_row_data(childrenTop)?.key
-        : rawRowKeys[_rawRowIndex];
+      const row_key = top_children_row_key || rawRowKeys[_rawRowIndex];
 
-      if (!childrenTop) {
+      if (!top_children_row_key) {
         _rawRowIndex++;
       }
 
       if (row_key === sortedExpandedRowKeys[_expandRowIndedx]) {
         _expandRowIndedx++;
 
-        const row_data = row_state.get_row_data_by_row_key(row_key);
-        if (row_data) {
-          children = [
-            ...(this.get_row_data_children(row_data) ?? []),
-            ...children
-          ];
-        }
 
+        children_row_keys = [
+          ...this.memoize_get_children_row_keys(row_key),
+          ...children_row_keys
+        ];
       }
       if (row_key) {
         newflattenRowKeys.push(row_key)
       }
     }
     console.timeEnd('while')
+    return newflattenRowKeys;
+  }
+
+  private memoize_get_flatten_row_keys_by_expanded_row_keys = memoize(
+    this.get_flatten_row_keys_by_expanded_row_keys,
+    (expanded_row_keys: RowKey[]) => expanded_row_keys.join("--&&--")
+  )
+
+  clear_memoize() {
+    this.memoize_get_flatten_row_keys_by_expanded_row_keys.cache.clear?.();
+    this.memoize_get_children_row_keys.cache.clear?.();
+  }
+
+  // 更新展开后的行数据
+  private update_flatten_row_keys_by_expanded_row_keys() {
+    const newflattenRowKeys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
 
     this.flatten_row_keys = newflattenRowKeys;
 
@@ -387,6 +402,13 @@ export class TableState {
 
   sorter_states: SorterState[] = [];
 
+  update_sorter_states(sorter_states: SorterState[]) {
+
+    if (this.scrollToTopAfterFilterOrSorter) {
+      this.scroll.top = 0;
+    }
+  }
+
   get_viewport_offset_top() {
     return this.pre_row?.from_y ?? 0;
   }
@@ -440,7 +462,7 @@ export class TableState {
     for (let index = 0; index < flatten_row_keys.length; index++) {
       const row_key = flatten_row_keys[index];
       map.set(row_key, index);
-      flatten_row_heights[index] = row_state.get_row_height_by_row_key(row_key);
+      flatten_row_heights[index] = row_state.memoize_get_row_height_by_row_key(row_key);
     }
 
     this.flatten_row_key_map_index = map;
@@ -449,6 +471,8 @@ export class TableState {
 
   // 更新行数据
   update_row_datas(row_datas: RowData[]) {
+    this.clear_memoize();
+
     // FIXME: 分页情况下可能有问题，主要发生问题的地方是不定高度。
     const _row_datas = row_datas;
     this.viewport.set_content_height(_row_datas.length * this.row_state.get_row_height());
@@ -471,13 +495,7 @@ export class TableState {
     }
 
     this.row_state.update_row_datas(row_datas, done_callback);
-    this.flatten_row_keys = ([] as RowKey[]).concat(this.row_state.get_raw_row_keys());
-    this.update_flatten(this.flatten_row_keys);
-    this.reset_flatten_row_y();
-
-    setTimeout(() => {
-      // TODO: 筛选和排序字段需要赋值;
-    })
+    done_callback();
   }
 
 

@@ -3,7 +3,7 @@ import type {
   RowData,
   RowKey
 } from "@scode/table-typing";
-import { chunk } from "lodash-es";
+import { chunk, memoize } from "lodash-es";
 import { toRaw } from "vue";
 import { runIdleTask } from '@scode/table-shared';
 
@@ -93,6 +93,12 @@ export class TableRowState {
     return this.rough_row_height;
   }
 
+  clear_memoize() {
+    this.memoize_get_row_height_by_row_key.cache.clear?.();
+  }
+
+  memoize_get_row_height_by_row_key = memoize(this.get_row_height_by_row_key);
+
   get_row_height_by_row_key(row_key: RowKey) {
     if (this.fixed_row_height) {
       return this.rough_row_height;
@@ -132,11 +138,15 @@ export class TableRowState {
 
     meta.height = new_height;
     this.row_key_map_row_meta.set(row_key, meta);
+
+    // 更新行高的缓存
+    this.memoize_get_row_height_by_row_key.cache.set(row_key, new_height);
   }
 
   // 更新行数据
   update_row_datas(row_datas: RowData[], done_callback?: () => void) {
     this.init();
+    this.clear_memoize();
 
     const get_row_key = this.get_row_key;
     const raw_row_datas = toRaw(row_datas);
