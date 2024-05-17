@@ -53,7 +53,7 @@ export function useTableHeaderScroll(
     if (!el) return;
 
     tableState.value.viewport.set_width(el.offsetWidth);
-    tableState.value.adjustScroll();
+    tableState.value.adjust_scroll();
   }
 
   const { bbox: headerLeftBBox } = useBBox(headerLeftRef);
@@ -105,7 +105,7 @@ export function useTableBodyScroll(
     if (offsetHeight === tableState.value.viewport.get_height()) return;
 
     tableState.value.viewport.set_height(offsetHeight);
-    tableState.value.adjustScroll();
+    tableState.value.adjust_scroll();
     heightChangeCallback?.()
   }); // 计算垂直
 
@@ -113,7 +113,7 @@ export function useTableBodyScroll(
   const throttleUpdateScroll = throttle((deltaX: number, deltaY) => {
     const [optimizeX, optimizeY] = optimizeScrollXY(deltaX, deltaY);
     tableState.value.updateScroll(optimizeX, optimizeY);
-    tableState.value.adjustScroll();
+    tableState.value.adjust_scroll();
   }, 16);
 
   const processWheel = ($event: WheelEvent) => {

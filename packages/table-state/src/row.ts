@@ -187,7 +187,7 @@ export class TableRowState {
   }
 
   insert_row_meta(row_data: RowData, row_index: number, parent_row_data?: RowData) {
-    if (!this.get_meta_by_row_data(row_data)) return;
+    if (this.get_meta_by_row_data(row_data)) return;
 
     const row_key = this.get_row_key(row_data);
     const meta: RowMeta = {

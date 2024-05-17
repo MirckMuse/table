@@ -36,6 +36,8 @@ interface ITableContext {
 	handleRowExpand: (event: Event, record: RowData) => void;
 
 	expandedKeys: ComputedRef<Set<RowKey>>;
+
+	callback: Record<string, () => void>,
 }
 
 const TableStateKey: InjectionKey<ITableContext> = Symbol("__TableState__");
@@ -155,7 +157,7 @@ export function useStateProvide({
 			rowDatas: dataSource ?? [],
 			getRowKey: getRowKey.value,
 			rowHeight: props.rowHeight,
-			childrenColumnName: childrenColumnName,
+			col_children_name: props.childrenColumnName,
 			row_children_name: props.rowChildrenName,
 			pagination: pagination
 		});
@@ -197,13 +199,10 @@ export function useStateProvide({
 
 		const col_state = state.value.col_state;
 
-		console.time('updateColWidthByColumn');
 		const col_key = col_state.get_col_key_by_column(column);
 		if (col_key) {
 			col_state.update_col_width_by_col_key(col_key, resizedWidth);
 		}
-		console.timeEnd('updateColWidthByColumn');
-
 
 		throttle_update_viewport_content_width();
 	}
@@ -220,6 +219,10 @@ export function useStateProvide({
 		},
 	});
 
+	const callback = {
+		updateViewportDataSource: () => { },
+	}
+
 	// 处理展开逻辑
 	const { handleRowExpand, expandedKeys } = useRowExpand({
 		tableProps: props,
@@ -233,7 +236,10 @@ export function useStateProvide({
 			emit("expand", expanded, record);
 			emit("update:expandedRowKeys", expandedRows);
 			emit("expandedRowsChange", expandedRows);
-			state.value.updateExpandedRowKeys(expandedRows);
+			console.time("update_expanded_row_keys")
+			state.value.update_expanded_row_keys(expandedRows);
+			console.timeEnd("update_expanded_row_keys")
+			callback.updateViewportDataSource?.();
 		},
 	});
 
@@ -251,6 +257,8 @@ export function useStateProvide({
 
 		expandedKeys,
 		handleRowExpand,
+
+		callback
 	});
 }
 
@@ -273,5 +281,6 @@ export function useStateInject() {
 
 		expandedKeys: computed(() => new Set<RowKey>()),
 		handleRowExpand: noop,
+		callback: {}
 	});
 }

@@ -70,7 +70,8 @@ export default defineComponent({
       slots: tableSlots,
       handleTooltipEnter,
       handleTooltipLeave,
-      getRowKey
+      getRowKey,
+      callback
     } = useStateInject();
 
     const bodyCommonStyle = ref({
@@ -109,9 +110,13 @@ export default defineComponent({
     })
 
     const dataSource = ref<RowData[]>([]);
+
     function getViewportDataSource() {
       dataSource.value = tableState.value.get_viewport_row_datas();
     }
+
+    callback['updateViewportDataSource'] = getViewportDataSource;
+
     tableState.value.add_scroll_callback(getViewportDataSource);
     tableState.value.add_scroll_callback(updateBodyCommonStyle);
 
