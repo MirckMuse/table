@@ -1,7 +1,12 @@
 import type { VNode } from "vue";
 
 // 行数据
-export type RowData = Record<string, unknown>
+export type RowData = Record<string, unknown>;
+
+export type RowDataMeta = {
+  key: RowKey,
+  data: RowData
+}
 
 // 行 key
 export type RowKey = string | number;
@@ -26,7 +31,7 @@ export enum SorterDirection {
 
 // 排序状态
 export type SorterState = {
-  colKey: ColKey;
+  col_key: ColKey;
 
   direction?: SorterDirection;
 }

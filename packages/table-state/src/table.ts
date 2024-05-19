@@ -1,13 +1,14 @@
-import { SorterDirection, type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
-import { groupBy, throttle, isNil, memoize, get } from "lodash-es";
+import { binaryFindIndexRange } from "@scode/table-shared";
+import { type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
+import { groupBy, isNil, memoize, throttle } from "lodash-es";
 import { toRaw } from "vue";
 import { ColMeta, TableColState } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
 import { TableRowState } from "./row";
-import { adjustScrollOffset, rowKeyCompare } from "./shared";
-import { Viewport, type IViewport } from "./viewport";
 import { Scroll } from "./scroll";
-import { binaryFindIndexRange } from "@scode/table-shared";
+import { adjustScrollOffset, rowKeyCompare } from "./shared";
+import { TableSorterState } from "./sorter";
+import { Viewport, type IViewport } from "./viewport";
 
 type Noop = () => void;
 
@@ -52,22 +53,11 @@ export type OuterRowMeta = {
   height: number;
 }
 
-enum CompareResult {
-  Less = -1,
-  Equal = 0,
-  Greater = 1,
-}
-
 // 获取最大滚动距离。
 function get_max_scroll(viewport: Viewport): [number, number] {
   const maxXMove = Math.max(0, viewport.get_content_width() - viewport.get_width());
   const maxYMove = Math.max(0, viewport.get_content_height() - viewport.get_height());
   return [maxXMove, maxYMove];
-}
-
-type RowDataMeta = {
-  key: RowKey,
-  data: RowData
 }
 
 // 表格的状态类
@@ -98,6 +88,12 @@ export class TableState {
     this.row_children_name = option.row_children_name ?? "children";
 
     this.col_state = new TableColState({});
+    const get_column_by_sorter_state = (sorter_state: SorterState) => {
+      return this.col_state.get_column_by_col_key(sorter_state.col_key) ?? null;
+    }
+    this.sorter_state = new TableSorterState({
+      get_column_by_sorter_state
+    });
     this.row_state = new TableRowState({
       row_height: option.rowHeight ?? RowHeight,
       is_fixed_row_height: !!option.rowHeight,
@@ -176,7 +172,6 @@ export class TableState {
     this.right_col_keys.forEach(_updateSpan);
     this.center_col_keys.forEach(_updateSpan);
   }
-
 
   update_viewport_content_width() {
     const lastColKeys = [
@@ -359,10 +354,6 @@ export class TableState {
 
     this.flatten_row_keys = newflattenRowKeys;
 
-
-
-
-
     if (!this.row_state.is_fixed_row_height()) {
       // 主要耗时
       console.time('update_flatten')
@@ -401,6 +392,8 @@ export class TableState {
   col_children_name = "children";
   row_children_name = "children";
 
+  sorter_state: TableSorterState;
+
   get_row_data_children(row_data: RowData): RowData[] | null {
     const children = row_data[this.row_children_name];
     if (Array.isArray(children)) {
@@ -416,6 +409,30 @@ export class TableState {
 
   // TODO:
   filter_states: FilterState[] = [];
+
+  private get_filtered_flatten_row_keys(filter_states: FilterState[]) {
+
+  }
+
+  update_filter_states(filter_states: FilterState[]) {
+    this.filter_states = filter_states;
+
+    const is_fixed_row_height = this.row_state.is_fixed_row_height();
+
+    const _update_y = () => {
+      if (is_fixed_row_height) return;
+
+      this.update_flatten(this.flatten_row_keys);
+      this.reset_flatten_row_y();
+    }
+
+    if (!filter_states.length) {
+      this.flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
+      _update_y();
+      return;
+    }
+
+  }
 
   sorter_states: SorterState[] = [];
 
@@ -452,8 +469,13 @@ export class TableState {
     console.timeEnd("filtered_flatten_row_keys")
 
     console.time("get_sorted_row_datas")
-    const row_data_metas = this.get_sorted_row_datas(filtered_row_data_metas)
+    const row_data_metas = this.sorter_state.get_sorted_row_data_metas(
+      filtered_row_data_metas,
+      this.sorter_states
+    )
     console.timeEnd("get_sorted_row_datas")
+
+    console.log('row_data_metas', row_data_metas)
 
     this.flatten_row_keys = row_data_metas.map(meta => meta.key);
 
@@ -463,80 +485,6 @@ export class TableState {
     if (this.scrollToTopAfterFilterOrSorter) {
       this.scroll.top = 0;
     }
-  }
-
-  private get_sorter(sorter_state: SorterState, prev: RowDataMeta, next: RowDataMeta): CompareResult {
-    const { colKey, direction } = sorter_state;
-
-    if (!direction || !colKey) {
-      return CompareResult.Equal;
-    }
-
-    // 排序系数
-    let rate = 0;
-    if (sorter_state.direction === SorterDirection.Ascend) {
-      rate = 1;
-    } else if (sorter_state.direction === SorterDirection.Descend) {
-      rate = -1;
-    }
-
-    return this.order_by(sorter_state, prev, next) * rate;
-  }
-
-  private order_by(sorter_state: SorterState, prev: RowDataMeta, next: RowDataMeta) {
-    const column = this.col_state.get_column_by_col_key(sorter_state.colKey);
-
-    if (!column || !column.dataIndex) return CompareResult.Equal;
-
-    const prevRowDataValue = get(prev.data, column.dataIndex);
-    const nextRowDataValue = get(next.data, column.dataIndex);
-
-    // 空之间的相互对比
-    if (isNil(prevRowDataValue) && isNil(nextRowDataValue))
-      return CompareResult.Equal;
-    if (isNil(prevRowDataValue) && !isNil(nextRowDataValue))
-      return CompareResult.Greater;
-    if (!isNil(prevRowDataValue) && isNil(nextRowDataValue))
-      return CompareResult.Less;
-
-    if (prevRowDataValue === nextRowDataValue) return CompareResult.Equal;
-
-    // number string 之间的相互对比
-    if (
-      typeof prevRowDataValue === "number" &&
-      typeof nextRowDataValue === "number"
-    )
-      return prevRowDataValue - nextRowDataValue;
-    if (
-      typeof prevRowDataValue === "string" &&
-      typeof nextRowDataValue === "string"
-    )
-      return prevRowDataValue > nextRowDataValue
-        ? CompareResult.Greater
-        : CompareResult.Less;
-    if (typeof prevRowDataValue === "number" && typeof next.data === "string")
-      return CompareResult.Greater;
-    if (typeof prevRowDataValue === "string" && typeof next.data === "number")
-      return CompareResult.Less;
-
-    // 其他之间的数据类型对比，则直接判定为相等。
-    return CompareResult.Equal;
-  }
-
-  private get_sorted_row_datas(row_data_metas: RowDataMeta[]): RowDataMeta[] {
-    return row_data_metas.sort((prev, next) => {
-      for (const state of this.sorter_states) {
-        const compareResult = this.get_sorter(state, prev, next);
-
-        if (compareResult === CompareResult.Equal) {
-          continue;
-        }
-
-        return compareResult;
-      }
-
-      return CompareResult.Equal;
-    })
   }
 
   get_viewport_offset_top() {

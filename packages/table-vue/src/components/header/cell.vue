@@ -86,7 +86,7 @@ export default defineComponent({
 
       if (!column?.sorter) return;
 
-      return tableState.value.sorter_states.find(state => state.colKey === computedColKey.value);
+      return tableState.value.sorter_states.find(state => state.col_key === computedColKey.value);
     })
 
     // 执行排序
@@ -98,16 +98,16 @@ export default defineComponent({
 
       if (!sorterState.value) {
         // 无状态 -> 升序
-        sorterStates.push({ colKey, direction: SorterDirection.Ascend });
+        sorterStates.push({ col_key: colKey, direction: SorterDirection.Ascend });
       } else if (sorterState.value.direction === SorterDirection.Ascend) {
         // 升序 -> 降序
-        const matchedState = sorterStates.find(state => state.colKey === colKey);
+        const matchedState = sorterStates.find(state => state.col_key === colKey);
         if (matchedState) {
           matchedState.direction = SorterDirection.Descend;
         }
       } else if (sorterState.value.direction === SorterDirection.Descend) {
         // 降序 -> 无状态
-        sorterStates = sorterStates.filter(state => state.colKey !== colKey);
+        sorterStates = sorterStates.filter(state => state.col_key !== colKey);
       }
 
       console.time('update_sorter_states')
