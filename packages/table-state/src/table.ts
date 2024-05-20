@@ -354,16 +354,14 @@ export class TableState {
 
     this.flatten_row_keys = newflattenRowKeys;
 
-    if (!this.row_state.is_fixed_row_height()) {
-      // 主要耗时
-      console.time('update_flatten')
-      this.update_flatten(newflattenRowKeys);
-      console.timeEnd('update_flatten')
+    // 主要耗时
+    console.time('update_flatten')
+    this.update_flatten(newflattenRowKeys);
+    console.timeEnd('update_flatten')
 
-      console.time('reset_flatten_row_y')
-      this.reset_flatten_row_y();
-      console.timeEnd('reset_flatten_row_y')
-    }
+    console.time('reset_flatten_row_y')
+    this.reset_flatten_row_y();
+    console.timeEnd('reset_flatten_row_y')
   }
 
   // =============== TODO: 重构 =============================
@@ -417,11 +415,7 @@ export class TableState {
   update_filter_states(filter_states: FilterState[]) {
     this.filter_states = filter_states;
 
-    const is_fixed_row_height = this.row_state.is_fixed_row_height();
-
     const _update_y = () => {
-      if (is_fixed_row_height) return;
-
       this.update_flatten(this.flatten_row_keys);
       this.reset_flatten_row_y();
     }
@@ -439,10 +433,7 @@ export class TableState {
   update_sorter_states(sorter_states: SorterState[]) {
     this.sorter_states = sorter_states;
 
-    const is_fixed_row_height = this.row_state.is_fixed_row_height();
     const _update_y = () => {
-      if (is_fixed_row_height) return;
-
       this.update_flatten(this.flatten_row_keys);
       this.reset_flatten_row_y();
     }
@@ -501,6 +492,11 @@ export class TableState {
   flatten_row_key_map_index = new Map();
 
   private reset_flatten_row_y() {
+    if (this.row_state.is_fixed_row_height()) {
+      this.viewport.set_content_height(this.flatten_row_keys.length * this.row_state.get_row_height());
+      return;
+    };
+
     let y = 0;
     const flatten_row_y = [];
     for (const height of this.flatten_row_heights) {
@@ -536,16 +532,30 @@ export class TableState {
   private update_flatten(flatten_row_keys: RowKey[]) {
     const row_state = this.row_state;
 
+    const is_fixed_row_height = this.row_state.is_fixed_row_height();
+
     const map = new Map();
-    const flatten_row_heights = [];
+    const flatten_row_heights: number[] = [];
+
+    const _process = is_fixed_row_height
+      ? (index: number) => {
+        const row_key = flatten_row_keys[index];
+        map.set(row_key, index);
+      }
+      : (index: number) => {
+        const row_key = flatten_row_keys[index];
+        map.set(row_key, index);
+        flatten_row_heights.push(row_state.memoize_get_row_height_by_row_key(row_key))
+      }
+
     for (let index = 0; index < flatten_row_keys.length; index++) {
-      const row_key = flatten_row_keys[index];
-      map.set(row_key, index);
-      flatten_row_heights[index] = row_state.memoize_get_row_height_by_row_key(row_key);
+      _process(index)
     }
 
     this.flatten_row_key_map_index = map;
-    this.flatten_row_heights = flatten_row_heights;
+    if (is_fixed_row_height) {
+      this.flatten_row_heights = flatten_row_heights;
+    }
   }
 
   // 更新行数据
@@ -558,24 +568,9 @@ export class TableState {
 
     const done_callback = () => {
       const raw_row_keys = toRaw(this.row_state.get_raw_row_keys());
-
-      const is_fixed_row_height = this.row_state.is_fixed_row_height();
-
-      if (!is_fixed_row_height) {
-        const row_state = this.row_state;
-        const content_height = raw_row_keys.reduce<number>((content_height, row_key) => {
-          return content_height + (row_state.get_meta_by_row_key(row_key)?.height ?? 0);
-        }, 0);
-
-        this.viewport.set_content_height(content_height);
-      }
-
       this.flatten_row_keys = ([] as RowKey[]).concat(raw_row_keys);
-
-      if (!is_fixed_row_height) {
-        this.update_flatten(this.flatten_row_keys);
-        this.reset_flatten_row_y();
-      }
+      this.update_flatten(this.flatten_row_keys);
+      this.reset_flatten_row_y();
     }
 
     this.row_state.update_row_datas(row_datas, () => {
