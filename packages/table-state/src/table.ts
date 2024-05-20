@@ -1,5 +1,5 @@
 import { binaryFindIndexRange } from "@scode/table-shared";
-import { type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
+import { RowDataMeta, type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
 import { groupBy, isNil, memoize, throttle } from "lodash-es";
 import { toRaw } from "vue";
 import { ColMeta, TableColState } from "./col";
@@ -242,10 +242,28 @@ export class TableState {
 
   expandedRowKeys: RowKey[] = [];
 
+  get_last_column_with_col_key(): (TableColumn & { col_key: ColKey })[] {
+    const col_state = this.col_state;
+
+    return col_state.get_all_meta()
+      .filter(meta => meta.is_leaf)
+      .map(meta => {
+        const column = col_state.get_column_by_col_key(meta.key);
+
+        if (column) {
+          return Object.assign({}, column, { col_key: meta.key })
+        }
+
+        return null;
+      })
+      .filter(v => v) as (TableColumn & { col_key: ColKey })[]
+  }
+
   // 更新展开列
   // TODO: 该函数很耗时，考虑优化。
   update_expanded_row_keys(expanded_row_keys: RowKey[]) {
     const row_state = this.row_state;
+    const sorter_state = this.sorter_state;
 
     // 获取行的深度, 用作排序
     const get_row_deep = (row_key: RowKey) => row_state.get_meta_by_row_key(row_key)?.deep ?? -1;
@@ -268,7 +286,14 @@ export class TableState {
           const children = this.get_row_data_children(row_data) ?? [];
 
           if (children.length) {
-            children.forEach((row, row_index) => row_state.insert_row_meta(row, row_index, row_data));
+            children.forEach((row, row_index) => {
+              const row_meta = row_state.insert_row_meta(row, row_index, row_data);
+
+              sorter_state.update_sorter_meta(
+                { key: row_meta.key, data: toRaw(row_data) },
+                this.get_last_column_with_col_key(),
+              )
+            });
           }
         }
       }
@@ -311,7 +336,6 @@ export class TableState {
 
     const rawRowKeys = row_state.get_raw_row_keys();
 
-    console.time('while')
     while (_rawRowIndex < rawRowKeys.length || children_row_keys.length) {
       const top_children_row_key = children_row_keys.shift();
 
@@ -334,7 +358,6 @@ export class TableState {
         newflattenRowKeys.push(row_key)
       }
     }
-    console.timeEnd('while')
     return newflattenRowKeys;
   }
 
@@ -447,28 +470,18 @@ export class TableState {
     const flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys)
     // TODO: 获取筛选后的 flatten
 
-    const filtered_flatten_row_keys = flatten_row_keys;
-
-    const row_state = this.row_state;
-
-    console.time("filtered_flatten_row_keys")
-    const filtered_row_data_metas = filtered_flatten_row_keys
-      .map(row_key => {
-        return { key: row_key, data: toRaw(row_state.get_row_data_by_row_key(row_key)) as any }
-      })
-      .filter(meta => meta.data)
-    console.timeEnd("filtered_flatten_row_keys")
+    const filtered_flatten_row_keys = ([] as RowKey[]).concat(flatten_row_keys);
 
     console.time("get_sorted_row_datas")
-    const row_data_metas = this.sorter_state.get_sorted_row_data_metas(
-      filtered_row_data_metas,
+    const row_keys = this.sorter_state.get_sorted_row_data_metas(
+      filtered_flatten_row_keys,
       this.sorter_states
     )
     console.timeEnd("get_sorted_row_datas")
 
-    console.log('row_data_metas', row_data_metas)
+    console.log('row_data_metas', row_keys)
 
-    this.flatten_row_keys = row_data_metas.map(meta => meta.key);
+    this.flatten_row_keys = row_keys;
 
     _update_y();
 
@@ -577,6 +590,10 @@ export class TableState {
       done_callback();
       setTimeout(() => {
         this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
+        this.sorter_state.init_sorter_metas(
+          Array.from(this.row_state.row_key_map_row_data_meta.values()),
+          this.get_last_column_with_col_key(),
+        )
       })
     });
     done_callback();

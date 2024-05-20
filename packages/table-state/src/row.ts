@@ -1,6 +1,7 @@
 import type {
   GetRowKey,
   RowData,
+  RowDataMeta,
   RowKey
 } from "@scode/table-typing";
 import { chunk, memoize } from "lodash-es";
@@ -44,10 +45,12 @@ export class TableRowState {
   // 行数据 key 映射行元数据
   private row_key_map_row_meta: Map<RowKey, RowMeta> = new Map();
 
+  row_key_map_row_data_meta: Map<RowKey, RowDataMeta> = new Map();
+
   // 行数据映射行数据 key
   private row_data_map_row_key: WeakMap<RowData, RowKey> = new WeakMap();
 
-  row_key_map_row_data: Map<RowKey, RowData> = new Map();
+  private row_key_map_row_data: Map<RowKey, RowData> = new Map();
 
   private rough_row_height: number = 56;
 
@@ -67,6 +70,7 @@ export class TableRowState {
     this.raw_row_keys = [];
     this.row_key_map_row_data.clear();
     this.row_key_map_row_meta.clear();
+    this.row_key_map_row_data_meta.clear();
     this.row_data_map_row_key = new WeakMap<RowData, RowKey>();
   }
 
@@ -76,6 +80,14 @@ export class TableRowState {
 
   get_raw_row_keys() {
     return Object.freeze(this.raw_row_keys);
+  }
+
+  get_all_row_data_metas() {
+    return this.row_key_map_row_data_meta.values();
+  }
+
+  get_row_data_meta_by_row_key(row_key: RowKey): RowDataMeta | null {
+    return this.row_key_map_row_data_meta.get(row_key) ?? null;
   }
 
   get_meta_by_row_key(row_key: RowKey): RowMetaOrNull {
@@ -170,6 +182,10 @@ export class TableRowState {
         this.row_data_map_row_key.set(row_data, row_key)
         this.row_key_map_row_meta.set(row_key, meta);
         this.row_key_map_row_data.set(row_key, row_data);
+        this.row_key_map_row_data_meta.set(row_key, {
+          key: row_key,
+          data: toRaw(row_data)
+        })
       });
     }
 
@@ -196,8 +212,8 @@ export class TableRowState {
     }
   }
 
-  insert_row_meta(row_data: RowData, row_index: number, parent_row_data?: RowData) {
-    if (this.get_meta_by_row_data(row_data)) return;
+  insert_row_meta(row_data: RowData, row_index: number, parent_row_data?: RowData): RowMeta {
+    if (this.get_meta_by_row_data(row_data)) return this.get_meta_by_row_data(row_data)!;
 
     const row_key = this.get_row_key(row_data);
     const meta: RowMeta = {
@@ -217,5 +233,8 @@ export class TableRowState {
     this.row_data_map_row_key.set(row_data, row_key);
     this.row_key_map_row_meta.set(row_key, meta);
     this.row_key_map_row_data.set(row_key, row_data);
+    this.row_key_map_row_data_meta.set(row_key, { key: row_key, data: toRaw(row_data) });
+
+    return meta;
   }
 }
