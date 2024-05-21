@@ -44,9 +44,9 @@ export class TableSorterState {
 
     const get_order = memoize((row_key: RowKey, col_key: ColKey) => {
       return this.get_order_map(row_key).get(col_key) ?? -Infinity;
-    })
+    });
 
-    const result = row_keys.sort((prev, next) => {
+    return row_keys.sort((prev, next) => {
       for (const state of new_sorter_states) {
         const prev_order = get_order(prev, state.col_key);
         const next_order = get_order(next, state.col_key);
@@ -58,8 +58,6 @@ export class TableSorterState {
 
       return CompareResult.Equal;
     });
-
-    return result;
   }
 
   private meta: Map<RowKey, Map<ColKey, number>> = new Map();

@@ -1,5 +1,5 @@
 import { binaryFindIndexRange } from "@scode/table-shared";
-import { RowDataMeta, type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
+import { type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
 import { groupBy, isNil, memoize, throttle } from "lodash-es";
 import { toRaw } from "vue";
 import { ColMeta, TableColState } from "./col";
@@ -449,6 +449,7 @@ export class TableState {
       return;
     }
 
+    _update_y();
   }
 
   sorter_states: SorterState[] = [];

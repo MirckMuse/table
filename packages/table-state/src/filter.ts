@@ -1,1 +1,3 @@
-export class TableFilterState { }
+export class TableFilterState { 
+  
+}
