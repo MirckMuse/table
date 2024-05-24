@@ -109,7 +109,7 @@ export class TableRowState {
     this.memoize_get_row_height_by_row_key.cache.clear?.();
   }
 
-  memoize_get_row_height_by_row_key = memoize(this.get_row_height_by_row_key);
+  memoize_get_row_height_by_row_key: any = memoize(this.get_row_height_by_row_key);
 
   get_row_height_by_row_key(row_key: RowKey) {
     if (this.fixed_row_height) {

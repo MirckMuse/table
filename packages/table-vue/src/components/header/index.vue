@@ -23,9 +23,9 @@
 
 <script lang="ts" setup>
 import type { ColKey, TableColumn } from "@scode/table-typing";
-import type { StyleValue } from "vue";
 import { throttle } from "lodash-es";
-import { computed, onMounted, shallowRef, onUnmounted, ref, toRef } from "vue";
+import type { StyleValue } from "vue";
+import { computed, onMounted, onUnmounted, shallowRef } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";
 import { genGridTemplateColumns } from "../../utils";
 import HeaderCells from "./cells.vue";

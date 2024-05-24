@@ -146,6 +146,11 @@ function handleTrackMousedown($event: MouseEvent) {
   // emit('update:scroll', newScroll / ratio.value);
 }
 
+defineExpose({
+  cancelInterval,
+  handleTrackMousedown
+})
+
 function handleTrackClick($event: MouseEvent) {
   const { client } = props;
   let mouseDownPosition = getPosition($event);

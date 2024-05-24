@@ -1,21 +1,16 @@
-import type { ComputedRef, InjectionKey, Ref } from "vue";
-import { computed, inject, provide, ref, shallowRef, watch } from "vue";
+import { TableState } from "@scode/table-state";
 import type {
 	GetRowKey,
 	RowData,
 	RowKey,
 	TableColumn,
 } from "@scode/table-typing";
-import type {
-	InteralTableSlot,
-	TableEmit,
-	TableProps,
-	TableSlot,
-} from "../typing";
 import { debounce, isNil, isObject, throttle } from "lodash-es";
+import type { ComputedRef, InjectionKey, Ref } from "vue";
+import { computed, inject, provide, ref, watch } from "vue";
+import type { InteralTableSlot, TableEmit, TableProps, TableSlot, } from "../typing";
 import { getDFSLastColumns, noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
-import { TableState } from "@scode/table-state";
 
 interface ITableContext {
 	tableState: Ref<TableState>;
@@ -129,7 +124,7 @@ export function useStateProvide({
 	});
 
 	function createTableState() {
-		const { columns, dataSource, childrenColumnName } = props;
+		const { columns, dataSource } = props;
 
 		const lastColumn: TableColumn[] = getDFSLastColumns(columns ?? []);
 

@@ -1,7 +1,8 @@
-import { ColKey, RowDataMeta, RowKey, SorterDirection, SorterState, TableColumn } from "@scode/table-typing";
+import type { ColKey, RowDataMeta, RowKey, SorterState, TableColumn } from "@scode/table-typing";
+import { SorterDirection } from "@scode/table-typing";
 import { get, memoize } from "lodash-es";
-import type { Pool } from "workerpool";
-import workerpool from "workerpool";
+import SorterWorkder from "./worker?worker";
+
 
 type TableColumnOrNull = TableColumn | null;
 
@@ -18,7 +19,7 @@ interface TableSorterStateOption {
 export class TableSorterState {
   get_column_by_sorter_state: (sorter_state: SorterState) => TableColumnOrNull;
 
-  get_sorter_rate = memoize((direction?: SorterDirection) => {
+  get_sorter_rate: (direction?: SorterDirection) => number = memoize((direction?: SorterDirection) => {
     if (direction === SorterDirection.Ascend) {
       return 1;
     }
@@ -29,12 +30,12 @@ export class TableSorterState {
     return 0;
   })
 
-  pool: Pool;
+  worker: Worker;
 
   constructor(option: TableSorterStateOption) {
     this.get_column_by_sorter_state = option.get_column_by_sorter_state;
 
-    this.pool = workerpool.pool();
+    this.worker = new SorterWorkder();
   }
 
   get_sorted_row_data_metas(row_keys: RowKey[], sorter_states: SorterState[]): RowKey[] {
@@ -66,57 +67,30 @@ export class TableSorterState {
     return this.meta.get(row_key) ?? new Map();
   }
 
-  // TODO: 初始化排序的元信息。
+  // 初始化排序的元信息。
   init_sorter_metas(row_data_metas: RowDataMeta[], last_column: (TableColumn & { col_key: ColKey })[]) {
-    type META = { col_key: ColKey, dataIndex?: string, sorter: boolean };
-
-    const _process = (row_data_metas: RowDataMeta[], last_column: META[]): Map<RowKey, Map<ColKey, number>> => {
-      const map = new Map();
-
-      const sorter_columns = last_column.filter(column => column.sorter);
-      row_data_metas.forEach(row_data_meta => {
-        const _map = map.get(row_data_meta.key) ?? new Map();
-
-        sorter_columns.forEach(_meta => {
-          const { col_key, dataIndex } = _meta;
-
-          const value = dataIndex
-            ? row_data_meta.data[dataIndex] ?? 0
-            : -Infinity;
-
-          if (value === null || value === undefined) {
-            _map.set(col_key, 0)
-          } else if (typeof value === 'number') {
-            _map.set(col_key, value)
-          } else if (typeof value === 'string') {
-            _map.set(col_key, [...value].reduce((v, char) => v + char.charCodeAt(0), 0))
-          } else {
-            _map.set(col_key, Infinity)
-          }
-        })
-
-        map.set(row_data_meta.key, _map);
-      });
-
-      return map;
-    }
-
-
-    this.pool.terminate();
-
-    const start = performance.now();
-
-    return this.pool
-      .exec(
-        _process,
-        [row_data_metas, last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))]
-      )
-      .then((meta_map) => {
-        console.log("meta_map spend", performance.now() - start);
-        console.log("meta_map", meta_map)
-        this.meta = meta_map;
-        this.pool.terminate();
+    return new Promise<void>((resolve) => {
+      this.worker.postMessage({
+        metas: row_data_metas,
+        columns: last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))
       })
+      this.worker.onmessage = ($event: MessageEvent) => {
+        this.meta = $event.data;
+        this.worker.terminate();
+        resolve()
+      }
+    })
+
+    // this.pool.terminate();
+    // return this.pool
+    //   .exec(
+    //     _process,
+    //     [row_data_metas, last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))]
+    //   )
+    //   .then((meta_map) => {
+    //     this.meta = meta_map;
+    //     this.pool.terminate();
+    //   })
   }
 
   update_sorter_meta(row_data_meta: RowDataMeta, last_column: (TableColumn & { col_key: ColKey })[]) {

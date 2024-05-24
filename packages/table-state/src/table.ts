@@ -1,8 +1,8 @@
 import { binaryFindIndexRange } from "@scode/table-shared";
-import { type ColKey, type FilterState, type GetRowKey, type RowData, type RowKey, type SorterState, type TableColumn } from "@scode/table-typing";
+import type { ColKey, FilterState, GetRowKey, RowData, RowKey, SorterState, TableColumn } from "@scode/table-typing";
 import { groupBy, isNil, memoize, throttle } from "lodash-es";
 import { toRaw } from "vue";
-import { ColMeta, TableColState } from "./col";
+import { type ColMeta, TableColState } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
 import { TableRowState } from "./row";
 import { Scroll } from "./scroll";
@@ -171,6 +171,7 @@ export class TableState {
     this.left_col_keys.forEach(_updateSpan);
     this.right_col_keys.forEach(_updateSpan);
     this.center_col_keys.forEach(_updateSpan);
+    this.update_viewport_content_width();
   }
 
   update_viewport_content_width() {
@@ -319,7 +320,7 @@ export class TableState {
       .filter(row_key => !isNil(row_key)) as RowKey[]
   }
 
-  memoize_get_children_row_keys = memoize(this.get_children_row_keys);
+  memoize_get_children_row_keys: any = memoize(this.get_children_row_keys);
 
   private get_flatten_row_keys_by_expanded_row_keys(expanded_row_keys: RowKey[]) {
     const row_state = this.row_state;
@@ -431,7 +432,7 @@ export class TableState {
   // TODO:
   filter_states: FilterState[] = [];
 
-  private get_filtered_flatten_row_keys(filter_states: FilterState[]) {
+  get_filtered_flatten_row_keys(filter_states: FilterState[]) {
 
   }
 
@@ -518,7 +519,10 @@ export class TableState {
       y += height;
     }
 
+    console.log(this.flatten_row_heights.length)
+
     this.flatten_row_y = flatten_row_y;
+    console.log(y);
     this.viewport.set_content_height(y);
   }
 
@@ -589,13 +593,13 @@ export class TableState {
 
     this.row_state.update_row_datas(row_datas, () => {
       done_callback();
-      setTimeout(() => {
-        this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
-        this.sorter_state.init_sorter_metas(
-          Array.from(this.row_state.row_key_map_row_data_meta.values()),
-          this.get_last_column_with_col_key(),
-        )
-      })
+
+      this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
+
+      this.sorter_state.init_sorter_metas(
+        Array.from(this.row_state.row_key_map_row_data_meta.values()),
+        this.get_last_column_with_col_key(),
+      );
     });
     done_callback();
   }
@@ -679,7 +683,7 @@ export class TableState {
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 
-  private get_pre_row_to(from: number, flatten_row_keys: RowKey[]): number {
+  get_pre_row_to(from: number, flatten_row_keys: RowKey[]): number {
     let viewport_height = this.viewport.get_height();
 
     let to = from;
