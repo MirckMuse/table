@@ -4,7 +4,7 @@
  * @param compareFn  0 - 当前值  大于0 - 右区间 小于0 - 左区间
  * @returns 
  */
-export function binaryFindIndexRange<T = unknown>(sortedArray: T[], compareFn: (value: T, index: number) => number): number {
+export function binaryFindIndexRange<T = unknown>(sortedArray: ArrayLike<T>, compareFn: (value: T, index: number) => number): number {
   let left = 0;
   let right = sortedArray.length - 1;
 

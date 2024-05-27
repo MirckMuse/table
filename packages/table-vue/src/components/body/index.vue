@@ -74,24 +74,6 @@ export default defineComponent({
       callback
     } = useStateInject();
 
-    const bodyCommonStyle = ref({
-      transform: `translateY(0)`,
-      transformCenter: `translate(0, 0)`,
-      paddingTop: '0'
-    })
-    function updateBodyCommonStyle() {
-      const { scroll } = tableState.value;
-      Object.assign(bodyCommonStyle.value, {
-        transform: `translateY(${-scroll.top}px)`,
-        transformCenter: `translate(${-scroll.left}px, ${-scroll.top}px)`,
-        paddingTop: tableState.value.get_viewport_offset_top() + 'px',
-      })
-    }
-
-    onUnmounted(() => {
-      tableState.value.remove_scroll_callback(updateBodyCommonStyle);
-    })
-
     function handleVerticalScrollChange() {
       tableState.value.updateScroll(0, 0);
     }
@@ -118,7 +100,6 @@ export default defineComponent({
     callback['updateViewportDataSource'] = getViewportDataSource;
 
     tableState.value.add_scroll_callback(getViewportDataSource);
-    tableState.value.add_scroll_callback(updateBodyCommonStyle);
 
     onUnmounted(() => {
       tableState.value.remove_scroll_callback(getViewportDataSource);
@@ -174,8 +155,11 @@ export default defineComponent({
 
     const leftColumnsVisible = computed(() => leftColumns.value.length);
     const leftStyle = computed<StyleValue>(() => {
-      const { transform, paddingTop } = bodyCommonStyle.value;
-      const style: StyleValue = { transform, paddingTop }
+      const { scroll } = tableState.value;
+      const style: StyleValue = {
+        transform: `translateY(${-scroll.top}px)`,
+        paddingTop: `${tableState.value.get_viewport_offset_top()}px`
+      }
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
     });
@@ -225,8 +209,11 @@ export default defineComponent({
 
     const rightColumnsVisible = computed(() => leftColumns.value.length);
     const rightStyle = computed<StyleValue>(() => {
-      const { transform, paddingTop } = bodyCommonStyle.value;
-      const style: StyleValue = { transform, paddingTop }
+      const { scroll } = tableState.value;
+      const style: StyleValue = {
+        transform: `translateY(${-scroll.top}px)`,
+        paddingTop: `${tableState.value.get_viewport_offset_top()}px`
+      }
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
     });
@@ -265,8 +252,12 @@ export default defineComponent({
     });
 
     const centerStyle = computed(() => {
-      const { transformCenter, paddingTop } = bodyCommonStyle.value;
-      const style: StyleValue = { transform: transformCenter, paddingTop }
+      const { scroll } = tableState.value;
+      const style: StyleValue = {
+        transform:
+          `translate(${-scroll.left}px, ${-scroll.top}px)`,
+        paddingTop: `${tableState.value.get_viewport_offset_top()}px`
+      }
       style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
       style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
       style.gridTemplateRows = gridTemplateRows.value;

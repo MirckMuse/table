@@ -5,12 +5,13 @@ import type {
 	RowKey,
 	TableColumn,
 } from "@scode/table-typing";
-import { debounce, isNil, isObject, throttle } from "lodash-es";
+import { debounce, isNil, isObject } from "lodash-es";
 import type { ComputedRef, InjectionKey, Ref } from "vue";
 import { computed, inject, provide, ref, watch } from "vue";
 import type { InteralTableSlot, TableEmit, TableProps, TableSlot, } from "../typing";
 import { getDFSLastColumns, noop } from "../utils/shared";
 import { useCellTooltip } from "./useCellTooltip";
+import { createLockedRequestAnimationFrame } from "../utils";
 
 interface ITableContext {
 	tableState: Ref<TableState>;
@@ -164,6 +165,8 @@ export function useStateProvide({
 		() => props.dataSource ?? [],
 		(dataSource) => {
 			state.value.update_row_datas(dataSource);
+
+			animationUpdate();
 		},
 	);
 
@@ -177,9 +180,9 @@ export function useStateProvide({
 		tableRef.value.style.userSelect = userSelectState.pre;
 	}, 60);
 
-	const throttle_update_viewport_content_width = throttle(() => {
+	const animationUpdate = createLockedRequestAnimationFrame(() => {
 		state.value.update_viewport_content_width();
-	}, 60)
+	});
 
 	// 处理列的宽度调整
 	function handleResizeColumn(resizedWidth: number, column: TableColumn) {
@@ -199,7 +202,7 @@ export function useStateProvide({
 			col_state.update_col_width_by_col_key(col_key, resizedWidth);
 		}
 
-		throttle_update_viewport_content_width();
+		animationUpdate();
 	}
 
 	// 集中处理 tooltip 的逻辑

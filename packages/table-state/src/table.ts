@@ -502,8 +502,8 @@ export class TableState {
 
   // 最后扁平后的数据
   flatten_row_keys: RowKey[] = [];
-  flatten_row_heights: number[] = [];
-  flatten_row_y: number[] = [];
+  flatten_row_heights = new Uint16Array();
+  flatten_row_y = new Uint32Array();
   flatten_row_key_map_index = new Map();
 
   private reset_flatten_row_y() {
@@ -513,11 +513,11 @@ export class TableState {
     };
 
     let y = 0;
-    const flatten_row_y = [];
-    for (const height of this.flatten_row_heights) {
-      flatten_row_y.push(y);
+    const flatten_row_y = new Uint32Array(this.flatten_row_heights.length);
+    this.flatten_row_heights.forEach((height, index) => {
+      flatten_row_y[index] = y;
       y += height;
-    }
+    });
 
     this.flatten_row_y = flatten_row_y;
     this.viewport.set_content_height(y);
@@ -550,7 +550,7 @@ export class TableState {
     const is_fixed_row_height = this.row_state.is_fixed_row_height();
 
     const map = new Map();
-    const flatten_row_heights: number[] = [];
+    const flatten_row_heights = new Uint16Array(flatten_row_keys.length);
 
     const _process = is_fixed_row_height
       ? (index: number) => {
@@ -560,7 +560,7 @@ export class TableState {
       : (index: number) => {
         const row_key = flatten_row_keys[index];
         map.set(row_key, index);
-        flatten_row_heights.push(row_state.memoize_get_row_height_by_row_key(row_key))
+        flatten_row_heights[index] = row_state.memoize_get_row_height_by_row_key(row_key);
       }
 
     for (let index = 0; index < flatten_row_keys.length; index++) {
@@ -721,7 +721,6 @@ export class TableState {
     this.pre_row = { top: 0, from, to, from_y: 0 };
     adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
     this.pre_row.from_y = flatten_row_y[this.pre_row.from];
-    console.log(this.pre_row)
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 }
