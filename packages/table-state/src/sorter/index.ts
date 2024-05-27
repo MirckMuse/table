@@ -76,21 +76,9 @@ export class TableSorterState {
       })
       this.worker.onmessage = ($event: MessageEvent) => {
         this.meta = $event.data;
-        this.worker.terminate();
         resolve()
       }
     })
-
-    // this.pool.terminate();
-    // return this.pool
-    //   .exec(
-    //     _process,
-    //     [row_data_metas, last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))]
-    //   )
-    //   .then((meta_map) => {
-    //     this.meta = meta_map;
-    //     this.pool.terminate();
-    //   })
   }
 
   update_sorter_meta(row_data_meta: RowDataMeta, last_column: (TableColumn & { col_key: ColKey })[]) {

@@ -32,12 +32,6 @@ export interface TableRowStateOption {
 
 const ChunkSize = 100;
 
-// enum CompareResult {
-//   Less = -1,
-//   Equal = 0,
-//   Greater = 1,
-// }
-
 export class TableRowState {
   // 原始行的 keys
   private raw_row_keys: RowKey[] = [];
@@ -48,7 +42,7 @@ export class TableRowState {
   row_key_map_row_data_meta: Map<RowKey, RowDataMeta> = new Map();
 
   // 行数据映射行数据 key
-  private row_data_map_row_key: WeakMap<RowData, RowKey> = new WeakMap();
+  private row_data_map_row_key: Map<RowData, RowKey> = new Map();
 
   private row_key_map_row_data: Map<RowKey, RowData> = new Map();
 
@@ -71,7 +65,7 @@ export class TableRowState {
     this.row_key_map_row_data.clear();
     this.row_key_map_row_meta.clear();
     this.row_key_map_row_data_meta.clear();
-    this.row_data_map_row_key = new WeakMap<RowData, RowKey>();
+    this.row_data_map_row_key.clear();
   }
 
   is_fixed_row_height() {

@@ -519,10 +519,7 @@ export class TableState {
       y += height;
     }
 
-    console.log(this.flatten_row_heights.length)
-
     this.flatten_row_y = flatten_row_y;
-    console.log(y);
     this.viewport.set_content_height(y);
   }
 
@@ -571,7 +568,7 @@ export class TableState {
     }
 
     this.flatten_row_key_map_index = map;
-    if (is_fixed_row_height) {
+    if (!is_fixed_row_height) {
       this.flatten_row_heights = flatten_row_heights;
     }
   }
@@ -595,12 +592,12 @@ export class TableState {
       done_callback();
 
       this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
-
       this.sorter_state.init_sorter_metas(
         Array.from(this.row_state.row_key_map_row_data_meta.values()),
         this.get_last_column_with_col_key(),
       );
     });
+
     done_callback();
   }
 
@@ -712,8 +709,10 @@ export class TableState {
     const flatten_row_keys = this.flatten_row_keys;
     const flatten_row_y = this.flatten_row_y;
     const from = binaryFindIndexRange(flatten_row_y, _createCompare(this.scroll.top));
+
     let to = from;
     const target = this.viewport.get_height() + this.scroll.top;
+
     for (; to < flatten_row_keys.length; to++) {
       if (target < flatten_row_y[to]) {
         break
@@ -722,6 +721,7 @@ export class TableState {
     this.pre_row = { top: 0, from, to, from_y: 0 };
     adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
     this.pre_row.from_y = flatten_row_y[this.pre_row.from];
+    console.log(this.pre_row)
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
   }
 }

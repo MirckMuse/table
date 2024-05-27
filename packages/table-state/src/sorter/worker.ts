@@ -40,4 +40,6 @@ self.onmessage = ($event: MessageEvent) => {
   const result = _process(metas, columns);
 
   self.postMessage(result);
+
+  self.close();
 }

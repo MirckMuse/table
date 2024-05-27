@@ -23,8 +23,8 @@ export function create_event_callback(type: string) {
     const event_id_set = type_map_id_set.get(type) || new Set();
     event_id_set.add(event_id);
     type_map_id_set.set(type, event_id_set)
-
   }
+
   function remove(event: Noop) {
     const event_id = event_map_id.get(event);
     if (!event_id) return;
