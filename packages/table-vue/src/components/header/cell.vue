@@ -46,7 +46,7 @@ export default defineComponent({
 
     const computedColKey = computed(() => tableState.value.col_state.get_meta_by_column(props.column)?.key);
 
-    const computedFilterState = computed(() => tableState.value.filter_states.find(state => state.colKey === computedColKey.value))
+    const computedFilterState = computed(() => tableState.value.filter_states.find(state => state.col_key === computedColKey.value))
 
     // 渲染用户配置的 title
     function renderColumnTitle(column?: TableColumn) {
@@ -65,19 +65,21 @@ export default defineComponent({
 
 
       if (!filterKeys.length) {
-        tableState.value.updateFilterStates(filterStates.filter(state => state.colKey !== colKey))
+        tableState.value.update_filter_states(filterStates.filter(state => state.col_key !== colKey));
+        callback['updateViewportDataSource']?.();
         return;
       }
 
-      const matchedFilter = filterStates.find(state => state.colKey === colKey);
+      const matchedFilter = filterStates.find(state => state.col_key === colKey);
 
       if (matchedFilter) {
-        matchedFilter.filterKeys = filterKeys;
+        matchedFilter.filter_keys = filterKeys;
       } else {
-        filterStates.push({ colKey, filterKeys });
+        filterStates.push({ col_key: colKey, filter_keys: filterKeys });
       }
 
-      tableState.value.updateFilterStates(filterStates);
+      tableState.value.update_filter_states(filterStates);
+      callback['updateViewportDataSource']?.();
     }
 
     // 当前列的排序状态

@@ -39,21 +39,22 @@ export class TableSorterState {
   }
 
   get_sorted_row_data_metas(row_keys: RowKey[], sorter_states: SorterState[]): RowKey[] {
+    if (!sorter_states.length) {
+      return row_keys;
+    }
+
     const new_sorter_states = sorter_states.map(state => {
-      return Object.assign({}, state, { column: this.get_column_by_sorter_state(state) })
+      return Object.assign({}, state, { column: this.get_column_by_sorter_state(state), rate: this.get_sorter_rate(state.direction) })
     });
 
-    const get_order = memoize((row_key: RowKey, col_key: ColKey) => {
-      return this.get_order_map(row_key).get(col_key) ?? -Infinity;
-    });
+    const get_order = memoize((row_key: RowKey, col_key: ColKey) => this.get_order_map(row_key).get(col_key) ?? -Infinity);
 
     return row_keys.sort((prev, next) => {
       for (const state of new_sorter_states) {
         const prev_order = get_order(prev, state.col_key);
         const next_order = get_order(next, state.col_key);
-        const rate = this.get_sorter_rate(state.direction);
         if (prev_order !== next_order) {
-          return (prev_order - next_order) * rate;
+          return (prev_order - next_order) * state.rate;
         }
       }
 
@@ -69,6 +70,9 @@ export class TableSorterState {
 
   // 初始化排序的元信息。
   init_sorter_metas(row_data_metas: RowDataMeta[], last_column: (TableColumn & { col_key: ColKey })[]) {
+    this.worker.terminate();
+    this.worker = new SorterWorkder();
+
     return new Promise<void>((resolve) => {
       this.worker.postMessage({
         metas: row_data_metas,
@@ -86,8 +90,8 @@ export class TableSorterState {
 
     const sorter_columns = last_column.filter(column => column.sorter);
 
-    sorter_columns.forEach(_meta => {
-      const { col_key, dataIndex } = _meta;
+    sorter_columns.forEach(column => {
+      const { col_key, dataIndex } = column;
 
       const value = dataIndex
         ? get(row_data_meta.data, dataIndex, 0) as unknown

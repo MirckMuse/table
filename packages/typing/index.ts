@@ -39,13 +39,13 @@ export type SorterState = {
 // 筛选状态
 export type FilterState = {
   // 列的 key
-  colKey: ColKey;
+  col_key: ColKey;
 
   // 筛选值
-  filterKeys?: TableColumnFilterValue[];
+  filter_keys?: TableColumnFilterValue[];
 
   // TODO: 待确认
-  forceFilter?: boolean;
+  force_filter?: boolean;
 }
 
 export type BaseValue = string | number | boolean | undefined | null;

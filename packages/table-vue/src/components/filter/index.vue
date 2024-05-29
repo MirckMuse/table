@@ -141,7 +141,7 @@ export default defineComponent({
     });
 
     // 筛选后的值
-    const filteredKeys = computed(() => props.filterState?.filterKeys);
+    const filteredKeys = computed(() => props.filterState?.filter_keys);
 
     watch(filteredKeys, (_selectedKeys) => {
       if (!mergedVisible.value) return;
@@ -165,8 +165,8 @@ export default defineComponent({
     const filtered = computed(() => {
       if (!props.filterState) return false;
 
-      const { filterKeys, forceFilter } = props.filterState;
-      return !!(filterKeys?.length || forceFilter)
+      const { filter_keys, force_filter } = props.filterState;
+      return !!(filter_keys?.length || force_filter)
     });
 
     const selectedKeys = shallowRef<TableColumnFilterValue[]>();
@@ -198,11 +198,11 @@ export default defineComponent({
     function triggerConfirm(keys?: TableColumnFilterValue[]) {
       const { filterState, triggerFilter, column } = props;
       const _keys = keys?.length ? keys : null;
-      if (_keys === null && !filterState?.filterKeys) {
+      if (_keys === null && !filterState?.filter_keys) {
         return null;
       }
 
-      if (isEqual(_keys, filterState?.filterKeys)) {
+      if (isEqual(_keys, filterState?.filter_keys)) {
         return null;
       }
 

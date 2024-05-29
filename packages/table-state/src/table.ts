@@ -9,6 +9,7 @@ import { Scroll } from "./scroll";
 import { adjustScrollOffset, rowKeyCompare } from "./shared";
 import { TableSorterState } from "./sorter";
 import { Viewport, type IViewport } from "./viewport";
+import { TableFilterState } from "./filter";
 
 type Noop = () => void;
 
@@ -91,6 +92,7 @@ export class TableState {
     const get_column_by_sorter_state = (sorter_state: SorterState) => {
       return this.col_state.get_column_by_col_key(sorter_state.col_key) ?? null;
     }
+
     this.sorter_state = new TableSorterState({
       get_column_by_sorter_state
     });
@@ -99,6 +101,19 @@ export class TableState {
       is_fixed_row_height: !!option.rowHeight,
       get_row_key: option.getRowKey
     });
+
+    const get_column_by_filter_state = (filter_state: FilterState) => {
+      return this.col_state.get_column_by_col_key(filter_state.col_key) ?? null;
+    }
+
+    const get_row_data_by_row_key = (row_key: RowKey) => {
+      return this.row_state.get_row_data_by_row_key(row_key);
+
+    }
+    this.filter_state = new TableFilterState({
+      get_column_by_filter_state,
+      get_row_data_by_row_key
+    })
   }
 
   private init(option: TableStateOption) {
@@ -415,6 +430,7 @@ export class TableState {
   row_children_name = "children";
 
   sorter_state: TableSorterState;
+  filter_state: TableFilterState;
 
   get_row_data_children(row_data: RowData): RowData[] | null {
     const children = row_data[this.row_children_name];
@@ -433,15 +449,19 @@ export class TableState {
   filter_states: FilterState[] = [];
 
   get_filtered_flatten_row_keys(filter_states: FilterState[]) {
-
   }
 
   update_filter_states(filter_states: FilterState[]) {
+    console.log('update_filter_states');
     this.filter_states = filter_states;
 
     const _update_y = () => {
       this.update_flatten(this.flatten_row_keys);
       this.reset_flatten_row_y();
+
+      if (this.scrollToTopAfterFilterOrSorter) {
+        this.scroll.top = 0;
+      }
     }
 
     if (!filter_states.length) {
@@ -449,6 +469,20 @@ export class TableState {
       _update_y();
       return;
     }
+
+    const flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys)
+
+    const filtered_flatten_row_keys = this.filter_state.get_filtered_row_data_metas(
+      flatten_row_keys,
+      this.filter_states
+    );
+
+    const row_keys = this.sorter_state.get_sorted_row_data_metas(
+      filtered_flatten_row_keys,
+      this.sorter_states
+    )
+
+    this.flatten_row_keys = row_keys;
 
     _update_y();
   }
@@ -461,6 +495,10 @@ export class TableState {
     const _update_y = () => {
       this.update_flatten(this.flatten_row_keys);
       this.reset_flatten_row_y();
+
+      if (this.scrollToTopAfterFilterOrSorter) {
+        this.scroll.top = 0;
+      }
     }
 
     if (!sorter_states.length) {
@@ -470,27 +508,20 @@ export class TableState {
     }
 
     const flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys)
-    // TODO: 获取筛选后的 flatten
 
-    const filtered_flatten_row_keys = ([] as RowKey[]).concat(flatten_row_keys);
+    const filtered_flatten_row_keys = this.filter_state.get_filtered_row_data_metas(
+      flatten_row_keys,
+      this.filter_states
+    );
 
-    console.time("get_sorted_row_datas")
     const row_keys = this.sorter_state.get_sorted_row_data_metas(
       filtered_flatten_row_keys,
       this.sorter_states
     )
-    console.timeEnd("get_sorted_row_datas")
-
-    console.log('row_data_metas', row_keys)
 
     this.flatten_row_keys = row_keys;
 
     _update_y();
-
-    // TODO:
-    if (this.scrollToTopAfterFilterOrSorter) {
-      this.scroll.top = 0;
-    }
   }
 
   get_viewport_offset_top() {
