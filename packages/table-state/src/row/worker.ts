@@ -1,8 +1,9 @@
 
-self.onmessage = ($message: MessageEvent) => {
+self.onmessage = ($event: MessageEvent) => {
+  const data = $event.data;
 
-  self.postMessage({
-  })
+  console.log(data);
+
 
   self.close();
 }

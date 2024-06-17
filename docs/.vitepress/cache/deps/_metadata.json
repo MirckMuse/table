@@ -1,0 +1,76 @@
+{
+  "hash": "84afa7d8",
+  "configHash": "01e622f6",
+  "lockfileHash": "34c8c3b8",
+  "browserHash": "fd036a31",
+  "optimized": {
+    "vue": {
+      "src": "../../../../node_modules/.pnpm/vue@3.4.21_typescript@5.3.3/node_modules/vue/dist/vue.runtime.esm-bundler.js",
+      "file": "vue.js",
+      "fileHash": "a413179c",
+      "needsInterop": false
+    },
+    "vitepress > @vue/devtools-api": {
+      "src": "../../../../node_modules/.pnpm/@vue+devtools-api@7.2.1_vue@3.4.27/node_modules/@vue/devtools-api/dist/index.js",
+      "file": "vitepress___@vue_devtools-api.js",
+      "fileHash": "5858e7c2",
+      "needsInterop": false
+    },
+    "vitepress > @vueuse/core": {
+      "src": "../../../../node_modules/.pnpm/@vueuse+core@10.11.0_vue@3.4.27/node_modules/@vueuse/core/index.mjs",
+      "file": "vitepress___@vueuse_core.js",
+      "fileHash": "8d4125d2",
+      "needsInterop": false
+    },
+    "@remixicon/vue": {
+      "src": "../../../../node_modules/.pnpm/@remixicon+vue@4.2.0_vue@3.4.21/node_modules/@remixicon/vue/index.mjs",
+      "file": "@remixicon_vue.js",
+      "fileHash": "848ee297",
+      "needsInterop": false
+    },
+    "ant-design-vue": {
+      "src": "../../../../node_modules/.pnpm/ant-design-vue@4.1.2_vue@3.4.21/node_modules/ant-design-vue/es/index.js",
+      "file": "ant-design-vue.js",
+      "fileHash": "aa590555",
+      "needsInterop": false
+    },
+    "lodash-es": {
+      "src": "../../../../node_modules/.pnpm/lodash-es@4.17.21/node_modules/lodash-es/lodash.js",
+      "file": "lodash-es.js",
+      "fileHash": "94c4a075",
+      "needsInterop": false
+    },
+    "@floating-ui/dom": {
+      "src": "../../../../node_modules/.pnpm/@floating-ui+dom@1.6.1/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs",
+      "file": "@floating-ui_dom.js",
+      "fileHash": "4f5a9a74",
+      "needsInterop": false
+    },
+    "@vueuse/core": {
+      "src": "../../../../node_modules/.pnpm/@vueuse+core@10.7.2_vue@3.4.21/node_modules/@vueuse/core/index.mjs",
+      "file": "@vueuse_core.js",
+      "fileHash": "dfe14f3e",
+      "needsInterop": false
+    },
+    "mockjs": {
+      "src": "../../../../node_modules/.pnpm/mockjs@1.1.0/node_modules/mockjs/dist/mock.js",
+      "file": "mockjs.js",
+      "fileHash": "288e51e2",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-5SOETNNC": {
+      "file": "chunk-5SOETNNC.js"
+    },
+    "chunk-RRWQ76P5": {
+      "file": "chunk-RRWQ76P5.js"
+    },
+    "chunk-6VGCA36B": {
+      "file": "chunk-6VGCA36B.js"
+    },
+    "chunk-G3PMV62Z": {
+      "file": "chunk-G3PMV62Z.js"
+    }
+  }
+}

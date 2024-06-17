@@ -68,6 +68,10 @@ export interface TableProps {
 
   rowKey?: string | GetRowKey;
 
+  defaultExpandAllRows?: boolean;
+
+  defaultExpandedRowKeys?: RowKey[];
+
   expandedRowKeys?: RowKey[];
 
   customRow?: CustomRow;
@@ -88,15 +92,5 @@ export type TransformCellText = (option: { text: any; column: TableColumn; recor
 
 
 export * from "./slot";
-
-export interface TableColumnMeta {
-  deep?: number;
-
-  colSpan?: number;
-
-  rowSpan?: number;
-
-  isLast?: boolean;
-}
 
 export type TableColumnSorterTooltip = boolean | TooltipProps;

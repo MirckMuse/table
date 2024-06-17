@@ -29,6 +29,8 @@ export interface TableStateOption {
   col_children_name?: string;
 
   row_children_name?: string;
+
+  defaultExpandAllRows?: boolean;
 }
 
 
@@ -76,7 +78,9 @@ export class TableState {
     this.init(option);
   }
 
+  // ============ 初始化相关函数 ===============
   private before_init(option: TableStateOption) {
+    this.row_children_name = option.row_children_name ?? "children";
     if (option.pagination) {
       const { page, size, total } = option.pagination;
       this.pagination = new TablePagination(page, size, total);
@@ -86,9 +90,17 @@ export class TableState {
     this.viewport = new Viewport();
     Object.assign(this.viewport, option.viewport ?? {});
 
-    this.row_children_name = option.row_children_name ?? "children";
+    this.init_col_state(option);
+    this.init_sorter_state(option);
+    this.init_row_state(option);
+    this.init_filter_state(option);
+  }
 
+  private init_col_state(option: TableStateOption) {
     this.col_state = new TableColState({});
+  }
+
+  private init_sorter_state(option: TableStateOption) {
     const get_column_by_sorter_state = (sorter_state: SorterState) => {
       return this.col_state.get_column_by_col_key(sorter_state.col_key) ?? null;
     }
@@ -96,12 +108,17 @@ export class TableState {
     this.sorter_state = new TableSorterState({
       get_column_by_sorter_state
     });
+  }
+
+  private init_row_state(option: TableStateOption) {
     this.row_state = new TableRowState({
       row_height: option.rowHeight ?? RowHeight,
       is_fixed_row_height: !!option.rowHeight,
       get_row_key: option.getRowKey
     });
+  }
 
+  private init_filter_state(option: TableStateOption) {
     const get_column_by_filter_state = (filter_state: FilterState) => {
       return this.col_state.get_column_by_col_key(filter_state.col_key) ?? null;
     }
@@ -113,7 +130,7 @@ export class TableState {
     this.filter_state = new TableFilterState({
       get_column_by_filter_state,
       get_row_data_by_row_key
-    })
+    });
   }
 
   private init(option: TableStateOption) {
@@ -141,28 +158,25 @@ export class TableState {
 
     const all_col_metas = this.col_state.get_all_meta();
 
-    const _meta_to_col_key = (col_meta: ColMeta) => {
-      return col_meta.key;
+    const _meta_to_col_key = (col_meta: ColMeta) => col_meta.key
+    const _sort = (prev: ColMeta, next: ColMeta) => prev.deep === next.deep ? prev.sort - next.sort : prev.deep - next.deep;
+    const _process = (metas: ColMeta[]) => {
+      const col_keys = metas.sort(_sort).map(_meta_to_col_key);
+      const last_col_keys = metas.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
+      return [col_keys, last_col_keys];
     }
 
-    const _sort = (prev: ColMeta, next: ColMeta) => {
-      if (prev.deep === next.deep) {
-        return prev.sort - next.sort;
-      }
-      return prev.deep - next.deep;
-    }
+    const [left_col_keys, last_left_col_keys] = _process(all_col_metas.filter(meta => meta.fixed === 'left'));
+    this.left_col_keys = left_col_keys;
+    this.last_left_col_keys = last_left_col_keys;
 
-    const sorted_left_col_meta = all_col_metas.filter(meta => meta.fixed === 'left');
-    this.left_col_keys = sorted_left_col_meta.sort(_sort).map(_meta_to_col_key);
-    this.last_left_col_keys = sorted_left_col_meta.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
+    const [right_col_keys, last_right_col_keys] = _process(all_col_metas.filter(meta => meta.fixed === 'right'));
+    this.right_col_keys = right_col_keys;
+    this.last_right_col_keys = last_right_col_keys;
 
-    const sorted_right_meta = all_col_metas.filter(meta => meta.fixed === 'right');
-    this.right_col_keys = sorted_right_meta.sort(_sort).map(_meta_to_col_key);
-    this.last_right_col_keys = sorted_right_meta.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
-
-    const sorted_center_col_meta = all_col_metas.filter(meta => !meta.fixed).sort((a, b) => a.sort - b.sort);
-    this.center_col_keys = sorted_center_col_meta.sort(_sort).map(_meta_to_col_key);
-    this.last_center_col_keys = sorted_center_col_meta.filter(meta => meta.is_leaf).sort((a, b) => a.sort - b.sort).map(_meta_to_col_key);
+    const [center_col_keys, last_center_col_keys] = _process(all_col_metas.filter(meta => !meta.fixed).sort((a, b) => a.sort - b.sort));
+    this.center_col_keys = center_col_keys;
+    this.last_center_col_keys = last_center_col_keys;
 
     const col_state = this.col_state;
 
@@ -196,9 +210,7 @@ export class TableState {
       ...this.last_right_col_keys,
     ];
 
-    const get_width = (col_key: ColKey) => {
-      return this.col_state.get_col_width_by_col_key(col_key);
-    }
+    const get_width = (col_key: ColKey) => this.col_state.get_col_width_by_col_key(col_key)
 
     const contentWidth = lastColKeys.reduce((width, colKey) => width + get_width(colKey), 0);
 
@@ -237,25 +249,6 @@ export class TableState {
   // 筛选或者排序后滚动到顶部
   scrollToTopAfterFilterOrSorter = true;
 
-  /**
-   * 更新筛选状态
-   * @returns 
-   */
-
-  updateFilterStates(filterStates: FilterState[]) {
-    // this.rowStateCenter.updateFilterStates(filterStates);
-
-    // if (this.scrollToTopAfterFilterOrSorter) {
-    //   this.scroll.top = 0;
-    // }
-
-    // // 筛选后需要更新可滚动距离
-    // const { flattenYIndexes } = this.rowStateCenter;
-    // const lastRowY = flattenYIndexes[flattenYIndexes.length - 1] ?? 0;
-    // this.viewport.scrollHeight = lastRowY;
-  }
-
-
   expandedRowKeys: RowKey[] = [];
 
   get_last_column_with_col_key(): (TableColumn & { col_key: ColKey })[] {
@@ -276,7 +269,6 @@ export class TableState {
   }
 
   // 更新展开列
-  // TODO: 该函数很耗时，考虑优化。
   update_expanded_row_keys(expanded_row_keys: RowKey[]) {
     const row_state = this.row_state;
     const sorter_state = this.sorter_state;
@@ -317,9 +309,10 @@ export class TableState {
 
     // 最后才更新展开列
     this.expandedRowKeys = expanded_row_keys;
-    console.time("update_flatten_row_keys_by_expanded_row_keys")
     this.update_flatten_row_keys_by_expanded_row_keys();
-    console.timeEnd('update_flatten_row_keys_by_expanded_row_keys')
+  }
+
+  get_all_expanded_row_keys(row_datas: RowData[]) {
   }
 
   get_children_row_keys(row_key: RowKey): RowKey[] {
@@ -393,14 +386,9 @@ export class TableState {
 
     this.flatten_row_keys = newflattenRowKeys;
 
-    // 主要耗时
-    console.time('update_flatten')
     this.update_flatten(newflattenRowKeys);
-    console.timeEnd('update_flatten')
 
-    console.time('reset_flatten_row_y')
     this.reset_flatten_row_y();
-    console.timeEnd('reset_flatten_row_y')
   }
 
   // =============== TODO: 重构 =============================
@@ -452,7 +440,6 @@ export class TableState {
   }
 
   update_filter_states(filter_states: FilterState[]) {
-    console.log('update_filter_states');
     this.filter_states = filter_states;
 
     const _update_y = () => {
@@ -554,7 +541,7 @@ export class TableState {
     this.viewport.set_content_height(y);
   }
 
-  private throttle_reset_flatten_row_y = throttle(this.reset_flatten_row_y, 16);
+  private throttle_reset_flatten_row_y = throttle(this.reset_flatten_row_y, 16, { trailing: true });
 
   is_empty() {
     return !this.flatten_row_keys.length;
@@ -604,9 +591,34 @@ export class TableState {
     }
   }
 
+  // 获取所有展开的行
+  find_all_expands_row_keys(row_datas: RowData[]): RowKey[] {
+    const expanded_keys: RowKey[] = [];
+
+    const that = this;
+
+    function _process(datas: RowData[]) {
+      datas.forEach((data, index) => {
+        const children = that.get_row_data_children(data);
+
+        if (children) {
+          expanded_keys.push(that.row_state.get_row_key(data, index));
+
+          _process(children);
+        }
+      });
+    }
+
+    _process(row_datas);
+
+    return expanded_keys;
+  }
+
   // 更新行数据
   update_row_datas(row_datas: RowData[]) {
     this.clear_memoize();
+
+    // TODO: 默认展开所有
 
     // FIXME: 分页情况下可能有问题，主要发生问题的地方是不定高度。
     const _row_datas = row_datas;
@@ -624,7 +636,7 @@ export class TableState {
 
       this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
       this.sorter_state.init_sorter_metas(
-        Array.from(this.row_state.row_key_map_row_data_meta.values()),
+        this.row_state.get_all_row_data_meta(),
         this.get_last_column_with_col_key(),
       );
     });

@@ -7,6 +7,9 @@ import type {
 import { chunk, memoize } from "lodash-es";
 import { toRaw } from "vue";
 import { runIdleTask } from '@scode/table-shared';
+import RowWorker from "./worker?worker";
+
+
 
 export interface RowMeta {
   key: RowKey;
@@ -39,7 +42,11 @@ export class TableRowState {
   // 行数据 key 映射行元数据
   private row_key_map_row_meta: Map<RowKey, RowMeta> = new Map();
 
-  row_key_map_row_data_meta: Map<RowKey, RowDataMeta> = new Map();
+  private row_key_map_row_data_meta: Map<RowKey, RowDataMeta> = new Map();
+
+  get_all_row_data_meta(): RowDataMeta[] {
+    return Array.from(this.row_key_map_row_data_meta.values());
+  }
 
   // 行数据映射行数据 key
   private row_data_map_row_key: Map<RowData, RowKey> = new Map();
@@ -50,7 +57,7 @@ export class TableRowState {
 
   private fixed_row_height: boolean = true;
 
-  private get_row_key = ((_: RowData, rowIndex: number) => `0-${rowIndex}`) as GetRowKey;
+  get_row_key = ((_: RowData, rowIndex: number) => `0-${rowIndex}`) as GetRowKey;
 
   constructor(option: TableRowStateOption) {
     this.rough_row_height = option.row_height
@@ -58,6 +65,24 @@ export class TableRowState {
     if (option.get_row_key) {
       this.get_row_key = option.get_row_key;
     }
+
+    this.before_init();
+  }
+
+  get_row_height_by_row_key: (row_key: RowKey) => number;
+  memoize_get_row_height_by_row_key: any;
+  init_get_row_height() {
+    this.get_row_height_by_row_key = this.fixed_row_height
+      ? () => this.rough_row_height
+      : (row_key: RowKey) => {
+        const meta = this.get_meta_by_row_key(row_key);
+        return meta?.height ?? this.rough_row_height;
+      };
+    this.memoize_get_row_height_by_row_key = memoize(this.get_row_height_by_row_key);
+  }
+
+  before_init() {
+    this.init_get_row_height();
   }
 
   private init() {
@@ -101,17 +126,6 @@ export class TableRowState {
 
   clear_memoize() {
     this.memoize_get_row_height_by_row_key.cache.clear?.();
-  }
-
-  memoize_get_row_height_by_row_key: any = memoize(this.get_row_height_by_row_key);
-
-  get_row_height_by_row_key(row_key: RowKey) {
-    if (this.fixed_row_height) {
-      return this.rough_row_height;
-    }
-
-    const meta = this.get_meta_by_row_key(row_key);
-    return meta?.height ?? this.rough_row_height;
   }
 
   get_row_height_by_row_data(row_data: RowData) {
@@ -185,6 +199,7 @@ export class TableRowState {
 
     if (row_datas.length > ChunkSize) {
       _task(row_datas.slice(0, ChunkSize), 0);
+
 
       // 放入微队列中，不影响第一次渲染
       setTimeout(() => {

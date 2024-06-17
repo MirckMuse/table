@@ -3,7 +3,7 @@ type TaskCallback = () => void;
 
 /**
  * 创建请求空闲回调函数
- * @returns {Function} 返回请求空闲回调函数
+ * @returns { Function } 返回请求空闲回调函数
  */
 function createRequestIdleCallback() {
   return window.requestIdleCallback || function (callback: IdleRequestCallback, options?: IdleRequestOptions) {
@@ -78,6 +78,7 @@ function createRunIdleTask() {
     tasks.push(task);
 
     if (isRunning) return;
+    
     _run();
   }
 }

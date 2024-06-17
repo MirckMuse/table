@@ -1,7 +1,7 @@
 <script lang="ts">
 import type { PropType, StyleValue } from "vue";
 import type { RowData, TableColumn } from "@scode/table-typing";
-import { get } from "lodash-es";
+import { get, isNil } from "lodash-es";
 import { Comment, computed, defineComponent, h, isVNode, mergeProps, ref } from "vue";
 import { useSelectionInject } from "../../hooks";
 import { BodyCellInheritProps } from "../../typing";
@@ -134,6 +134,8 @@ export default defineComponent({
       }
 
       const bodyCellVNodes = props.bodyCell?.(params)
+
+      if (isNil(bodyCellVNodes)) return null;
 
       const validVNodes = toArray(bodyCellVNodes).filter(isValidVNode)
 

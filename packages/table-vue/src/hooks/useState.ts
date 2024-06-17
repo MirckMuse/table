@@ -129,7 +129,7 @@ export function useStateProvide({
 
 		const lastColumn: TableColumn[] = getDFSLastColumns(columns ?? []);
 
-		if (!lastColumn.some((col) => col.expandable)) {
+		if (lastColumn.length && !lastColumn.some((col) => col.expandable)) {
 			lastColumn[0].expandable = true;
 		}
 
@@ -148,13 +148,16 @@ export function useStateProvide({
 				};
 		}
 
+		const { rowHeight, childrenColumnName, rowChildrenName, defaultExpandAllRows } = props;
+
 		return new TableState({
 			columns: columns ?? [],
 			rowDatas: dataSource ?? [],
 			getRowKey: getRowKey.value,
-			rowHeight: props.rowHeight,
-			col_children_name: props.childrenColumnName,
-			row_children_name: props.rowChildrenName,
+			rowHeight,
+			col_children_name: childrenColumnName,
+			row_children_name: rowChildrenName,
+			defaultExpandAllRows,
 			pagination: pagination
 		});
 	}
