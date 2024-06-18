@@ -1,9 +1,16 @@
 import { defineConfig } from 'vitepress'
 import { resolve } from "path";
+import { containerPreview, componentPreview } from '@vitepress-demo-preview/plugin'
 
 export default defineConfig({
   title: "@scode/table",
   description: "A Table Component",
+  markdown: {
+    config(md) {
+      md.use(containerPreview)
+      md.use(componentPreview)
+    }
+  },
   themeConfig: {
     nav: [
       { text: 'Examples', link: '/examples' }
