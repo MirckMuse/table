@@ -81,13 +81,14 @@ export class TableState {
   // ============ 初始化相关函数 ===============
   private before_init(option: TableStateOption) {
     this.row_children_name = option.row_children_name ?? "children";
+    console.log(option)
     if (option.pagination) {
       const { page, size, total } = option.pagination;
       this.pagination = new TablePagination(page, size, total);
     }
 
     // 初始化可视窗口
-    this.viewport = new Viewport();
+    this.viewport = new Viewport(this);
     Object.assign(this.viewport, option.viewport ?? {});
 
     this.init_col_state(option);
@@ -693,26 +694,42 @@ export class TableState {
   private get_row_datas_by_pre_row(pre_row: PreRow, flatten_row_keys: RowKey[]) {
     const { from, to } = pre_row;
 
-    return Array(to - from + 1).fill(null).reduce((result, _, index) => {
-      const row_index = from + index;
-      const rowData = this.row_state.get_row_data_by_row_key(flatten_row_keys[row_index]);
-      if (rowData) {
-        result.push(rowData);
-      }
-      return result;
-    }, []);
+    return Array(to - from + 1)
+      .fill(null)
+      .reduce((result, _, index) => {
+        const row_index = from + index;
+        const rowData = this.row_state.get_row_data_by_row_key(flatten_row_keys[row_index]);
+        if (rowData) {
+          result.push(rowData);
+        }
+        return result;
+      }, []);
   }
 
   private get_viewport_row_datas_by_fixed_row_height(): RowData[] {
     const flatten_row_keys = this.flatten_row_keys;
     const fixed_row_height = this.row_state.get_row_height();
-    const scroll_top = this.scroll.top;
+    let scroll_top = this.scroll.top;
+
+    // 可见数据的下限
+    let limitFrom = 0;
+    // 可见数据的上线
+    let limitTo = flatten_row_keys.length - 1;
+
+    // 有分页的时候，滚动的距离和上下限均需要重置
+    if (this.pagination) {
+      const { page, size } = this.pagination;
+      limitFrom = (page - 1) * size;
+      limitTo = page * size - 1;
+      scroll_top = scroll_top + limitFrom * fixed_row_height;
+    }
 
     let from = Math.floor(scroll_top / fixed_row_height);
     let to = Math.ceil(this.viewport.get_height() / fixed_row_height) + from;
     const buffer = Math.floor((to - from) / 2);
-    from = Math.max(from - buffer, 0);
-    to = Math.min(to + buffer, flatten_row_keys.length - 1);
+
+    from = Math.max(from - buffer, limitFrom);
+    to = Math.min(to + buffer, limitTo);
     this.pre_row = {
       top: scroll_top,
       from,
@@ -751,16 +768,34 @@ export class TableState {
 
     const flatten_row_keys = this.flatten_row_keys;
     const flatten_row_y = this.flatten_row_y;
+
+    // 可见数据的下限
+    let limitFrom = 0;
+    // 可见数据的上线
+    let limitTo = flatten_row_keys.length;
+
+    let scroll_top = this.scroll.top;
+
+    // 有分页的时候，滚动的距离和上下限均需要重置
+    if (this.pagination) {
+      const { page, size } = this.pagination;
+      limitFrom = (page - 1) * size;
+      limitTo = page * size;
+      scroll_top = scroll_top + (flatten_row_y[limitFrom] || 0);
+    }
+
     const from = binaryFindIndexRange(flatten_row_y, _createCompare(this.scroll.top));
 
-    let to = from;
+    let to = Math.max(from, limitFrom);
+
     const target = this.viewport.get_height() + this.scroll.top;
 
-    for (; to < flatten_row_keys.length; to++) {
+    for (; to < limitTo; to++) {
       if (target < flatten_row_y[to]) {
         break
       }
     }
+
     this.pre_row = { top: 0, from, to, from_y: 0 };
     adjustPreRow(this.pre_row, flatten_row_keys, this.row_state);
     this.pre_row.from_y = flatten_row_y[this.pre_row.from];

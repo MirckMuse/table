@@ -1,3 +1,5 @@
+import { TableState } from "./table";
+
 export interface IViewport {
   width: number,
 
@@ -15,7 +17,36 @@ export class Viewport {
 
   private content_width = 0;
 
-  private content_height = 0;
+  private _content_height = 0;
+
+  private table_state: TableState;
+
+  constructor(table_state: TableState) {
+    this.table_state = table_state;
+  }
+
+  get content_height() {
+    // 如果是分页表格，按照当前分页高度来判定高度。
+    const pagination = this.table_state.pagination;
+    console.log(pagination)
+    if (pagination) {
+      const { size, page, total } = pagination;
+      if (this.table_state.row_state.is_fixed_row_height()) {
+        return size * this.table_state.row_state.get_row_height();
+      } else {
+        const flatten_row_y = this.table_state.flatten_row_y
+        let from_index = Math.max(size * (page - 1), 0);
+        let to_index = Math.min(size * page, total) - 1;
+        if (from_index < to_index) {
+          return flatten_row_y[to_index] - flatten_row_y[from_index]
+        } else {
+          return 0
+        }
+      }
+    }
+
+    return this._content_height;
+  }
 
   get_width() {
     return this.width;
@@ -46,6 +77,6 @@ export class Viewport {
   }
 
   set_content_height(height: number) {
-    this.content_height = height;
+    this._content_height = height;
   }
 }

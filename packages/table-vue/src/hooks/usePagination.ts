@@ -1,5 +1,5 @@
 import type { TablePaginationProps, TableProps } from "../typing";
-import { ref, toRef, type Ref } from "vue";
+import { computed, ref, toRef, type Ref } from "vue";
 import { DefaultPagination } from '../config'
 
 // 默认 10 条数据每页
@@ -17,14 +17,25 @@ export function usePagination(tableProps: TableProps) {
 
   // 分页事件
   function onChange(page: number, size: number) {
+    const new_pagination = { current: page, pageSize: size };
     if (typeof tableProps.pagination === 'object') {
-      tableProps.pagination.current = page;
-      tableProps.pagination.pageSize = size;
+      Object.assign(tableProps.pagination, new_pagination);
     }
+    Object.assign(pagination.value, new_pagination);
   }
 
+  const mergedPagination = computed(() => {
+    return {
+      ...pagination.value,
+      total: Math.max(
+        pagination.value.total || 0,
+        tableProps.dataSource?.length ?? 0
+      )
+    }
+  })
+
   return {
-    props: pagination,
+    props: mergedPagination,
     onChange
   }
 }

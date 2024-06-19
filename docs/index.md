@@ -54,7 +54,7 @@ const datasource = ref(list)
 
 
 <client-only>
-  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id" :pagination="false">
+  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id">
     <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'operation'" style="display: flex; gap: 8px">
           <a-button type="link" style="padding: 0">详情</a-button>
