@@ -1,19 +1,56 @@
 <template>
-  <div v-resize:height ref="bodyRef" class="s-table-body" :class="bodyClass" :style="bodyStyle">
-    <div class="s-table-body__inner" ref="bodyInnerRef" @mouseover="handleMouseenter" @mouseout="handleMouseleave">
+  <div
+    v-resize:height
+    ref="bodyRef"
+    class="s-table-body"
+    :class="bodyClass"
+    :style="bodyStyle"
+  >
+    <div
+      class="s-table-body__inner"
+      ref="bodyInnerRef"
+      @mouseover="handleMouseenter"
+      @mouseout="handleMouseleave"
+    >
       <template v-if="!isEmpty">
-        <div v-if="leftColumnsVisible" ref="bodyLeftRef" class="s-table-body__inner-fixedLeft s-table-fixedLeft"
-          :class="{ 'shadow': scroll.left > 0 }" :style="leftStyle">
-          <body-rows :grid="leftGrid" :columns="leftColumns" v-bind="commonRowProps" />
+        <div
+          v-if="leftColumnsVisible"
+          ref="bodyLeftRef"
+          class="s-table-body__inner-fixedLeft s-table-fixedLeft"
+          :class="{ shadow: scroll.left > 0 }"
+          :style="leftStyle"
+        >
+          <body-rows
+            :grid="leftGrid"
+            :columns="leftColumns"
+            v-bind="commonRowProps"
+          />
         </div>
 
-        <div ref="bodyCenterRef" class="s-table-body__inner-center" :style="centerStyle">
-          <body-rows :grid="centerGrid" :columns="centerColumns" v-bind="commonRowProps" />
+        <div
+          ref="bodyCenterRef"
+          class="s-table-body__inner-center"
+          :style="centerStyle"
+        >
+          <body-rows
+            :grid="centerGrid"
+            :columns="centerColumns"
+            v-bind="commonRowProps"
+          />
         </div>
 
-        <div v-if="rightColumnsVisible" ref="bodyRightRef" class="s-table-body__inner-fixedRight s-table-fixedRight"
-          :class="{ 'shadow': scroll.left < maxXMove }" :style="rightStyle">
-          <body-rows :grid="rightGrid" :columns="rightColumns" v-bind="commonRowProps" />
+        <div
+          v-if="rightColumnsVisible"
+          ref="bodyRightRef"
+          class="s-table-body__inner-fixedRight s-table-fixedRight"
+          :class="{ shadow: scroll.left < maxXMove }"
+          :style="rightStyle"
+        >
+          <body-rows
+            :grid="rightGrid"
+            :columns="rightColumns"
+            v-bind="commonRowProps"
+          />
         </div>
       </template>
 
@@ -22,12 +59,22 @@
       </div>
     </div>
 
-    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.get_height()"
-      :content="viewport.get_content_height()" v-model:scroll="scroll.top" :is-vertical="true"
-      @update:scroll="handleVerticalScrollChange" />
+    <Scrollbar
+      v-if="!isEmpty"
+      :state="scrollState"
+      :client="viewport.get_height()"
+      :content="viewport.get_content_height()"
+      v-model:scroll="scroll.top"
+      :is-vertical="true"
+      @update:scroll="handleVerticalScrollChange"
+    />
 
-    <Scrollbar :state="scrollState" :client="viewport.get_width()" :content="viewport.get_content_width()"
-      v-model:scroll="scroll.left" />
+    <Scrollbar
+      :state="scrollState"
+      :client="viewport.get_width()"
+      :content="viewport.get_content_width()"
+      v-model:scroll="scroll.left"
+    />
   </div>
 </template>
 
@@ -41,8 +88,10 @@ import {
   defineComponent,
   onUnmounted,
   onUpdated,
-  reactive, ref, shallowRef,
-  toRef
+  reactive,
+  ref,
+  shallowRef,
+  toRef,
 } from "vue";
 import { resize } from "../../directives";
 import { useBBox, useStateInject, useTableBodyScroll } from "../../hooks";
@@ -54,13 +103,13 @@ export default defineComponent({
   name: "STableBody",
 
   directives: {
-    resize
+    resize,
   },
 
   components: {
     BodyRows,
     Scrollbar,
-    AEmpty
+    AEmpty,
   },
 
   setup() {
@@ -71,7 +120,7 @@ export default defineComponent({
       handleTooltipEnter,
       handleTooltipLeave,
       getRowKey,
-      callback
+      callback,
     } = useStateInject();
 
     function handleVerticalScrollChange() {
@@ -82,14 +131,14 @@ export default defineComponent({
       const {
         mode = "always",
         position = "outer",
-        size = 6
+        size = 6,
       } = tableProps.scroll ?? {};
       return {
         mode,
         position,
-        size
-      }
-    })
+        size,
+      };
+    });
 
     const dataSource = ref<RowData[]>([]);
 
@@ -97,17 +146,20 @@ export default defineComponent({
       dataSource.value = tableState.value.get_viewport_row_datas();
     }
 
-    callback['updateViewportDataSource'] = getViewportDataSource;
+    callback["updateViewportDataSource"] = getViewportDataSource;
 
     tableState.value.add_scroll_callback(getViewportDataSource);
 
     onUnmounted(() => {
       tableState.value.remove_scroll_callback(getViewportDataSource);
-    })
+    });
 
     const gridTemplateRows = computed(() => {
-      return tableState.value.get_row_heights_by_row_datas(dataSource.value).map(height => height + 'px').join(" ");
-    })
+      return tableState.value
+        .get_row_heights_by_row_datas(dataSource.value)
+        .map((height) => height + "px")
+        .join(" ");
+    });
 
     function getColWidth(column: TableColumn) {
       return tableState.value.col_state.get_col_width_by_column(column);
@@ -117,27 +169,34 @@ export default defineComponent({
       return tableState.value.col_state.get_col_width_by_col_key(col_key);
     }
 
-    const leftColumns = computed(() => _map2Columns(tableState.value.last_left_col_keys));
+    const leftColumns = computed(() =>
+      _map2Columns(tableState.value.last_left_col_keys),
+    );
 
     const leftWidth = computed(() => {
       return tableState.value.last_left_col_keys.reduce((width, colKey) => {
         return width + getColWidthByColKey(colKey);
-      }, 0)
+      }, 0);
     });
 
     const leftGrid = computed(() => {
-      return genColumnGrid(leftColumns.value, getColWidth, leftWidth.value).map(meta => meta.width)
+      return genColumnGrid(leftColumns.value, getColWidth, leftWidth.value).map(
+        (meta) => meta.width,
+      );
     });
-
 
     const rightWidth = computed(() => {
       return tableState.value.last_right_col_keys.reduce((width, colKey) => {
         return width + getColWidthByColKey(colKey);
-      }, 0)
+      }, 0);
     });
 
     const centerWidth = computed(() => {
-      return tableState.value.viewport.get_width() - leftWidth.value - rightWidth.value;
+      return (
+        tableState.value.viewport.get_width() -
+        leftWidth.value -
+        rightWidth.value
+      );
     });
 
     function _map2Columns(colKeys: ColKey[]) {
@@ -150,7 +209,7 @@ export default defineComponent({
         }
 
         return columns;
-      }, [])
+      }, []);
     }
 
     const leftColumnsVisible = computed(() => leftColumns.value.length);
@@ -158,8 +217,8 @@ export default defineComponent({
       const { scroll } = tableState.value;
       const style: StyleValue = {
         transform: `translateY(${-scroll.top}px)`,
-        paddingTop: `${tableState.value.get_viewport_offset_top()}px`
-      }
+        paddingTop: `${tableState.value.get_viewport_offset_top()}px`,
+      };
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
     });
@@ -167,44 +226,53 @@ export default defineComponent({
     function createGetCellPadding() {
       const padding = {
         top: -1,
-        bottom: -1
-      }
+        bottom: -1,
+      };
 
       return function (el: HTMLElement) {
         if (padding.top >= 0 && padding.bottom >= 0) {
           return padding;
         }
-        const { paddingTop, paddingBottom } = window.getComputedStyle(el)
+        const { paddingTop, paddingBottom } = window.getComputedStyle(el);
         padding.top = px2Number(paddingTop);
         padding.bottom = px2Number(paddingBottom);
         return padding;
-      }
+      };
     }
 
     const getCellPadding = createGetCellPadding();
 
     if (!tableState.value.row_state.is_fixed_row_height()) {
       onUpdated(() => {
-        const innserElements = (bodyRef.value?.querySelectorAll(".s-table-body-cell-inner") ?? []) as HTMLElement[];
+        const innserElements = (bodyRef.value?.querySelectorAll(
+          ".s-table-body-cell-inner",
+        ) ?? []) as HTMLElement[];
         const metas: OuterRowMeta[] = [];
         for (const element of innserElements) {
           const cellElement = element.parentElement as HTMLElement;
-          const { top, bottom } = getCellPadding(cellElement)
-          const { rowKey } = cellElement.dataset
+          const { top, bottom } = getCellPadding(cellElement);
+          const { rowKey } = cellElement.dataset;
           metas.push({
             // 以行的索引作为 key 值。
             rowKey: rowKey!,
-            height: Math.floor(element.getBoundingClientRect().height) + top + bottom
-          })
+            height:
+              Math.floor(element.getBoundingClientRect().height) + top + bottom,
+          });
         }
         tableState.value.update_row_metas(metas);
       });
     }
 
-    const rightColumns = computed(() => _map2Columns(tableState.value.last_right_col_keys));
+    const rightColumns = computed(() =>
+      _map2Columns(tableState.value.last_right_col_keys),
+    );
 
     const rightGrid = computed(() => {
-      return genColumnGrid(rightColumns.value, getColWidth, rightWidth.value).map(meta => meta.width)
+      return genColumnGrid(
+        rightColumns.value,
+        getColWidth,
+        rightWidth.value,
+      ).map((meta) => meta.width);
     });
 
     const rightColumnsVisible = computed(() => leftColumns.value.length);
@@ -212,8 +280,8 @@ export default defineComponent({
       const { scroll } = tableState.value;
       const style: StyleValue = {
         transform: `translateY(${-scroll.top}px)`,
-        paddingTop: `${tableState.value.get_viewport_offset_top()}px`
-      }
+        paddingTop: `${tableState.value.get_viewport_offset_top()}px`,
+      };
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
     });
@@ -221,13 +289,13 @@ export default defineComponent({
     const bodyRef = ref<HTMLElement>();
     const bodyInnerRef = shallowRef<HTMLElement>();
 
-    const viewport = toRef(tableState.value, 'viewport');
-    const scroll = toRef(tableState.value, 'scroll');
+    const viewport = toRef(tableState.value, "viewport");
+    const scroll = toRef(tableState.value, "scroll");
 
     const bodyClass = computed(() => {
       const clas: string[] = [];
       if (scrollState.value.mode === "hover") {
-        clas.push("s-table-body__scrollbar-hover")
+        clas.push("s-table-body__scrollbar-hover");
       }
       return clas;
     });
@@ -245,21 +313,26 @@ export default defineComponent({
     const { bbox: bodyLeftBBox } = useBBox(bodyLeftRef);
     const { bbox: bodyRightBBox } = useBBox(bodyRightRef);
 
-    const centerColumns = computed(() => _map2Columns(tableState.value.last_center_col_keys));
+    const centerColumns = computed(() =>
+      _map2Columns(tableState.value.last_center_col_keys),
+    );
 
     const centerGrid = computed(() => {
-      return genColumnGrid(centerColumns.value, getColWidth, centerWidth.value).map(meta => meta.width);
+      return genColumnGrid(
+        centerColumns.value,
+        getColWidth,
+        centerWidth.value,
+      ).map((meta) => meta.width);
     });
 
     const centerStyle = computed(() => {
       const { scroll } = tableState.value;
       const style: StyleValue = {
-        transform:
-          `translate(${-scroll.left}px, ${-scroll.top}px)`,
-        paddingTop: `${tableState.value.get_viewport_offset_top()}px`
-      }
-      style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + 'px'
-      style.paddingRight = (bodyRightBBox.value?.width ?? 0) + 'px'
+        transform: `translate(${-scroll.left}px, ${-scroll.top}px)`,
+        paddingTop: `${tableState.value.get_viewport_offset_top()}px`,
+      };
+      style.paddingLeft = (bodyLeftBBox.value?.width ?? 0) + "px";
+      style.paddingRight = (bodyRightBBox.value?.width ?? 0) + "px";
       style.gridTemplateRows = gridTemplateRows.value;
       return style;
     });
@@ -273,10 +346,10 @@ export default defineComponent({
           tableState.value.hoverState = {
             rowIndex: Number(rowIndex),
             rowKey: rowKey ?? "",
-            colKey: colKey ?? ""
-          }
+            colKey: colKey ?? "",
+          };
 
-          handleTooltipEnter(target)
+          handleTooltipEnter(target);
           return;
         }
         target = target.parentElement;
@@ -284,11 +357,13 @@ export default defineComponent({
     }
 
     function handleMouseleave($event: MouseEvent) {
-      tableState.value.hoverState = { rowIndex: -1, colKey: "", rowKey: -1 }
-      handleTooltipLeave($event)
+      tableState.value.hoverState = { rowIndex: -1, colKey: "", rowKey: -1 };
+      handleTooltipLeave($event);
     }
 
-    const maxXMove = computed(() => viewport.value.get_content_width() - viewport.value.get_width());
+    const maxXMove = computed(
+      () => viewport.value.get_content_width() - viewport.value.get_width(),
+    );
 
     // 通用，需要向下传递的属性
     const commonRowProps = reactive({
@@ -297,31 +372,50 @@ export default defineComponent({
       transformCellText: tableProps.transformCellText,
       bodyCell: tableSlots.bodyCell,
       customRow: tableProps.customRow,
-      rowChildrenName: tableProps.rowChildrenName
-    })
+      rowChildrenName: tableProps.rowChildrenName,
+    });
 
     return {
-      scroll, scrollState, viewport, maxXMove,
+      scroll,
+      scrollState,
+      viewport,
+      maxXMove,
 
       dataSource,
 
-      bodyRef, bodyInnerRef, bodyClass, bodyStyle,
+      bodyRef,
+      bodyInnerRef,
+      bodyClass,
+      bodyStyle,
 
-      bodyLeftRef, leftColumns, leftColumnsVisible, leftStyle, leftGrid,
+      bodyLeftRef,
+      leftColumns,
+      leftColumnsVisible,
+      leftStyle,
+      leftGrid,
 
-      bodyRightRef, rightColumns, rightColumnsVisible, rightStyle, rightGrid,
+      bodyRightRef,
+      rightColumns,
+      rightColumnsVisible,
+      rightStyle,
+      rightGrid,
 
-      centerColumns, centerStyle, bodyCenterRef, centerGrid,
+      centerColumns,
+      centerStyle,
+      bodyCenterRef,
+      centerGrid,
 
-      handleMouseenter, handleMouseleave, handleVerticalScrollChange,
+      handleMouseenter,
+      handleMouseleave,
+      handleVerticalScrollChange,
 
       isEmpty: computed(() => {
-        return tableState.value.is_empty()
+        return tableState.value.is_empty();
       }),
 
       commonRowProps,
-    }
-  }
+    };
+  },
 });
 </script>
 
@@ -371,15 +465,14 @@ export default defineComponent({
 
 <style lang="less">
 .s-table-body {
-
   &__scrollbar-hover {
-    &:hover>.s-table-scroll__track {
+    &:hover > .s-table-scroll__track {
       opacity: 1;
     }
 
-    >.s-table-scroll__track {
+    > .s-table-scroll__track {
       opacity: 0;
-      transition: opacity .16s cubic-bezier(0, .5, 1, .5);
+      transition: opacity 0.16s cubic-bezier(0, 0.5, 1, 0.5);
     }
   }
 

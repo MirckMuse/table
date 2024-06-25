@@ -1,16 +1,23 @@
 <template>
   <component :is="InteralSpin" v-bind="spinProps">
-
     <!-- 分页组件[顶部] -->
-    <component v-if="paginationProps.vertical === 'top'" :is="InteralPagination" v-bind="paginationBind"></component>
+    <component
+      v-if="paginationVisible && paginationProps.vertical === 'top'"
+      :is="InteralPagination"
+      v-bind="paginationBind"
+    ></component>
 
     <div ref="tableRef" :class="tableClass" :style="tableStyle">
       <TableHeader ref="tableHeaderRef"></TableHeader>
-      <TableBody ref="tableBodyRef" style="flex: 1; min-height: 0;"></TableBody>
+      <TableBody ref="tableBodyRef" style="flex: 1; min-height: 0"></TableBody>
     </div>
 
     <!-- 分页组件[底部] -->
-    <component v-if="paginationProps.vertical === 'bottom'" :is="InteralPagination" v-bind="paginationBind"></component>
+    <component
+      v-if="paginationVisible && paginationProps.vertical === 'bottom'"
+      :is="InteralPagination"
+      v-bind="paginationBind"
+    ></component>
   </component>
 </template>
 
@@ -33,16 +40,12 @@ defineOptions({
 
 const slots = defineSlots();
 
-const props = defineProps<TableProps>()
+const props = defineProps<TableProps>();
 
-const {
-  spin: overrideSpin,
-  pagination: overridePagination,
-} = useOverrideInject();
+const { spin: overrideSpin, pagination: overridePagination } =
+  useOverrideInject();
 
-const {
-  tableState
-} = useStateInject();
+const { tableState } = useStateInject();
 
 const prefixClass = "s-table";
 
@@ -51,7 +54,7 @@ const tableRef = ref<HTMLElement>();
 const tableClass = computed(() => {
   return {
     [`${prefixClass}-interal`]: true,
-    [`${prefixClass}-bordered`]: props.bordered
+    [`${prefixClass}-bordered`]: props.bordered,
   };
 });
 const tableStyle = computed<StyleValue>(() => {
@@ -76,25 +79,30 @@ const InteralPagination = overridePagination?.component ?? APagination;
 const {
   props: paginationProps,
   onChange: onPaginationChange,
+  visible: paginationVisible,
 } = usePagination(props);
 
 // 同步分页参数
 watch(
   () => paginationProps.value,
-  pagination => {
+  (pagination) => {
     const { current, pageSize, total } = pagination;
-    tableState.value.pagination?.update(current ?? 1, pageSize ?? 10, total ?? 0);
+    tableState.value.pagination?.update(
+      current ?? 1,
+      pageSize ?? 10,
+      total ?? 0,
+    );
   },
-  { immediate: true, deep: true }
-)
+  { immediate: true, deep: true },
+);
 
 const paginationBind = computed(() => {
   return {
-    class: `s-pagination s-pagination-${paginationProps.value.horizontal || 'right'}`,
+    class: `s-pagination s-pagination-${paginationProps.value.horizontal || "right"}`,
     onChange: onPaginationChange,
     onShowSizeChange: onPaginationChange,
-    ...paginationProps.value
-  }
+    ...paginationProps.value,
+  };
 });
 </script>
 

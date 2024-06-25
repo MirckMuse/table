@@ -9,6 +9,7 @@ import { ref } from "vue";
 import Mock from "mockjs";
 
 const columns = ref([
+  { title: "序号", width: 60, fixed: true, customRender({ index }) { return index } },
   { title: "姓名", dataIndex: "name", fixed: true },
   { title: "年纪", dataIndex: "age", sorter: true },
   { title: "身份证号", dataIndex: "idCard", width: 180 },
@@ -51,14 +52,12 @@ const { list } = Mock.mock({
 const datasource = ref(list)
 </script>
 
-
-
 <client-only>
-  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id">
+  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id" :row-height="56" :pagination="false">
     <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'operation'" style="display: flex; gap: 8px">
-          <a-button type="link" style="padding: 0">详情</a-button>
-          <a-button type="link" style="padding: 0" danger>删除</a-button>
+          <a-button type="link" style="padding: 0;">详情</a-button>
+          <a-button type="link" style="padding: 0;" danger>删除</a-button>
         </span>
     </template>
   </s-table>

@@ -1,13 +1,13 @@
 import { TableState } from "./table";
 
 export interface IViewport {
-  width: number,
+  width: number;
 
-  height: number,
+  height: number;
 
-  content_width: number,
+  content_width: number;
 
-  content_height: number,
+  content_height: number;
 }
 
 export class Viewport {
@@ -28,19 +28,26 @@ export class Viewport {
   get content_height() {
     // 如果是分页表格，按照当前分页高度来判定高度。
     const pagination = this.table_state.pagination;
-    console.log(pagination)
+
+    const row_state = this.table_state.row_state;
+
     if (pagination) {
       const { size, page, total } = pagination;
-      if (this.table_state.row_state.is_fixed_row_height()) {
-        return size * this.table_state.row_state.get_row_height();
+      if (row_state.is_fixed_row_height()) {
+        return size * row_state.get_row_height();
       } else {
-        const flatten_row_y = this.table_state.flatten_row_y
+        const { flatten_row_y, flatten_row_heights } = this.table_state;
+
         let from_index = Math.max(size * (page - 1), 0);
         let to_index = Math.min(size * page, total) - 1;
         if (from_index < to_index) {
-          return flatten_row_y[to_index] - flatten_row_y[from_index]
+          return (
+            flatten_row_y[to_index] -
+            flatten_row_y[from_index] +
+            (flatten_row_heights[to_index] ?? 0)
+          );
         } else {
-          return 0
+          return 0;
         }
       }
     }
