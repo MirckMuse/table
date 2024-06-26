@@ -3,9 +3,10 @@ import type { RowData, RowKey, TableColumn } from "@scode/table-typing";
 import type { PropType, VNode } from "vue";
 import { defineComponent, h } from "vue";
 import { useStateInject } from "../../hooks";
-import type { CustomRow, ExpandIconSlot, } from "../../typing";
+import type { CustomRow, ExpandIconSlot } from "../../typing";
 import { BodyCellInheritProps } from "../../typing";
 import BodyRow from "./row.vue";
+import type { HoverState } from "@scode/table-state";
 
 export default defineComponent({
   name: "STableBodyRows",
@@ -29,44 +30,43 @@ export default defineComponent({
   setup(props) {
     const { tableState } = useStateInject();
 
-    function renderRow(columns: TableColumn[], record: RowData): VNode {
-
-      const rowMeta = tableState.value.row_state.get_meta_by_row_data(record) ?? undefined;
-
-      const hoverState = tableState.value.hoverState;
+    function renderRow(columns: TableColumn[], record: RowData, hoverState: HoverState): VNode {
+      const rowMeta =
+        tableState.value.row_state.get_meta_by_row_data(record) ?? undefined;
 
       const rowKey = rowMeta?.key ?? -1;
 
-      return h(
-        BodyRow,
-        {
-          key: rowKey,
-          rowKey: rowKey,
-          rowMeta: rowMeta,
-          rowIndex: rowMeta?.index ?? -1,
-          expandIcon: props.expandIcon,
-          columns,
-          record,
-          grid: props.grid,
-          isHover: tableState.value.hoverState.rowKey === rowKey,
-          hoverState: hoverState,
-          customRow: props.customRow,
-          ...Object.keys(BodyCellInheritProps).reduce<Record<string, unknown>>((bind, key) => {
+      return h(BodyRow, {
+        key: rowKey,
+        rowKey: rowKey,
+        rowMeta: rowMeta,
+        rowIndex: rowMeta?.index ?? -1,
+        expandIcon: props.expandIcon,
+        columns,
+        record,
+        grid: props.grid,
+        isHover: hoverState.rowKey === rowKey.toString(),
+        hoverState: hoverState,
+        customRow: props.customRow,
+        ...Object.keys(BodyCellInheritProps).reduce<Record<string, unknown>>(
+          (bind, key) => {
             bind[key] = (props as any)[key];
             return bind;
-          }, {})
-        }
-      );
+          },
+          {},
+        ),
+      });
     }
 
     return () => {
-      const {
-        columns = [],
-        dataSource = []
-      } = props;
+      const { columns = [], dataSource = [] } = props;
 
-      return dataSource.map(record => renderRow(columns, record))
+      const { hoverState } = tableState.value;
+
+      console.log(hoverState);
+
+      return dataSource.map((record) => renderRow(columns, record, hoverState));
     };
-  }
-})
+  },
+});
 </script>

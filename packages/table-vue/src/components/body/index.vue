@@ -121,6 +121,7 @@ export default defineComponent({
       handleTooltipLeave,
       getRowKey,
       callback,
+      existNestDataSource,
     } = useStateInject();
 
     function handleVerticalScrollChange() {
@@ -342,6 +343,7 @@ export default defineComponent({
 
       while (target) {
         if (target.dataset["type"] === "cell") {
+          console.log(target);
           const { rowIndex, rowKey, colKey } = target.dataset;
           tableState.value.hoverState = {
             rowIndex: Number(rowIndex),
@@ -373,6 +375,7 @@ export default defineComponent({
       bodyCell: tableSlots.bodyCell,
       customRow: tableProps.customRow,
       rowChildrenName: tableProps.rowChildrenName,
+      existNestDataSource: existNestDataSource,
     });
 
     return {

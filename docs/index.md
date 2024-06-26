@@ -53,7 +53,7 @@ const datasource = ref(list)
 </script>
 
 <client-only>
-  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id" :row-height="56" :pagination="false">
+  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id" :row-height="56">
     <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'operation'" style="display: flex; gap: 8px">
           <a-button type="link" style="padding: 0;">详情</a-button>

@@ -1,13 +1,13 @@
 <script lang="ts">
 import type { RowData, RowKey, TableColumn } from "@scode/table-typing";
 import type { PropType, StyleValue } from "vue";
-import type { RowMeta, } from "@scode/table-state"
-import { get, isNil } from 'lodash-es';
-import { computed, defineComponent, h, mergeProps, ref } from 'vue';
-import { useStateInject } from '../../hooks';
-import type { CustomRow, ExpandIconSlot } from '../../typing';
-import { BodyCellInheritProps } from '../../typing';
-import { renderExpandIcon } from '../../utils/constant';
+import type { HoverState, RowMeta } from "@scode/table-state";
+import { get, isNil } from "lodash-es";
+import { computed, defineComponent, h, mergeProps, ref } from "vue";
+import { useStateInject } from "../../hooks";
+import type { CustomRow, ExpandIconSlot } from "../../typing";
+import { BodyCellInheritProps } from "../../typing";
+import { renderExpandIcon } from "../../utils/constant";
 import BodyCell from "./cell.vue";
 
 export default defineComponent({
@@ -29,7 +29,10 @@ export default defineComponent({
 
     customRow: { type: Function as PropType<CustomRow> },
 
-    expandIcon: { type: Function as PropType<ExpandIconSlot>, default: renderExpandIcon },
+    expandIcon: {
+      type: Function as PropType<ExpandIconSlot>,
+      default: renderExpandIcon,
+    },
 
     grid: { type: Array as PropType<number[]> },
 
@@ -38,19 +41,18 @@ export default defineComponent({
     ...BodyCellInheritProps,
   },
 
-
   setup(props) {
     const { handleRowExpand, expandedKeys } = useStateInject();
 
     const expanded = computed(() => {
       const { rowKey } = props;
       return !!expandedKeys.value?.has(rowKey);
-    })
+    });
 
     // 是否存在嵌套子表格
     const hasNestChildren = computed(() => {
       const { rowChildrenName, record } = props;
-      return !!rowChildrenName && !isNil(get(record, rowChildrenName))
+      return !!rowChildrenName && !isNil(get(record, rowChildrenName));
     });
 
     // function getColWidth(column: TableColumn) {
@@ -58,7 +60,7 @@ export default defineComponent({
     // }
 
     function onInternalTriggerExpand($event: Event, record: RowData) {
-      handleRowExpand($event, record)
+      handleRowExpand($event, record);
     }
 
     // 创建单元格插槽
@@ -66,23 +68,24 @@ export default defineComponent({
       const slots: Record<string, any> = {};
 
       // 渲染展开图标
-      if (column.expandable) {
+      if (column.expandable && props.existNestDataSource) {
         slots["expandIcon"] = () => {
           return props.expandIcon({
             expanded: expanded.value,
             expandable: hasNestChildren.value,
             record: props.record,
-            onExpand: onInternalTriggerExpand
+            onExpand: onInternalTriggerExpand,
           });
-        }
+        };
       }
 
       return slots;
     }
 
     // 渲染单元格
-    function renderCell(column: TableColumn, record: RowData, meta?: RowMeta) {
+    function renderCell(column: TableColumn, record: RowData, meta?: RowMeta, hoverState?: HoverState) {
       const rowIndex = meta?.index ?? -1;
+
       return h(
         BodyCell,
         {
@@ -92,27 +95,33 @@ export default defineComponent({
           deep: meta?.deep ?? 0,
           transformCellText: props.transformCellText,
           bodyCell: props.bodyCell,
+          hoverState: hoverState,
           "data-col-index": column.dataIndex,
           "data-col-key": column.key,
           "data-row-index": meta?.index,
           "data-row-key": meta?.key,
-          "data-type": "cell"
+          "data-type": "cell",
         },
-        createCellSlot(column)
-      )
+        createCellSlot(column),
+      );
     }
 
-    const PrefixClass = 's-table-body-row';
+    const PrefixClass = "s-table-body-row";
     const gridTemplateColumns = computed(() => {
       const { grid } = props;
 
-      return (grid ?? []).map(width => `${width}px`).join(' ');
-    })
+      return (grid ?? []).map((width) => `${width}px`).join(" ");
+    });
 
     const rowRef = ref<HTMLElement>();
 
     // 渲染行数据
-    function renderRow(columns: TableColumn[], record: RowData, hover: boolean) {
+    function renderRow(
+      columns: TableColumn[],
+      record: RowData,
+      hover: boolean,
+      hoverState?: HoverState,
+    ) {
       const style: StyleValue = {};
       style.gridTemplateColumns = gridTemplateColumns.value;
 
@@ -120,27 +129,29 @@ export default defineComponent({
 
       const rowClass: Record<string, boolean> = {
         [PrefixClass]: true,
-        [PrefixClass + "__hover"]: hover
+        [PrefixClass + "__hover"]: hover,
       };
 
       const customRow = props.customRow ?? (() => ({}));
 
       return h(
         "div",
-        mergeProps(
-          customRow(record, rowIndex),
-          { class: rowClass, "data-row-index": rowIndex, style, ref: rowRef },
-        ),
-        columns.map(col => renderCell(col, record, rowMeta))
-      )
+        mergeProps(customRow(record, rowIndex), {
+          class: rowClass,
+          "data-row-index": rowIndex,
+          style,
+          ref: rowRef,
+        }),
+        columns.map((col) => renderCell(col, record, rowMeta, hoverState)),
+      );
     }
 
     return () => {
-      const { columns = [], record, isHover } = props;
+      const { columns = [], record, isHover, hoverState } = props;
 
-      return renderRow(columns, record, isHover)
-    }
-  }
+      return renderRow(columns, record, isHover, hoverState);
+    };
+  },
 });
 </script>
 
