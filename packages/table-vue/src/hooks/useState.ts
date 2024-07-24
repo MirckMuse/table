@@ -6,7 +6,7 @@ import type {
   TableColumn,
 } from "@scode/table-typing";
 import { debounce, isNil, isObject } from "lodash-es";
-import type { ComputedRef, InjectionKey, Ref } from "vue";
+import type { ComputedRef, InjectionKey, Ref, UnwrapRef } from "vue";
 import { computed, inject, provide, ref, watch } from "vue";
 import type {
   InteralTableSlot,
@@ -132,7 +132,7 @@ export function useStateProvide({
     return (record: RowData) => record[rowKey] as RowKey;
   });
 
-  function createTableState() {
+  function createTableState(): TableState {
     const { columns, dataSource } = props;
 
     const lastColumn: TableColumn[] = getDFSLastColumns(columns ?? []);
@@ -146,15 +146,15 @@ export function useStateProvide({
       pagination =
         typeof props.pagination === "boolean"
           ? {
-              page: 1,
-              size: 10,
-              total: dataSource?.length ?? 0,
-            }
+            page: 1,
+            size: 10,
+            total: dataSource?.length ?? 0,
+          }
           : {
-              page: props.pagination.current ?? 1,
-              size: props.pagination.pageSize ?? 10,
-              total: props.pagination.total ?? 0,
-            };
+            page: props.pagination.current ?? 1,
+            size: props.pagination.pageSize ?? 10,
+            total: props.pagination.total ?? 0,
+          };
     }
 
     const {
@@ -171,12 +171,12 @@ export function useStateProvide({
       rowHeight,
       col_children_name: childrenColumnName,
       row_children_name: rowChildrenName,
-      defaultExpandAllRows,
+      default_expand_all_rows: defaultExpandAllRows,
       pagination: pagination,
     });
   }
 
-  const state = ref<TableState>(createTableState());
+  const state: Ref<UnwrapRef<TableState>> = ref(createTableState());
 
   const existNestDataSource = computed(
     () =>
@@ -244,7 +244,7 @@ export function useStateProvide({
   });
 
   const callback = {
-    updateViewportDataSource: () => {},
+    updateViewportDataSource: () => { },
   };
 
   // 处理展开逻辑
@@ -284,6 +284,10 @@ export function useStateProvide({
 
     callback,
   });
+
+  return {
+    table_state: state
+  }
 }
 
 export function useStateInject() {

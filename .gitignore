@@ -177,3 +177,4 @@ dist
 esm/
 packages/**/esm/
 dev-dist/
+/docs/.vitepress/cache

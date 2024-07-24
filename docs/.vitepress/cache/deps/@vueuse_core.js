@@ -3,7 +3,7 @@ import {
   isVue2,
   isVue3,
   set
-} from "./chunk-RRWQ76P5.js";
+} from "./chunk-DYFJRXUD.js";
 import {
   Fragment,
   TransitionGroup,
@@ -39,10 +39,10 @@ import {
   version,
   watch,
   watchEffect
-} from "./chunk-6VGCA36B.js";
+} from "./chunk-TJHNPAE7.js";
 import "./chunk-G3PMV62Z.js";
 
-// node_modules/.pnpm/@vueuse+shared@10.7.2_vue@3.4.21/node_modules/@vueuse/shared/index.mjs
+// node_modules/.pnpm/@vueuse+shared@10.7.2_vue@3.4.31/node_modules/@vueuse/shared/index.mjs
 function computedEager(fn, options) {
   var _a;
   const result = shallowRef();
@@ -1523,7 +1523,7 @@ function whenever(source, cb, options) {
   );
 }
 
-// node_modules/.pnpm/@vueuse+core@10.7.2_vue@3.4.21/node_modules/@vueuse/core/index.mjs
+// node_modules/.pnpm/@vueuse+core@10.7.2_vue@3.4.31/node_modules/@vueuse/core/index.mjs
 function computedAsync(evaluationCallback, initialState, optionsOrRef) {
   let options;
   if (isRef(optionsOrRef)) {

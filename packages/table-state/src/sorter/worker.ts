@@ -15,7 +15,7 @@ type OrderMap = Map<RowKey, ColOrderMap>;
 function update_order_map(row_data_meta: RowDataMeta, columns: META[], orderMap: OrderMap) {
   const _map = orderMap.get(row_data_meta.key) ?? new Map<ColKey, number>();
 
-  columns.forEach(column => {
+  for (const column of columns) {
     const { col_key, dataIndex } = column;
 
     const value = dataIndex
@@ -31,7 +31,7 @@ function update_order_map(row_data_meta: RowDataMeta, columns: META[], orderMap:
     } else {
       _map.set(col_key, Infinity)
     }
-  })
+  }
 
   orderMap.set(row_data_meta.key, _map);
 }

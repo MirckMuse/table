@@ -1,5 +1,5 @@
 import { useResizeObserver } from "@vueuse/core";
-import { throttle } from "lodash-es";
+import { throttle } from "es-toolkit";
 import { type Ref, computed, onMounted, ref } from "vue";
 import { TableState } from "@scode/table-state";
 import { createLockedRequestAnimationFrame, optimizeScrollXY } from "../utils";

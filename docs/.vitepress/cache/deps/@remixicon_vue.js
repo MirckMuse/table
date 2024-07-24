@@ -2,10 +2,10 @@ import {
   createVNode,
   defineComponent,
   isVNode
-} from "./chunk-6VGCA36B.js";
+} from "./chunk-TJHNPAE7.js";
 import "./chunk-G3PMV62Z.js";
 
-// node_modules/.pnpm/@remixicon+vue@4.2.0_vue@3.4.21/node_modules/@remixicon/vue/index.mjs
+// node_modules/.pnpm/@remixicon+vue@4.2.0_vue@3.4.31/node_modules/@remixicon/vue/index.mjs
 var n = Array.prototype.slice;
 function t(s, r = null, i = null) {
   return (arguments.length > 3 || isVNode(i)) && (i = n.call(arguments, 2)), createVNode(s, r, i);

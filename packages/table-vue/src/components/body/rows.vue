@@ -63,8 +63,6 @@ export default defineComponent({
 
       const { hoverState } = tableState.value;
 
-      console.log(hoverState);
-
       return dataSource.map((record) => renderRow(columns, record, hoverState));
     };
   },

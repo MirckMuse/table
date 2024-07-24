@@ -1,5 +1,5 @@
 import type { ColKey, TableColumn } from "@scode/table-typing";
-import { isNil } from "lodash-es";
+import { isNil } from "es-toolkit"
 
 export type TableColumnOrNull = TableColumn | null;
 

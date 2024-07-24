@@ -8,7 +8,8 @@ import type {
   SorterState,
   TableColumn,
 } from "@scode/table-typing";
-import { groupBy, isNil, memoize, throttle } from "lodash-es";
+import { memoize } from "lodash-es";
+import { isNil, throttle, groupBy } from "es-toolkit";
 import { toRaw } from "vue";
 import { type ColMeta, TableColState } from "./col";
 import { TablePagination, type ITablePagination } from "./pagination";
@@ -38,7 +39,7 @@ export interface TableStateOption {
 
   row_children_name?: string;
 
-  defaultExpandAllRows?: boolean;
+  default_expand_all_rows?: boolean;
 }
 
 export type HoverState = {
@@ -91,10 +92,13 @@ export class TableState {
     this.init(option);
   }
 
+  // 是否展开所有行。
+  default_expand_all_rows: boolean;
+
   // ============ 初始化相关函数 ===============
   private before_init(option: TableStateOption) {
     this.row_children_name = option.row_children_name ?? "children";
-    console.log(option);
+    this.default_expand_all_rows = option.default_expand_all_rows ?? false;
     if (option.pagination) {
       const { page, size, total } = option.pagination;
       this.pagination = new TablePagination(page, size, total);
@@ -129,6 +133,7 @@ export class TableState {
       row_height: option.rowHeight ?? RowHeight,
       is_fixed_row_height: !!option.rowHeight,
       get_row_key: option.getRowKey,
+      row_children_name: option.row_children_name
     });
   }
 
@@ -350,7 +355,7 @@ export class TableState {
     this.update_flatten_row_keys_by_expanded_row_keys();
   }
 
-  get_all_expanded_row_keys(row_datas: RowData[]) {}
+  get_all_expanded_row_keys(row_datas: RowData[]) { }
 
   get_children_row_keys(row_key: RowKey): RowKey[] {
     const row_state = this.row_state;
@@ -479,7 +484,7 @@ export class TableState {
   // TODO:
   filter_states: FilterState[] = [];
 
-  get_filtered_flatten_row_keys(filter_states: FilterState[]) {}
+  get_filtered_flatten_row_keys(filter_states: FilterState[]) { }
 
   update_filter_states(filter_states: FilterState[]) {
     this.filter_states = filter_states;
@@ -538,18 +543,12 @@ export class TableState {
     };
 
     if (!sorter_states.length) {
-      this.flatten_row_keys =
-        this.memoize_get_flatten_row_keys_by_expanded_row_keys(
-          this.expandedRowKeys,
-        );
+      this.flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
       _update_y();
       return;
     }
 
-    const flatten_row_keys =
-      this.memoize_get_flatten_row_keys_by_expanded_row_keys(
-        this.expandedRowKeys,
-      );
+    const flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
 
     const filtered_flatten_row_keys =
       this.filter_state.get_filtered_row_data_metas(
@@ -577,7 +576,7 @@ export class TableState {
   // 最后扁平后的数据
   flatten_row_keys: RowKey[] = [];
   flatten_row_heights = new Uint16Array();
-  flatten_row_y = new Uint32Array();
+  flatten_row_y: number[] = [];
   flatten_row_key_map_index = new Map();
 
   private reset_flatten_row_y() {
@@ -589,7 +588,7 @@ export class TableState {
     }
 
     let y = 0;
-    const flatten_row_y = new Uint32Array(this.flatten_row_heights.length);
+    let flatten_row_y: number[] = [];
     this.flatten_row_heights.forEach((height, index) => {
       flatten_row_y[index] = y;
       y += height;
@@ -600,9 +599,8 @@ export class TableState {
   }
 
   private throttle_reset_flatten_row_y = throttle(
-    this.reset_flatten_row_y,
+    this.reset_flatten_row_y.bind(this),
     16,
-    { trailing: true },
   );
 
   is_empty() {
@@ -634,15 +632,15 @@ export class TableState {
 
     const _process = is_fixed_row_height
       ? (index: number) => {
-          const row_key = flatten_row_keys[index];
-          map.set(row_key, index);
-        }
+        const row_key = flatten_row_keys[index];
+        map.set(row_key, index);
+      }
       : (index: number) => {
-          const row_key = flatten_row_keys[index];
-          map.set(row_key, index);
-          flatten_row_heights[index] =
-            row_state.memoize_get_row_height_by_row_key(row_key);
-        };
+        const row_key = flatten_row_keys[index];
+        map.set(row_key, index);
+        flatten_row_heights[index] =
+          row_state.memoize_get_row_height_by_row_key(row_key);
+      };
 
     for (let index = 0; index < flatten_row_keys.length; index++) {
       _process(index);
@@ -681,12 +679,34 @@ export class TableState {
   update_row_datas(row_datas: RowData[]) {
     this.clear_memoize();
 
-    // TODO: 默认展开所有
+    let row_datas_length = row_datas.length;
+
+    // 默认展开所有行
+    if (this.default_expand_all_rows) {
+      let i = 0;
+      const _loop = (row_datas: RowData[]): RowKey[] => {
+        const keys: RowKey[] = [];
+
+        row_datas.forEach((row_data, index) => {
+          i++;
+          const children = this.get_row_data_children(row_data);
+          if (children?.length) {
+
+            this.expandedRowKeys.push(this.row_state.get_row_key(row_data, index));
+
+            _loop(children);
+          }
+        })
+
+        return keys;
+      }
+      this.expandedRowKeys = _loop(row_datas);
+      row_datas_length = i;
+    }
 
     // FIXME: 分页情况下可能有问题，主要发生问题的地方是不定高度。
-    const _row_datas = row_datas;
     this.viewport.set_content_height(
-      _row_datas.length * this.row_state.get_row_height(),
+      row_datas_length * this.row_state.get_row_height(),
     );
 
     const done_callback = () => {
@@ -696,7 +716,7 @@ export class TableState {
       this.reset_flatten_row_y();
     };
 
-    this.row_state.update_row_datas(row_datas, () => {
+    this.row_state.update_row_datas(row_datas, this.expandedRowKeys, () => {
       done_callback();
 
       this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
@@ -706,7 +726,9 @@ export class TableState {
       );
     });
 
-    done_callback();
+    if (this.default_expand_all_rows) {
+      this.expandedRowKeys = this.row_state.get_all_expand_keys();
+    }
   }
 
   // 更新行的原数据
@@ -714,7 +736,7 @@ export class TableState {
     // 固定行高，无需更新行 meta。
     if (this.row_state.is_fixed_row_height()) return;
 
-    const grouped_cell_metas = groupBy(row_metas, "rowKey");
+    const grouped_cell_metas = groupBy(row_metas, meta => meta.rowKey);
 
     let offset_height = 0;
 
@@ -891,7 +913,7 @@ export class TableState {
     this.pre_row.from_y = flatten_row_y[this.pre_row.from];
     this.pre_row.real_offset_y = this.pagination
       ? this.pre_row.from_y -
-        flatten_row_y[(this.pagination.page - 1) * this.pagination.size]
+      flatten_row_y[(this.pagination.page - 1) * this.pagination.size]
       : this.pre_row.from_y;
 
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);

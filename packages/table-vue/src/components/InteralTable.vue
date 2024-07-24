@@ -1,11 +1,8 @@
 <template>
   <component :is="InteralSpin" v-bind="spinProps">
     <!-- 分页组件[顶部] -->
-    <component
-      v-if="paginationVisible && paginationProps.vertical === 'top'"
-      :is="InteralPagination"
-      v-bind="paginationBind"
-    ></component>
+    <component v-if="paginationVisible && paginationProps.vertical === 'top'" :is="InteralPagination"
+      v-bind="paginationBind"></component>
 
     <div ref="tableRef" :class="tableClass" :style="tableStyle">
       <TableHeader ref="tableHeaderRef"></TableHeader>
@@ -13,11 +10,8 @@
     </div>
 
     <!-- 分页组件[底部] -->
-    <component
-      v-if="paginationVisible && paginationProps.vertical === 'bottom'"
-      :is="InteralPagination"
-      v-bind="paginationBind"
-    ></component>
+    <component v-if="paginationVisible && paginationProps.vertical === 'bottom'" :is="InteralPagination"
+      v-bind="paginationBind"></component>
   </component>
 </template>
 
@@ -28,7 +22,7 @@ import type { StyleValue } from "vue";
 import { Pagination as APagination, Spin as ASpin } from "ant-design-vue";
 import { computed, ref, watch } from "vue";
 import { useOverrideInject } from "../context/OverrideContext";
-import { usePagination, useSelectionProvide, useStateInject } from "../hooks";
+import { useInjectTableCallback, usePagination, useSelectionProvide, useStateInject } from "../hooks";
 import TableBody from "./body/index.vue";
 import TableHeader from "./header/index.vue";
 
@@ -76,22 +70,28 @@ const spinProps = computed(() => {
 
 // Pagination 组件相关
 const InteralPagination = overridePagination?.component ?? APagination;
+
+const {
+  onPaginationChange: onPaginationCallback
+} = useInjectTableCallback();
+
 const {
   props: paginationProps,
-  onChange: onPaginationChange,
+  onChange: internalPagination,
   visible: paginationVisible,
 } = usePagination(props);
+
+function onPaginationChange(page: number, size: number) {
+  internalPagination(page, size);
+  onPaginationCallback();
+}
 
 // 同步分页参数
 watch(
   () => paginationProps.value,
   (pagination) => {
-    const { current, pageSize, total } = pagination;
-    tableState.value.pagination?.update(
-      current ?? 1,
-      pageSize ?? 10,
-      total ?? 0,
-    );
+    const { current = 1, pageSize = 10, total = 0 } = pagination;
+    tableState.value?.pagination?.update(current, pageSize, total);
   },
   { immediate: true, deep: true },
 );

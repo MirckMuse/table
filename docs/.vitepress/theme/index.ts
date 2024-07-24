@@ -4,6 +4,7 @@ import Table from "@scode/table-vue";
 import { Button, Tag, Divider } from "ant-design-vue";
 import { AntDesignContainer } from "@vitepress-demo-preview/component"
 import "@vitepress-demo-preview/component/dist/style.css"
+import "./index.css";
 
 const theme: Theme = {
   extends: DefaultTheme,

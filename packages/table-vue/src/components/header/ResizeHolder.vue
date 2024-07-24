@@ -7,8 +7,6 @@
 <script lang="ts" setup>
 import type { TableColumn } from "@scode/table-typing";
 import type { PropType } from "vue";
-
-import { isNaN } from "lodash-es";
 import { computed, ref, shallowRef } from "vue";
 import { useStateInject } from "../../hooks";
 import { type AddEventListenerHandle, addEventListener } from "../../utils";
@@ -49,13 +47,13 @@ let parentOffsetWidth = 0;
 let startX = 0;
 const minWidth = computed(() => {
   const { minWidth: _minWidth } = props.column ?? {};
-  return "number" != typeof _minWidth || isNaN(_minWidth) ? 50 : _minWidth;
+  return "number" != typeof _minWidth || Number.isNaN(_minWidth) ? 50 : _minWidth;
 })
 
 const maxWidth = computed(() => {
   const { maxWidth: _maxWidth } = props.column ?? {};
 
-  return "number" != typeof _maxWidth || isNaN(_maxWidth) ? Infinity : _maxWidth;
+  return "number" != typeof _maxWidth || Number.isNaN(_maxWidth) ? Infinity : _maxWidth;
 })
 
 function createResizeHandle($event: MouseEvent, eventNameMap: EventName) {

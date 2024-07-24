@@ -50,10 +50,38 @@ const { list } = Mock.mock({
 })
 
 const datasource = ref(list)
+
+const pagination = ref({
+ showTotal: (total) =>{
+  return `共 ${total}`;
+ }
+})
+
+function handleChange(option) {
+  // console.log(option)
+}
+
+function handlePaginationChange(option) {
+  console.log(option)
+}
+
+function handleSortChange(option) {
+  // console.log(option)
+}
 </script>
 
 <client-only>
-  <s-table :columns="columns" :data-source="datasource" :scroll="{ y: 450 }" rowKey="id" :row-height="56">
+  <s-table 
+    :columns="columns"
+    :data-source="datasource"
+    :scroll="{ y: 450 }"
+    rowKey="id"
+    :row-height="56"
+    :pagination="pagination"
+    @change="handleChange"
+    @change:pagination="handlePaginationChange"
+    @change:sort="handleSortChange"
+  >
     <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'operation'" style="display: flex; gap: 8px">
           <a-button type="link" style="padding: 0;">详情</a-button>

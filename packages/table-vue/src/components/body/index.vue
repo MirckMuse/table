@@ -343,7 +343,6 @@ export default defineComponent({
 
       while (target) {
         if (target.dataset["type"] === "cell") {
-          console.log(target);
           const { rowIndex, rowKey, colKey } = target.dataset;
           tableState.value.hoverState = {
             rowIndex: Number(rowIndex),

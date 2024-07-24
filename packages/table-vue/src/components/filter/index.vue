@@ -7,7 +7,8 @@ import { computed, defineComponent, h, onBeforeUnmount, ref, shallowRef, watch }
 import { Dropdown, Button, Empty, Menu, Checkbox, Radio, Tree } from "ant-design-vue";
 import { RiFilter2Fill } from "@remixicon/vue";
 import { stopPropagation } from "../../utils"
-import { isEqual, isNil } from "lodash-es";
+import { isEqual } from "lodash-es";
+import { isNil } from "es-toolkit";
 // import { flattenKeys } from "@scode/table-shared";
 import FilterSearch from "./Search.vue";
 

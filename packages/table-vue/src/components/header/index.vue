@@ -23,7 +23,7 @@
 
 <script lang="ts" setup>
 import type { ColKey, TableColumn } from "@scode/table-typing";
-import { throttle } from "lodash-es";
+import { throttle } from "es-toolkit";
 import type { StyleValue } from "vue";
 import { computed, onMounted, onUnmounted, shallowRef } from "vue";
 import { useStateInject, useTableHeaderScroll } from "../../hooks";

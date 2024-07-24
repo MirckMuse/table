@@ -1,5 +1,7 @@
-import type { TableColumn, RowData, GetRowKey, RowKey } from "@scode/table-typing";
+import type { TableColumn, RowData, GetRowKey, RowKey, FilterState, SorterState } from "@scode/table-typing";
 import type { TooltipProps } from "ant-design-vue";
+import type { PaginationOption } from "./emit";
+import type { ExpandedRowRender } from "./slot";
 
 // 插槽相关
 export * from "./slot";
@@ -8,6 +10,8 @@ export * from "./slot";
 export * from "./inherit";
 
 export * from "./emit";
+
+export * from "@scode/table-typing";
 
 
 export type TablePaginationProps = {
@@ -48,7 +52,9 @@ export type CustomRow = (record: RowData, index: number) => any;
 /**
  * 表格的参数，提供给 Table.vue 和 InteralTable.vue 使用
  */
-export interface TableProps {
+export interface TableProps extends ITableProcessEvent {
+  prefixCls?: string;
+
   loading?: boolean;
 
   // 固定行高
@@ -86,10 +92,53 @@ export interface TableProps {
 
   // 行数据的 children key
   rowChildrenName?: string;
+
+  custom?: ITableCustom;
+}
+
+export interface ITableRender {
+  expandedRowRender?: ExpandedRowRender,
+}
+
+export interface ITableProcessEvent {
+  // 修改分页后执行的函数
+  processPaginationChange?: (option: PaginationOption) => void;
+
+  // 筛选后执行的函数
+  processFilterChange?: (option: FilterState[]) => void;
+
+  // 排序后执行的函数
+  processSortChange?: (option: SorterState[]) => void;
+}
+
+// 表格组件自定义区
+export interface ITableCustom {
+  // 排序组件
+  sorter?: any;
+
+  // 筛选组件
+  filter?: any;
+
+  // 表头
+  header?: {
+    wrapper?: any;
+
+    row?: any;
+
+    cell?: any;
+  };
+
+  // 表体
+  bodyCell?: {
+    wrapper?: any;
+
+    row?: any;
+
+    cell?: any;
+  };
 }
 
 export type TransformCellText = (option: { text: any; column: TableColumn; record: RowData; index: number }) => any;
-
 
 export * from "./slot";
 

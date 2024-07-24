@@ -20,6 +20,7 @@
     "tslib": "^2.6.2"
   },
   "dependencies": {
+    "es-toolkit": "^1.9.0",
     "lodash-es": "^4.17.21",
     "workerpool": "^9.1.0"
   }

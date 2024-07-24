@@ -1,9 +1,9 @@
 <template>
   <div style="padding: 10px;">
     <h1>数据量:{{ data_source_length }}</h1>
-    <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 400 }"
+    <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 600 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
-      :defaultExpandAllRows="true">
+      :pagination="false" :defaultExpandAllRows="true">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>
@@ -59,18 +59,19 @@ function createItem(_: unknown, index: number) {
     "d": index + 1,
     c1: '123-2',
     c2: '123-1',
-    enums: Enums[(index % Enums.length)].value
+    enums: Enums[(index % Enums.length)].value,
   }
 }
 
-const data_source = ref<any[]>(Array(10000).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
 
 const data_source_length = computed(() => data_source.value.length.toLocaleString())
 
 const children = Array(100).fill(null).map(createItem) as any[];
 
-children[0].children = Array(100).fill(null).map(createItem) as any[];
-data_source.value[0].children = children;
+Array(1000).fill(null).forEach((_, index) => {
+  data_source.value[index].children = children
+})
 
 setTimeout(() => {
   pagination.total = data_source.value.length;
@@ -141,9 +142,7 @@ const columns = ref<TableColumn[]>([
     dataIndex: 'c',
     title: "操作",
     fixed: 'right',
-    ellipsis: {
-      showTooltip: true
-    },
+    ellipsis: { showTooltip: true },
     customRender() {
       return h('button', "按钮")
     }

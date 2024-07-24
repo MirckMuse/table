@@ -16,8 +16,8 @@ export function usePagination(tableProps: TableProps) {
     typeof tableProps.pagination === "object"
       ? (toRef(tableProps, "pagination") as Ref<TablePaginationProps>)
       : ref<TablePaginationProps>(
-          tableProps.pagination ? { ...DefaultPagination } : {},
-        );
+        tableProps.pagination ? { ...DefaultPagination } : {},
+      );
 
   if (typeof tableProps.pagination) {
     Object.assign(pagination.value, DefaultPagination, tableProps.pagination);

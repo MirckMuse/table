@@ -4,7 +4,7 @@ import type { PropType, StyleValue, VNode } from "vue";
 
 import { SorterDirection } from "@scode/table-typing";
 import { Comment, computed, defineComponent, h } from "vue";
-import { useStateInject } from "../../hooks";
+import { useInjectTableCallback, useStateInject } from "../../hooks";
 import { toArray } from "../../utils";
 import HeaderFilter from "../filter/index.vue";
 import { SorterFill } from "../icon";
@@ -54,6 +54,8 @@ export default defineComponent({
         ? column?.title()
         : column?.title;
     }
+
+    const { onSortChange: onSortCallback } = useInjectTableCallback();
 
 
     // 执行搜索
@@ -112,11 +114,16 @@ export default defineComponent({
         sorterStates = sorterStates.filter(state => state.col_key !== colKey);
       }
 
+      // 排序完需要回调
+      onSortCallback();
+
       console.time('update_sorter_states')
       tableState.value.update_sorter_states(sorterStates);
       console.timeEnd('update_sorter_states')
 
       callback['updateViewportDataSource']?.();
+
+      // TODO:
     }
 
     // 渲染排序的图标

@@ -15,6 +15,7 @@ interface ISelection {
 }
 
 const Selection_Context_Key: InjectionKey<ISelection> = Symbol("__selection_context_key__");
+
 export function useSelectionProvide() {
   const selection_state = reactive<SelectionState>({
     colKeys: [`b${ColKeySplitWord}1`, `a${ColKeySplitWord}0`, `c${ColKeySplitWord}2`],

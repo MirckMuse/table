@@ -1,3 +1,7 @@
+function flattenData() {
+
+}
+
 
 self.onmessage = ($event: MessageEvent) => {
   const data = $event.data;

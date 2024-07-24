@@ -2,7 +2,8 @@
 import type { RowData, RowKey, TableColumn } from "@scode/table-typing";
 import type { PropType, StyleValue } from "vue";
 import type { HoverState, RowMeta } from "@scode/table-state";
-import { get, isNil } from "lodash-es";
+import { get } from "lodash-es";
+import { isNil } from "es-toolkit";
 import { computed, defineComponent, h, mergeProps, ref } from "vue";
 import { useStateInject } from "../../hooks";
 import type { CustomRow, ExpandIconSlot } from "../../typing";

@@ -1,7 +1,19 @@
-import type { VNode } from "vue";
+import type { Raw, VNode } from "vue";
+
+export type RawData = Record<string, unknown>;
 
 // 行数据
-export type RowData = Record<string, unknown>;
+export type RowData = RawData & {
+  __SCode_Row_Key__: RowKey;
+
+  __SCode_Row_Index__: number;
+
+  __SCode_Row_Deep__: number;
+
+  __SCode_Origin_Data__: RawData;
+
+  __SCode_Expand_Keys__?: RowKey[];
+};
 
 export type RowDataMeta = {
   key: RowKey,
@@ -53,7 +65,7 @@ export type BaseValue = string | number | boolean | undefined | null;
 export type CustomRenderResult = BaseValue | VNode;
 
 export interface CustomRenderOption extends CustomOption {
-  text: BaseValue | BaseValue[];
+  text: unknown;
 }
 
 // biome-ignore lint/suspicious/noConfusingVoidType: <explanation>
@@ -133,7 +145,7 @@ export interface TableColumnFilter {
 /**
  * 表格列配置，key 和dataIndex 至少有一个必填
  */
-export interface TableColumn {
+export interface TableColumn<T = RowData> {
   key?: ColKey;
 
   dataIndex?: string;
@@ -157,7 +169,7 @@ export interface TableColumn {
 
   resizable?: boolean;
 
-  children?: TableColumn[];
+  children?: TableColumn<T>[];
 
   /**
    * 是否可展开
@@ -167,7 +179,7 @@ export interface TableColumn {
   customCell?: CustomCell;
 
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  customHeaderCell?: (column: TableColumn) => Record<string, any>;
+  customHeaderCell?: (column: TableColumn<T>) => Record<string, any>;
 
   customRender?: CustomRender;
 

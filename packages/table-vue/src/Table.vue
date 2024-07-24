@@ -5,9 +5,9 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from "vue";
+import { computed, shallowRef } from "vue";
 import InteralTable from "./components/InteralTable.vue";
-import { useStateProvide } from "./hooks";
+import { useProvideTableCallback, useStateProvide } from "./hooks";
 import type { TableEmit, TableProps, TableSlot } from "./typing";
 
 // 负责收集用户传递的参数，并将收集到的参数整合传递给 InteralTable 渲染。
@@ -21,27 +21,36 @@ const slots = defineSlots<TableSlot>();
 const props = withDefaults(defineProps<TableProps>(), {
   childrenColumnName: "children",
   rowChildrenName: "children",
-  pagination: true
+  pagination: true,
+  prefixCls: "s-table"
 });
 
 const emit = defineEmits<TableEmit>()
 
-const rootRef = ref<HTMLElement>();
+const rootRef = shallowRef<HTMLElement>();
 
-useStateProvide({
+const interalTableRef = shallowRef<HTMLElement>();
+
+const { table_state } = useStateProvide({
   props,
   slots,
   emit,
   tableRef: rootRef
 });
 
-const interalTableRef = ref<HTMLElement>();
+useProvideTableCallback({
+  table_state: table_state,
+  table_emit: emit,
+  processPaginationChange: props.processPaginationChange,
+  processFilterChange: props.processFilterChange,
+  processSortChange: props.processSortChange,
+});
 
 const rootClass = computed(() => {
   return [
-    "s-table"
+    props.prefixCls
   ];
-})
+});
 </script>
 
 <style lang="less" scoped>

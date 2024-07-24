@@ -1,5 +1,5 @@
 <template>
-  <s-table :columns="columns" :data-source="data" :scroll="{y: 300}">
+  <s-table :columns="columns" :data-source="data" :scroll="{y: 300}" :pagination="false">
     <template #headerCell="{ column }">
       <template v-if="column.key === 'name'">
         <span>

@@ -31,3 +31,20 @@ export function flattenKeys<K>(options?: any[], filedName?: FilterName): K[] {
 
   return _flattenKeys;
 }
+
+// 扁平对象数组
+export function flatten<T = unknown>(datas: T[], getChildren: (data: T) => T[] | undefined, result: T[] | undefined): T[] {
+  result = result || []
+
+  for (const data of datas) {
+    result.push(data);
+
+    const children = getChildren(data);
+
+    if (children) {
+      flatten(children, getChildren, result);
+    }
+  }
+
+  return result;
+}

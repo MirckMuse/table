@@ -1,4 +1,4 @@
-export { usePagination } from "./usePagination";
+export * from "./usePagination";
 
 export * from "./useState";
 
@@ -9,3 +9,5 @@ export * from "./useSelection";
 export * from "./useCellResize";
 
 export * from "./useCellTooltip";
+
+export * from "./useTableCallback";

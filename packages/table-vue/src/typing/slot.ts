@@ -15,11 +15,17 @@ export type ExpandIconSlot = (option: {
 
 export type TableSlot = Partial<InteralTableSlot>;
 
+// 展开行
+export type ExpandedRowRender = (option: { record: RowData, index: number, expanded: boolean, indent: number }) => unknown;
+
 export interface InteralTableSlot {
   headerCell?: HeaderCellSlot,
 
   // 格式化单元格
   bodyCell?: BodyCellSlot
 
-  expandIcon: ExpandIconSlot;
+  expandIcon?: ExpandIconSlot;
+
+  // 拓展行的渲染
+  expandedRowRender?: ExpandedRowRender;
 }

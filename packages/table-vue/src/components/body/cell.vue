@@ -1,7 +1,8 @@
 <script lang="ts">
 import type { PropType, StyleValue } from "vue";
 import type { RowData, TableColumn } from "@scode/table-typing";
-import { get, isNil } from "lodash-es";
+import { get } from "lodash-es";
+import { isNil } from "es-toolkit";
 import {
   Comment,
   computed,
@@ -91,10 +92,10 @@ export default defineComponent({
 
     const cellClass = computed(() => {
       const { hoverState, column } = props;
-      console.log(hoverState?.colKey, column.key)
+      // 十字架的格式需要确保 hover 的单元格的 key 和 meta 的 key一直
       return {
         [prefixClass]: true,
-        [prefixClass + "__hover"]: hoverState?.colKey === column.key,
+        [prefixClass + "__hover"]: !isNil(column.key) && hoverState?.colKey === column.key,
         ...getSelectionClass(),
       };
     });
@@ -122,7 +123,7 @@ export default defineComponent({
     const text = computed(() => {
       const { column, record } = props;
 
-      return getText(column, record)?.toString() ?? undefined;
+      return getText(column, record) ?? undefined;
     });
 
     // 判断是否需要在单元格上显示 title。
