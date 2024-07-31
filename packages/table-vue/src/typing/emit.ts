@@ -1,4 +1,4 @@
-import type { FilterState, RowData, RowKey, SorterState } from "@scode/table-typing";
+import type { FilterState, RawData, RowData, RowKey, SorterState } from "@scode/table-typing";
 
 export interface PaginationOption {
   page: number,
@@ -13,7 +13,7 @@ export interface ChangeOption {
 
   sorter?: SorterState[];
 
-  currentDataSource: RowData[];
+  currentDataSource: RawData[];
 }
 
 export type TableEmit = {

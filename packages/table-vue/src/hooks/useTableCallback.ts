@@ -40,7 +40,7 @@ export function useProvideTableCallback(option: ITableCallbackOption) {
       pagination: _option,
       filters: filter_states,
       sorter: sorter_states,
-      currentDataSource: row_state.get_raw_row_datas(),
+      currentDataSource: row_state.get_raw_raw_datas(),
     });
   }
 

@@ -69,9 +69,7 @@ const data_source_length = computed(() => data_source.value.length.toLocaleStrin
 
 const children = Array(100).fill(null).map(createItem) as any[];
 
-Array(1000).fill(null).forEach((_, index) => {
-  data_source.value[index].children = children
-})
+data_source.value[10].children = children
 
 setTimeout(() => {
   pagination.total = data_source.value.length;
@@ -143,8 +141,8 @@ const columns = ref<TableColumn[]>([
     title: "操作",
     fixed: 'right',
     ellipsis: { showTooltip: true },
-    customRender() {
-      return h('button', "按钮")
+    customRender({ record }) {
+      return h('button', { onClick: () => record.d = 123 }, "按钮")
     }
   },
 ]);

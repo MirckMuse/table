@@ -17,7 +17,8 @@ export type RowData = RawData & {
 
 export type RowDataMeta = {
   key: RowKey,
-  data: RowData
+
+  data: RawData
 }
 
 // 行 key
@@ -26,7 +27,7 @@ export type RowKey = string | number;
 // 列 key
 export type ColKey = string;
 
-export type GetRowKey = (rowData: RowData, rowIndex?: number) => RowKey;
+export type GetRowKey = (rawData: RawData, rowIndex?: number) => RowKey;
 
 export type TableColumnAlign = 'left' | 'right' | 'center';
 
@@ -34,7 +35,7 @@ export type TableColumnFixed = 'left' | 'right';
 
 export type TableColumnTitle = string | (() => unknown);
 
-export type TableColumnSorter = boolean | ((a: RowData, b: RowData) => number);
+export type TableColumnSorter = boolean | ((a: RawData, b: RawData) => number);
 
 export enum SorterDirection {
   Ascend = 'ascend',
@@ -72,7 +73,7 @@ export interface CustomRenderOption extends CustomOption {
 export type CustomRender = (option: CustomRenderOption) => CustomRenderResult | CustomRenderResult[] | undefined | void;
 
 interface CustomOption {
-  record: RowData;
+  record: RawData;
 
   index: number;
 
@@ -133,7 +134,7 @@ export interface TableColumnFilter {
 
   options?: TableColumnFilterOption[];
 
-  onFilter?: (search: string, row: RowData) => boolean;
+  onFilter?: (search: string, row: RawData) => boolean;
 
   onOpenChange?: (visible: boolean) => void;
 
@@ -145,7 +146,7 @@ export interface TableColumnFilter {
 /**
  * 表格列配置，key 和dataIndex 至少有一个必填
  */
-export interface TableColumn<T = RowData> {
+export interface TableColumn<T = RawData> {
   key?: ColKey;
 
   dataIndex?: string;

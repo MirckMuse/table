@@ -1,5 +1,4 @@
 import type { FilterState, RowData, RowKey, TableColumn } from "@scode/table-typing";
-import { toRaw } from "vue";
 
 type TableColumnOrNull = TableColumn | null;
 
@@ -17,32 +16,46 @@ export class TableFilterState {
     this.get_row_data_by_row_key = option.get_row_data_by_row_key;
   }
 
-  get_filtered_row_data_metas(row_keys: RowKey[], filter_states: FilterState[]): RowKey[] {
+  get_filtered_row_data_metas(row_datas: RowData[], filter_states: FilterState[]): RowKey[] {
+    // TODO: 需要考虑怎么同级排序
     if (!filter_states.length) {
-      return row_keys;
+      return row_datas.map(row_data => row_data.__SCode_Row_Key__);
     }
 
     const new_sorter_states = filter_states.map(state => {
-      return Object.assign({}, state, { column: this.get_column_by_filter_state(state) })
+      const filter_keys = state.filter_keys?.map(key => String(key));
+      const column = this.get_column_by_filter_state(state)
+
+      return Object.assign(
+        {},
+        state,
+        {
+          column: this.get_column_by_filter_state(state),
+          filter_keys: filter_keys,
+          need_filter: filter_keys?.length && column?.filter?.onFilter
+        }
+      )
     });
 
     return new_sorter_states
-      .reduce<RowKey[]>((filteredRowKeys, filterState) => {
-        const { filter_keys, column } = filterState;
+      .reduce<RowData[]>((filteredRowDatas, filterState) => {
+        if (filterState.need_filter) {
+          const { filter_keys, column } = filterState;
 
-        const onFilter = column?.filter?.onFilter;
+          const onFilter = column?.filter?.onFilter;
 
-        if (filter_keys?.length && onFilter) {
-          return filteredRowKeys.filter((row_key) => filter_keys.some((key) => {
-            const row_data = toRaw(this.get_row_data_by_row_key(row_key));
-            if (!row_data) {
-              return false;
-            }
-            return onFilter(String(key), row_data);
-          }));
+          return filteredRowDatas.filter((row_data) => {
+            return filter_keys!.some((key) => {
+              const raw_data = row_data.__SCode_Origin_Data__;
+              if (!raw_data) {
+                return false;
+              }
+              return onFilter!(key as string, raw_data);
+            })
+          });
         }
 
-        return filteredRowKeys;
-      }, row_keys)
+        return filteredRowDatas;
+      }, row_datas).map(data => data.__SCode_Row_Key__);
   }
 }

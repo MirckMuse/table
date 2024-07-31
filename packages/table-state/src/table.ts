@@ -304,52 +304,6 @@ export class TableState {
 
   // 更新展开列
   update_expanded_row_keys(expanded_row_keys: RowKey[]) {
-    const row_state = this.row_state;
-    const sorter_state = this.sorter_state;
-
-    // 获取行的深度, 用作排序
-    const get_row_deep = (row_key: RowKey) =>
-      row_state.get_meta_by_row_key(row_key)?.deep ?? -1;
-
-    // 获取排序后的的 rowKey，确保子数据一定在父数据之后
-    const sortedExpandedRowKeysByDeep = expanded_row_keys.sort(
-      (prev, next) => get_row_deep(prev) - get_row_deep(next),
-    );
-
-    const expandedRowKeySet = new Set<RowKey>(sortedExpandedRowKeysByDeep);
-
-    // 将展开的子数据生成 state 塞入 center。
-    while (expandedRowKeySet.size) {
-      const row_key = Array.from(expandedRowKeySet).find((row_key) =>
-        row_state.get_row_data_by_row_key(row_key),
-      ); // TODO: 每次都要转换成数据，可以考虑优化
-
-      if (!isNil(row_key)) {
-        expandedRowKeySet.delete(row_key);
-
-        const row_data = row_state.get_row_data_by_row_key(row_key);
-
-        if (row_data) {
-          const children = this.get_row_data_children(row_data) ?? [];
-
-          if (children.length) {
-            children.forEach((row, row_index) => {
-              const row_meta = row_state.insert_row_meta(
-                row,
-                row_index,
-                row_data,
-              );
-
-              sorter_state.update_sorter_meta(
-                { key: row_meta.key, data: toRaw(row_data) },
-                this.get_last_column_with_col_key(),
-              );
-            });
-          }
-        }
-      }
-    }
-
     // 最后才更新展开列
     this.expandedRowKeys = expanded_row_keys;
     this.update_flatten_row_keys_by_expanded_row_keys();
@@ -374,64 +328,64 @@ export class TableState {
 
   private get_flatten_row_keys_by_expanded_row_keys(
     expanded_row_keys: RowKey[],
-  ) {
+    is_key = true,
+  ): (RowKey | RowData)[] {
     const row_state = this.row_state;
 
-    // // 获取行的排序权重
-    const _get_row_sort = (row_key: RowKey) =>
-      row_state.get_meta_by_row_key(row_key)?.sort ?? "";
+    if (!expanded_row_keys.length) {
+      return is_key ? row_state.get_raw_row_keys() : row_state.get_raw_row_datas();
+    }
 
-    const sortedExpandedRowKeys = expanded_row_keys.sort((prev, next) =>
-      rowKeyCompare(_get_row_sort(prev), _get_row_sort(next)),
-    );
+    const expanded_row_keys_set = new Set(expanded_row_keys);
 
-    const newflattenRowKeys: RowKey[] = [];
-    let children_row_keys: RowKey[] = [];
-    let _rawRowIndex = 0;
-    let _expandRowIndedx = 0;
+    const _raw_flatten_row_datas = row_state.get_raw_flatten_row_datas();
 
-    const rawRowKeys = row_state.get_raw_row_keys();
+    const newflattenRowKeys: (RowKey | RowData)[] = [];
 
-    while (_rawRowIndex < rawRowKeys.length || children_row_keys.length) {
-      const top_children_row_key = children_row_keys.shift();
+    for (let i = 0; i < _raw_flatten_row_datas.length; i++) {
+      const row_data = _raw_flatten_row_datas[i];
 
-      const row_key = top_children_row_key || rawRowKeys[_rawRowIndex];
+      if (row_data) {
+        const { __SCode_Expand_Keys__, __SCode_Row_Key__ } = row_data;
 
-      if (!top_children_row_key) {
-        _rawRowIndex++;
-      }
-
-      if (row_key === sortedExpandedRowKeys[_expandRowIndedx]) {
-        _expandRowIndedx++;
-
-        children_row_keys = [
-          ...this.memoize_get_children_row_keys(row_key),
-          ...children_row_keys,
-        ];
-      }
-      if (row_key) {
-        newflattenRowKeys.push(row_key);
+        if (__SCode_Expand_Keys__?.every(key => expanded_row_keys_set.has(key))) {
+          newflattenRowKeys.push(is_key ? __SCode_Row_Key__ : row_data);
+        }
       }
     }
+
     return newflattenRowKeys;
   }
 
-  private memoize_get_flatten_row_keys_by_expanded_row_keys = memoize(
-    this.get_flatten_row_keys_by_expanded_row_keys,
-    (expanded_row_keys: RowKey[]) => expanded_row_keys.join("--&&--"),
-  );
-
   clear_memoize() {
-    this.memoize_get_flatten_row_keys_by_expanded_row_keys.cache.clear?.();
     this.memoize_get_children_row_keys.cache.clear?.();
   }
 
   // 更新展开后的行数据
   private update_flatten_row_keys_by_expanded_row_keys() {
-    const newflattenRowKeys =
-      this.memoize_get_flatten_row_keys_by_expanded_row_keys(
-        this.expandedRowKeys,
-      );
+
+    const raw_flatten_row_datas = this.row_state.get_raw_flatten_row_datas();
+
+    const newflattenRowKeys: RowKey[] = [];
+
+    const set = new Set(this.expandedRowKeys);
+
+    const start = performance.now();
+
+    for (let i = 0; i < raw_flatten_row_datas.length; i++) {
+      const row_data = raw_flatten_row_datas[i];
+
+      const {
+        __SCode_Expand_Keys__,
+        __SCode_Row_Key__
+      } = row_data || {};
+
+      if (!__SCode_Expand_Keys__ || __SCode_Expand_Keys__.every(key => set.has(key))) {
+        newflattenRowKeys.push(__SCode_Row_Key__)
+      }
+    }
+
+    console.log('update_flatten_row_keys_by_expanded_row_keys', performance.now() - start);
 
     this.flatten_row_keys = newflattenRowKeys;
 
@@ -499,31 +453,30 @@ export class TableState {
     };
 
     if (!filter_states.length) {
-      this.flatten_row_keys =
-        this.memoize_get_flatten_row_keys_by_expanded_row_keys(
-          this.expandedRowKeys,
-        );
+      this.flatten_row_keys = this.get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys) as RowKey[];
       _update_y();
       return;
     }
 
-    const flatten_row_keys =
-      this.memoize_get_flatten_row_keys_by_expanded_row_keys(
-        this.expandedRowKeys,
-      );
+    const flatten_row_datas = this.get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys, false) as RowData[];
 
+
+    console.time('get_filtered_row_data_metas');
     const filtered_flatten_row_keys =
       this.filter_state.get_filtered_row_data_metas(
-        flatten_row_keys,
+        flatten_row_datas,
         this.filter_states,
       );
 
-    const row_keys = this.sorter_state.get_sorted_row_data_metas(
+    console.timeEnd('get_filtered_row_data_metas');
+
+
+    console.time('get_sorted_row_data_metas');
+    this.flatten_row_keys = this.sorter_state.get_sorted_row_data_metas(
       filtered_flatten_row_keys,
       this.sorter_states,
     );
-
-    this.flatten_row_keys = row_keys;
+    console.timeEnd('get_sorted_row_data_metas');
 
     _update_y();
   }
@@ -543,25 +496,25 @@ export class TableState {
     };
 
     if (!sorter_states.length) {
-      this.flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
+      this.flatten_row_keys = this.get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys) as RowKey[];
       _update_y();
       return;
     }
 
-    const flatten_row_keys = this.memoize_get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys);
+    const flatten_row_datas = this.get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys, false) as RowData[];
 
     const filtered_flatten_row_keys =
       this.filter_state.get_filtered_row_data_metas(
-        flatten_row_keys,
+        flatten_row_datas,
         this.filter_states,
       );
 
-    const row_keys = this.sorter_state.get_sorted_row_data_metas(
+    const sortered_flatten_row_keys = this.sorter_state.get_sorted_row_data_metas(
       filtered_flatten_row_keys,
       this.sorter_states,
     );
 
-    this.flatten_row_keys = row_keys;
+    this.flatten_row_keys = sortered_flatten_row_keys;
 
     _update_y();
   }
@@ -575,22 +528,23 @@ export class TableState {
 
   // 最后扁平后的数据
   flatten_row_keys: RowKey[] = [];
-  flatten_row_heights = new Uint16Array();
+  flatten_row_heights: number[] = [];
   flatten_row_y: number[] = [];
   flatten_row_key_map_index = new Map();
 
   private reset_flatten_row_y() {
-    if (this.row_state.is_fixed_row_height()) {
-      this.viewport.set_content_height(
-        this.flatten_row_keys.length * this.row_state.get_row_height(),
-      );
+    const row_state = this.row_state;
+
+    if (row_state.is_fixed_row_height()) {
+      this.viewport.set_content_height(this.flatten_row_keys.length * row_state.get_row_height());
       return;
     }
 
     let y = 0;
     let flatten_row_y: number[] = [];
-    this.flatten_row_heights.forEach((height, index) => {
-      flatten_row_y[index] = y;
+
+    this.flatten_row_heights.forEach((height) => {
+      flatten_row_y.push(y);
       y += height;
     });
 
@@ -628,7 +582,7 @@ export class TableState {
     const is_fixed_row_height = this.row_state.is_fixed_row_height();
 
     const map = new Map();
-    const flatten_row_heights = new Uint16Array(flatten_row_keys.length);
+    const flatten_row_heights: number[] = [];
 
     const _process = is_fixed_row_height
       ? (index: number) => {
@@ -638,8 +592,7 @@ export class TableState {
       : (index: number) => {
         const row_key = flatten_row_keys[index];
         map.set(row_key, index);
-        flatten_row_heights[index] =
-          row_state.memoize_get_row_height_by_row_key(row_key);
+        flatten_row_heights.push(row_state.memoize_get_row_height_by_row_key(row_key));
       };
 
     for (let index = 0; index < flatten_row_keys.length; index++) {
@@ -678,57 +631,27 @@ export class TableState {
   // 更新行数据
   update_row_datas(row_datas: RowData[]) {
     this.clear_memoize();
+    console.time('update_row_datas');
+    this.row_state.update_row_datas(row_datas);
 
-    let row_datas_length = row_datas.length;
+    // 先初始化一个内容高度，确保内容
+    this.viewport.set_content_height(row_datas.length * this.row_state.get_row_height());
+
+    // TODO:
+    this.sorter_state.init_sorter_metas(
+      this.row_state.get_raw_flatten_row_datas(),
+      this.get_last_column_with_col_key(),
+    );
 
     // 默认展开所有行
     if (this.default_expand_all_rows) {
-      let i = 0;
-      const _loop = (row_datas: RowData[]): RowKey[] => {
-        const keys: RowKey[] = [];
-
-        row_datas.forEach((row_data, index) => {
-          i++;
-          const children = this.get_row_data_children(row_data);
-          if (children?.length) {
-
-            this.expandedRowKeys.push(this.row_state.get_row_key(row_data, index));
-
-            _loop(children);
-          }
-        })
-
-        return keys;
-      }
-      this.expandedRowKeys = _loop(row_datas);
-      row_datas_length = i;
-    }
-
-    // FIXME: 分页情况下可能有问题，主要发生问题的地方是不定高度。
-    this.viewport.set_content_height(
-      row_datas_length * this.row_state.get_row_height(),
-    );
-
-    const done_callback = () => {
-      const raw_row_keys = toRaw(this.row_state.get_raw_row_keys());
-      this.flatten_row_keys = ([] as RowKey[]).concat(raw_row_keys);
-      this.update_flatten(this.flatten_row_keys);
-      this.reset_flatten_row_y();
-    };
-
-    this.row_state.update_row_datas(row_datas, this.expandedRowKeys, () => {
-      done_callback();
-
-      this.memoize_get_flatten_row_keys_by_expanded_row_keys([]);
-      this.sorter_state.init_sorter_metas(
-        this.row_state.get_all_row_data_meta(),
-        this.get_last_column_with_col_key(),
-      );
-    });
-
-    if (this.default_expand_all_rows) {
       this.expandedRowKeys = this.row_state.get_all_expand_keys();
     }
+
+    this.flatten_row_keys = this.get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys || []) as RowKey[];
+    this.update_flatten(this.flatten_row_keys);
+    this.reset_flatten_row_y();
+    console.timeEnd('update_row_datas');
   }
 
   // 更新行的原数据
@@ -797,7 +720,7 @@ export class TableState {
           flatten_row_keys[row_index],
         );
         if (rowData) {
-          result.push(rowData);
+          result.push(rowData.__SCode_Origin_Data__);
         }
         return result;
       }, []);
@@ -915,8 +838,14 @@ export class TableState {
       ? this.pre_row.from_y -
       flatten_row_y[(this.pagination.page - 1) * this.pagination.size]
       : this.pre_row.from_y;
-
     return this.get_row_datas_by_pre_row(this.pre_row!, flatten_row_keys);
+  }
+
+  // 展示的行数据集
+  private display_row_datas: RowData[];
+
+  get_display_row_datas() {
+    return this.display_row_datas;
   }
 }
 

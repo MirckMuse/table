@@ -1,4 +1,4 @@
-import type { ColKey, RowDataMeta, RowKey } from "@scode/table-typing";
+import type { ColKey, RowData, RowKey } from "@scode/table-typing";
 
 type META = { col_key: ColKey, dataIndex?: string, sorter: boolean };
 
@@ -12,14 +12,18 @@ type ColOrderMap = Map<ColKey, number>;
 type OrderMap = Map<RowKey, ColOrderMap>;
 
 // 更新 order map。
-function update_order_map(row_data_meta: RowDataMeta, columns: META[], orderMap: OrderMap) {
-  const _map = orderMap.get(row_data_meta.key) ?? new Map<ColKey, number>();
+function update_order_map(row_data: RowData, columns: META[], orderMap: OrderMap) {
+  const row_key = row_data.__SCode_Row_Key__;
+
+  const _map = orderMap.get(row_key) ?? new Map<ColKey, number>();
 
   for (const column of columns) {
     const { col_key, dataIndex } = column;
 
+    const raw_data = row_data.__SCode_Origin_Data__
+
     const value = dataIndex
-      ? row_data_meta.data[dataIndex] ?? 0
+      ? raw_data[dataIndex] ?? 0
       : -Infinity;
 
     if (isNil(value)) {
@@ -33,10 +37,10 @@ function update_order_map(row_data_meta: RowDataMeta, columns: META[], orderMap:
     }
   }
 
-  orderMap.set(row_data_meta.key, _map);
+  orderMap.set(row_key, _map);
 }
 
-function init(row_data_metas: RowDataMeta[], last_column: META[]) {
+function init(row_data_metas: RowData[], last_column: META[]) {
   const map: OrderMap = new Map();
 
   const sorter_columns = last_column.filter(column => column.sorter);
@@ -50,7 +54,7 @@ function init(row_data_metas: RowDataMeta[], last_column: META[]) {
 
 self.onmessage = ($event: MessageEvent) => {
 
-  const { metas, columns } = $event.data as { metas: RowDataMeta[], columns: META[] };
+  const { metas, columns } = $event.data as { metas: RowData[], columns: META[] };
 
   const result = init(metas, columns);
 

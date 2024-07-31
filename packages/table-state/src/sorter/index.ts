@@ -1,4 +1,4 @@
-import type { ColKey, RowDataMeta, RowKey, SorterState, TableColumn } from "@scode/table-typing";
+import type { ColKey, RowData, RowDataMeta, RowKey, SorterState, TableColumn } from "@scode/table-typing";
 import { SorterDirection } from "@scode/table-typing";
 import { get, memoize } from "lodash-es";
 import SorterWorkder from "./worker?worker";
@@ -30,12 +30,8 @@ export class TableSorterState {
     return 0;
   })
 
-  worker: Worker;
-
   constructor(option: TableSorterStateOption) {
     this.get_column_by_sorter_state = option.get_column_by_sorter_state;
-
-    this.worker = new SorterWorkder();
   }
 
   get_sorted_row_data_metas(row_keys: RowKey[], sorter_states: SorterState[]): RowKey[] {
@@ -50,6 +46,7 @@ export class TableSorterState {
     const get_order = memoize((row_key: RowKey, col_key: ColKey) => this.get_order_map(row_key).get(col_key) ?? -Infinity);
 
     return row_keys.sort((prev, next) => {
+
       for (const state of new_sorter_states) {
         const prev_order = get_order(prev, state.col_key);
         const next_order = get_order(next, state.col_key);
@@ -69,16 +66,16 @@ export class TableSorterState {
   }
 
   // 初始化排序的元信息。
-  init_sorter_metas(row_data_metas: RowDataMeta[], last_column: (TableColumn & { col_key: ColKey })[]) {
-    this.worker.terminate();
-    this.worker = new SorterWorkder();
+  init_sorter_metas(row_data: RowData[], last_column: (TableColumn & { col_key: ColKey })[]) {
+    const worker = new SorterWorkder();
 
     return new Promise<void>((resolve) => {
-      this.worker.postMessage({
-        metas: row_data_metas,
+      worker.postMessage({
+        metas: row_data,
         columns: last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))
-      })
-      this.worker.onmessage = ($event: MessageEvent) => {
+      });
+
+      worker.onmessage = ($event: MessageEvent) => {
         this.meta = $event.data;
         resolve()
       }

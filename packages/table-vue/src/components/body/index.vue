@@ -1,56 +1,19 @@
 <template>
-  <div
-    v-resize:height
-    ref="bodyRef"
-    class="s-table-body"
-    :class="bodyClass"
-    :style="bodyStyle"
-  >
-    <div
-      class="s-table-body__inner"
-      ref="bodyInnerRef"
-      @mouseover="handleMouseenter"
-      @mouseout="handleMouseleave"
-    >
+  <div v-resize:height ref="bodyRef" class="s-table-body" :class="bodyClass" :style="bodyStyle">
+    <div class="s-table-body__inner" ref="bodyInnerRef" @mouseover="handleMouseenter" @mouseout="handleMouseleave">
       <template v-if="!isEmpty">
-        <div
-          v-if="leftColumnsVisible"
-          ref="bodyLeftRef"
-          class="s-table-body__inner-fixedLeft s-table-fixedLeft"
-          :class="{ shadow: scroll.left > 0 }"
-          :style="leftStyle"
-        >
-          <body-rows
-            :grid="leftGrid"
-            :columns="leftColumns"
-            v-bind="commonRowProps"
-          />
+        <div v-if="leftColumnsVisible" ref="bodyLeftRef" class="s-table-body__inner-fixedLeft s-table-fixedLeft"
+          :class="{ shadow: scroll.left > 0 }" :style="leftStyle">
+          <body-rows :grid="leftGrid" :columns="leftColumns" v-bind="commonRowProps" />
         </div>
 
-        <div
-          ref="bodyCenterRef"
-          class="s-table-body__inner-center"
-          :style="centerStyle"
-        >
-          <body-rows
-            :grid="centerGrid"
-            :columns="centerColumns"
-            v-bind="commonRowProps"
-          />
+        <div ref="bodyCenterRef" class="s-table-body__inner-center" :style="centerStyle">
+          <body-rows :grid="centerGrid" :columns="centerColumns" v-bind="commonRowProps" />
         </div>
 
-        <div
-          v-if="rightColumnsVisible"
-          ref="bodyRightRef"
-          class="s-table-body__inner-fixedRight s-table-fixedRight"
-          :class="{ shadow: scroll.left < maxXMove }"
-          :style="rightStyle"
-        >
-          <body-rows
-            :grid="rightGrid"
-            :columns="rightColumns"
-            v-bind="commonRowProps"
-          />
+        <div v-if="rightColumnsVisible" ref="bodyRightRef" class="s-table-body__inner-fixedRight s-table-fixedRight"
+          :class="{ shadow: scroll.left < maxXMove }" :style="rightStyle">
+          <body-rows :grid="rightGrid" :columns="rightColumns" v-bind="commonRowProps" />
         </div>
       </template>
 
@@ -59,22 +22,12 @@
       </div>
     </div>
 
-    <Scrollbar
-      v-if="!isEmpty"
-      :state="scrollState"
-      :client="viewport.get_height()"
-      :content="viewport.get_content_height()"
-      v-model:scroll="scroll.top"
-      :is-vertical="true"
-      @update:scroll="handleVerticalScrollChange"
-    />
+    <Scrollbar v-if="!isEmpty" :state="scrollState" :client="viewport.get_height()"
+      :content="viewport.get_content_height()" v-model:scroll="scroll.top" :is-vertical="true"
+      @update:scroll="handleVerticalScrollChange" />
 
-    <Scrollbar
-      :state="scrollState"
-      :client="viewport.get_width()"
-      :content="viewport.get_content_width()"
-      v-model:scroll="scroll.left"
-    />
+    <Scrollbar :state="scrollState" :client="viewport.get_width()" :content="viewport.get_content_width()"
+      v-model:scroll="scroll.left" />
   </div>
 </template>
 
@@ -171,7 +124,7 @@ export default defineComponent({
     }
 
     const leftColumns = computed(() =>
-      _map2Columns(tableState.value.last_left_col_keys),
+      _map2Columns(tableState.value?.last_left_col_keys),
     );
 
     const leftWidth = computed(() => {
@@ -468,11 +421,11 @@ export default defineComponent({
 <style lang="less">
 .s-table-body {
   &__scrollbar-hover {
-    &:hover > .s-table-scroll__track {
+    &:hover>.s-table-scroll__track {
       opacity: 1;
     }
 
-    > .s-table-scroll__track {
+    >.s-table-scroll__track {
       opacity: 0;
       transition: opacity 0.16s cubic-bezier(0, 0.5, 1, 0.5);
     }

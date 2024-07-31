@@ -111,6 +111,7 @@ export function useRowExpand(option: IRowExpandOption) {
   return {
     expandedKeys: mergedExpandedKeys,
     handleRowExpand,
+    internalExpandedKeys
   };
 }
 
@@ -122,14 +123,14 @@ export function useStateProvide({
 }: IStateOption) {
   const interalSlots = Object.assign({}, slots ?? {}) as InteralTableSlot;
 
-  const getRowKey = computed(() => {
+  const getRowKey = computed<GetRowKey | undefined>(() => {
     const rowKey = props.rowKey;
 
     if (!rowKey) return;
 
     if (typeof rowKey === "function") return rowKey;
 
-    return (record: RowData) => record[rowKey] as RowKey;
+    return ((record: RowData) => record[rowKey] as RowKey) as GetRowKey;
   });
 
   function createTableState(): TableState {
@@ -178,6 +179,28 @@ export function useStateProvide({
 
   const state: Ref<UnwrapRef<TableState>> = ref(createTableState());
 
+  // 处理展开逻辑
+  const { handleRowExpand, expandedKeys, internalExpandedKeys } = useRowExpand({
+    tableProps: props,
+    getRowKey(record) {
+      return state.value.row_state.get_meta_by_row_data(record)?.key ?? -1;
+    },
+    afterHandleRowExpand(expanded, record, expandedRows) {
+      // 传递事件
+      emit("expand", expanded, record);
+      emit("update:expandedRowKeys", expandedRows);
+      emit("expandedRowsChange", expandedRows);
+      console.time("update_expanded_row_keys");
+      state.value.update_expanded_row_keys(expandedRows);
+      console.timeEnd("update_expanded_row_keys");
+      callback.updateViewportDataSource?.();
+    },
+  });
+
+  if (state.value.expandedRowKeys.length) {
+    internalExpandedKeys.value = state.value.expandedRowKeys;
+  }
+
   const existNestDataSource = computed(
     () =>
       props.dataSource?.some((item) => {
@@ -185,15 +208,6 @@ export function useStateProvide({
 
         return Array.isArray(children) && children.length;
       }) ?? false,
-  );
-
-  watch(
-    () => props.dataSource ?? [],
-    (dataSource) => {
-      state.value.update_row_datas(dataSource);
-
-      animationUpdate();
-    },
   );
 
   let userSelectState = {
@@ -247,24 +261,6 @@ export function useStateProvide({
     updateViewportDataSource: () => { },
   };
 
-  // 处理展开逻辑
-  const { handleRowExpand, expandedKeys } = useRowExpand({
-    tableProps: props,
-    getRowKey(record) {
-      return state.value.row_state.get_meta_by_row_data(record)?.key ?? -1;
-    },
-    afterHandleRowExpand(expanded, record, expandedRows) {
-      // 传递事件
-      emit("expand", expanded, record);
-      emit("update:expandedRowKeys", expandedRows);
-      emit("expandedRowsChange", expandedRows);
-      console.time("update_expanded_row_keys");
-      state.value.update_expanded_row_keys(expandedRows);
-      console.timeEnd("update_expanded_row_keys");
-      callback.updateViewportDataSource?.();
-    },
-  });
-
   // 向下注入数据
   provide(TableStateKey, {
     tableState: state as Ref<TableState>,
@@ -285,6 +281,15 @@ export function useStateProvide({
     callback,
   });
 
+  watch(
+    () => props.dataSource ?? [],
+    (dataSource) => {
+      state.value.update_row_datas(dataSource);
+      internalExpandedKeys.value = state.value.expandedRowKeys;
+      animationUpdate();
+    },
+  );
+
   return {
     table_state: state
   }
@@ -292,7 +297,7 @@ export function useStateProvide({
 
 export function useStateInject() {
   return inject(TableStateKey, {
-    tableState: ref(),
+    tableState: ref<any>(new TableState({})),
     slots: {} as InteralTableSlot,
     tableProps: {},
     getRowKey: computed(

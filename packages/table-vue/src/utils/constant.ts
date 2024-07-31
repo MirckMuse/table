@@ -42,6 +42,5 @@ export const renderExpandIcon: ExpandIconSlot = ({
     expandClass.push(ExpandIconPrefixClass + "__shrink")
   }
 
-
   return h('span', { class: expandClass, onClick: handleExpandIconClick }, h(expandIcon))
 }
