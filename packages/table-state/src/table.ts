@@ -40,6 +40,8 @@ export interface TableStateOption {
   row_children_name?: string;
 
   default_expand_all_rows?: boolean;
+
+  default_expand_row_keys?: RowKey[];
 }
 
 export type HoverState = {
@@ -94,11 +96,14 @@ export class TableState {
 
   // 是否展开所有行。
   default_expand_all_rows: boolean;
+  // 默认展开的行
+  default_expand_row_keys: RowKey[];
 
   // ============ 初始化相关函数 ===============
   private before_init(option: TableStateOption) {
     this.row_children_name = option.row_children_name ?? "children";
     this.default_expand_all_rows = option.default_expand_all_rows ?? false;
+    this.default_expand_row_keys = option.default_expand_row_keys ?? [];
     if (option.pagination) {
       const { page, size, total } = option.pagination;
       this.pagination = new TablePagination(page, size, total);
@@ -579,7 +584,7 @@ export class TableState {
   private update_flatten(flatten_row_keys: RowKey[]) {
     const row_state = this.row_state;
 
-    const is_fixed_row_height = this.row_state.is_fixed_row_height();
+    const is_fixed_row_height = row_state.is_fixed_row_height();
 
     const map = new Map();
     const flatten_row_heights: number[] = [];
@@ -592,12 +597,14 @@ export class TableState {
       : (index: number) => {
         const row_key = flatten_row_keys[index];
         map.set(row_key, index);
-        flatten_row_heights.push(row_state.memoize_get_row_height_by_row_key(row_key));
+        flatten_row_heights.push(row_state.get_row_height_by_row_key(row_key));
       };
 
+    console.time('update_flatten for')
     for (let index = 0; index < flatten_row_keys.length; index++) {
       _process(index);
     }
+    console.timeEnd('update_flatten for')
 
     this.flatten_row_key_map_index = map;
     if (!is_fixed_row_height) {
@@ -630,14 +637,16 @@ export class TableState {
 
   // 更新行数据
   update_row_datas(row_datas: RowData[]) {
-    this.clear_memoize();
     console.time('update_row_datas');
+
+    this.clear_memoize();
     this.row_state.update_row_datas(row_datas);
 
     // 先初始化一个内容高度，确保内容
     this.viewport.set_content_height(row_datas.length * this.row_state.get_row_height());
 
-    // TODO:
+    // TODO: 可能需要整理一下筛选项目
+
     this.sorter_state.init_sorter_metas(
       this.row_state.get_raw_flatten_row_datas(),
       this.get_last_column_with_col_key(),
@@ -646,10 +655,15 @@ export class TableState {
     // 默认展开所有行
     if (this.default_expand_all_rows) {
       this.expandedRowKeys = this.row_state.get_all_expand_keys();
+    } else if (this.default_expand_row_keys.length) {
+      this.expandedRowKeys = this.default_expand_row_keys;
     }
 
     this.flatten_row_keys = this.get_flatten_row_keys_by_expanded_row_keys(this.expandedRowKeys || []) as RowKey[];
+
+
     this.update_flatten(this.flatten_row_keys);
+
     this.reset_flatten_row_y();
     console.timeEnd('update_row_datas');
   }

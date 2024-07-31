@@ -3,7 +3,7 @@
     <h1>数据量:{{ data_source_length }}</h1>
     <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 600 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
-      :pagination="false" :defaultExpandAllRows="true">
+      :pagination="false" :defaultExpandedRowKeys="['uuid11']">
       <template v-slot:bodyCell="{ text, column }">
         <span v-if="column.dataIndex === 'a'">{{ text + "011123" }}</span>
       </template>

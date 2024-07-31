@@ -163,6 +163,7 @@ export function useStateProvide({
       childrenColumnName,
       rowChildrenName,
       defaultExpandAllRows,
+      defaultExpandedRowKeys
     } = props;
 
     return new TableState({
@@ -173,6 +174,7 @@ export function useStateProvide({
       col_children_name: childrenColumnName,
       row_children_name: rowChildrenName,
       default_expand_all_rows: defaultExpandAllRows,
+      default_expand_row_keys: defaultExpandedRowKeys,
       pagination: pagination,
     });
   }

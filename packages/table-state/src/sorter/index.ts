@@ -67,18 +67,18 @@ export class TableSorterState {
 
   // 初始化排序的元信息。
   init_sorter_metas(row_data: RowData[], last_column: (TableColumn & { col_key: ColKey })[]) {
-    const worker = new SorterWorkder();
-
     return new Promise<void>((resolve) => {
-      worker.postMessage({
-        metas: row_data,
-        columns: last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))
-      });
-
-      worker.onmessage = ($event: MessageEvent) => {
-        this.meta = $event.data;
-        resolve()
-      }
+      setTimeout(() => {
+        const worker = new SorterWorkder();
+        worker.postMessage({
+          metas: row_data,
+          columns: last_column.map(column => ({ col_key: column.col_key, dataIndex: column.dataIndex, sorter: !!column.sorter }))
+        });
+        worker.onmessage = ($event: MessageEvent) => {
+          this.meta = $event.data;
+          resolve()
+        }
+      })
     })
   }
 

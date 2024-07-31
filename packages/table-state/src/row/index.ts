@@ -4,7 +4,6 @@ import type {
   RowData,
   RowKey
 } from "@scode/table-typing";
-import { memoize } from "lodash-es";
 import { toRaw } from "vue";
 
 export interface RowMeta {
@@ -35,8 +34,6 @@ export interface TableRowStateOption {
 }
 
 export class TableRowState {
-  memoize_get_row_height_by_row_key: any;
-
   is_fixed_row_height() {
     return this.fixed_row_height;
   }
@@ -50,11 +47,9 @@ export class TableRowState {
   }
 
   clear_memoize() {
-    this.memoize_get_row_height_by_row_key.cache.clear?.();
   }
 
   // ============= 新的方式 ============
-
   row_children_name = "children";
 
   // 原始行的 keys
@@ -116,7 +111,6 @@ export class TableRowState {
         const meta = this.get_meta_by_row_key(row_key);
         return meta?.height ?? this.rough_row_height;
       };
-    this.memoize_get_row_height_by_row_key = memoize(this.get_row_height_by_row_key);
   }
 
   get_row_height_by_row_key: (row_key: RowKey) => number;
@@ -256,9 +250,6 @@ export class TableRowState {
 
     meta.height = new_height;
     this.row_key_map_row_meta.set(row_key, meta);
-
-    // 更新行高的缓存
-    this.memoize_get_row_height_by_row_key.cache.set(row_key, new_height);
   }
 
   update_row_height_by_row_key(row_key: RowKey, new_height: number) {
