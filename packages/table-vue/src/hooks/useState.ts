@@ -179,7 +179,7 @@ export function useStateProvide({
 
   const state: Ref<UnwrapRef<TableState>> = ref(createTableState());
 
-  function internalGetRowKey(record: RawData, row_index: number): RowKey {
+  function internalGetRowKey(record: RawData, row_index?: number): RowKey {
     return state.value.row_state.get_row_key(record, row_index);
   }
 

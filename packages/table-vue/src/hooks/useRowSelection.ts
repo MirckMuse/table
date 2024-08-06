@@ -4,6 +4,7 @@ import type { GetRowKey, InternalTableRowSelection, Option, RawData, RowKey, Tab
 import { getDFSLastColumns, noop } from "../utils";
 import type { CheckboxChangeEvent } from "ant-design-vue/es/checkbox/interface";
 import type { TableState } from "@scode/table-state";
+import { isObject } from "lodash-es";
 
 export const Default_Row_Selection: InternalTableRowSelection = {
   checkStrictly: true,
@@ -60,25 +61,30 @@ export function useRowSelection(tableProps: TableProps, option: { getRowKey: Get
 
   const selectedRawDatas: RawData[] = [];
 
-  const selectedRowKeysSet = new Set<RowKey>();
+  const selectedRowKeysSet = ref(new Set<RowKey>());
 
   function onChange(isChecked: boolean, record: RawData, row_key: RowKey) {
 
     if (isChecked) {
       selectedRawDatas.push(record);
-      selectedRowKeysSet.add(row_key);
-      internal_row_selection.value?.selectedRowKeys.push(row_key);
+      selectedRowKeysSet.value.add(row_key);
     } else {
-      selectedRowKeysSet.delete(row_key);
+      selectedRowKeysSet.value.delete(row_key);
       const matched_index = selectedRawDatas.findIndex(raw_data => raw_data === record);
       if (matched_index !== -1) {
         selectedRawDatas.splice(matched_index, 1);
       }
+    }
 
-      const matched_row_key_index = internal_row_selection.value?.selectedRowKeys.findIndex(_row_key => _row_key === row_key);
-      if (matched_row_key_index !== -1) {
-        internal_row_selection.value?.selectedRowKeys.splice(matched_index, 1);
+    // 修改配置项目里面的一些属性
+    const _internal_row_selection = internal_row_selection.value;
+    if (_internal_row_selection) {
+      const selectedRowKeys = Array.from(selectedRowKeysSet.value);
+      _internal_row_selection.selectedRowKeys = selectedRowKeys;
+      if (isObject(tableProps.rowSelection)) {
+        tableProps.rowSelection.selectedRowKeys = selectedRowKeys;
       }
+      _internal_row_selection.onChange(_internal_row_selection.selectedRowKeys, selectedRawDatas);
     }
   }
 
@@ -93,7 +99,7 @@ export function useRowSelection(tableProps: TableProps, option: { getRowKey: Get
         const row_key = option.getRowKey(record, index);
 
         return h(Checkbox, {
-          checked: selectedRowKeysSet.has(row_key),
+          checked: selectedRowKeysSet.value.has(row_key),
           onChange: ($event: CheckboxChangeEvent) => onChange($event.target.checked, record, row_key)
         })
       }

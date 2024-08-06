@@ -1,7 +1,7 @@
 <template>
   <div style="padding: 10px;">
     <h1>数据量:{{ data_source_length }}</h1>
-    <s-table :row-selection="true" :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 600 }"
+    <s-table :row-selection="rowSelection" :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 600 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
       :pagination="false" :defaultExpandedRowKeys="['uuid11']">
       <template v-slot:bodyCell="{ text, column }">
@@ -13,7 +13,7 @@
 
 <script lang="ts" setup>
 import { TableColumn } from "@scode/table-typing";
-import type { TransformCellText, TablePaginationProps } from "@scode/table-vue";
+import type { TransformCellText, TablePaginationProps, ITableRowSelection } from "@scode/table-vue";
 import { uniqueId } from "lodash-es";
 import { computed, h, reactive, ref } from "vue";
 
@@ -32,6 +32,13 @@ const pagination = reactive<TablePaginationProps>({
   current: 1,
   pageSize: 10,
   total: 0,
+})
+
+const rowSelection = ref<ITableRowSelection>({
+  selectedRowKeys:[],
+  onChange(){
+    console.log(rowSelection.value.selectedRowKeys)
+  }
 })
 
 function customRow(row: any, index: number) {
@@ -63,7 +70,7 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
 
 const data_source_length = computed(() => data_source.value.length.toLocaleString())
 
