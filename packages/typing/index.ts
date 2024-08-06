@@ -193,3 +193,5 @@ export interface TableColumn<T = RawData> {
 
   filter?: TableColumnFilter;
 }
+
+export type Option<T> = T | null;

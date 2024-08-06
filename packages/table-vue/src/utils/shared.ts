@@ -6,6 +6,7 @@ export function isNestColumn(column: TableColumn): boolean {
   return (column.children ?? []).length > 0;
 }
 
+// 深度遍历最后一行的数据
 export function getDFSLastColumns(columns: TableColumn[]): TableColumn[] {
   return columns.reduce<TableColumn[]>((cols, col) => {
     if (isNestColumn(col)) {

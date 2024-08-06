@@ -1,7 +1,8 @@
-import type { TableColumn, RowData, GetRowKey, RowKey, FilterState, SorterState } from "@scode/table-typing";
+import type { TableColumn, RowData, GetRowKey, RowKey, FilterState, SorterState, RawData, Option } from "@scode/table-typing";
 import type { TooltipProps } from "ant-design-vue";
 import type { PaginationOption } from "./emit";
 import type { ExpandedRowRender } from "./slot";
+import type { VNode } from "vue";
 
 // 插槽相关
 export * from "./slot";
@@ -94,10 +95,62 @@ export interface TableProps extends ITableProcessEvent {
   rowChildrenName?: string;
 
   custom?: ITableCustom;
+
+  rowSelection?: boolean | ITableRowSelection;
 }
 
 export interface ITableRender {
   expandedRowRender?: ExpandedRowRender,
+}
+
+export interface InternalTableRowSelection {
+  // 父子节点是否受控
+  checkStrictly: boolean;
+
+  columnTitle?: string | VNode | (() => Option<VNode>);
+
+  columnWidth: number;
+
+  // 是否固定，当存在有 fixed left 的列，自动为 true
+  fixed: boolean;
+
+  getCheckboxProps: (record: RawData) => any;
+
+  // 去掉全选和反选两个选项
+  hideDefaultSelections: boolean;
+
+  // 隐藏勾选框和自定义选择项
+  hideSelectAll: boolean;
+
+  // 数据不存在时仍然保留 key，主要是提供分页使用
+  preserveSelectedRowKeys: boolean;
+
+  // 选中的行 key
+  selectedRowKeys: RowKey[];
+
+  selections: boolean | ITableRowSelectionItem[];
+
+  type: "checkbox" | "radio";
+
+  onChange: (selectedRowKeys: RowKey[], selectedRow: RawData[]) => void;
+
+  onSelect: (selected: boolean, rowKey: RowKey, record: RawData, selectedRowKeys: RowKey[], selectedRows: RawData[]) => void;
+
+  onSelectAll: (selected: boolean, selectedRowKeys: RowKey[], selectedRows: RawData[], changeRows: RawData[]) => void;
+
+  onSelectInvert: (selectedRowKeys: RowKey[], selectedRows: RawData[]) => void;
+
+  onSelectNone: () => void;
+}
+
+export type ITableRowSelection = Partial<InternalTableRowSelection>;
+
+export interface ITableRowSelectionItem {
+  key: string;
+
+  text: string | VNode | (() => VNode);
+
+  onSelect: (changeableRowKeys: RowKey[], selectedRowKeys: RowKey[]) => void;
 }
 
 export interface ITableProcessEvent {

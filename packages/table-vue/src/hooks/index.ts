@@ -11,3 +11,7 @@ export * from "./useCellResize";
 export * from "./useCellTooltip";
 
 export * from "./useTableCallback";
+
+export * from "./useColumn";
+
+export * from "./useRowSelection";

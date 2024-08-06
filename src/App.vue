@@ -1,7 +1,7 @@
 <template>
   <div style="padding: 10px;">
     <h1>数据量:{{ data_source_length }}</h1>
-    <s-table :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 600 }"
+    <s-table :row-selection="true" :data-source="data_source" :columns="columns" :bordered="true" rowKey="id" :scroll="{ y: 600 }"
       :transform-cell-text="transformCellText" @resizeColumn="handleResizeColumn" :customRow="customRow"
       :pagination="false" :defaultExpandedRowKeys="['uuid11']">
       <template v-slot:bodyCell="{ text, column }">
@@ -63,7 +63,7 @@ function createItem(_: unknown, index: number) {
   }
 }
 
-const data_source = ref<any[]>(Array(100000).fill(null).map(createItem));
+const data_source = ref<any[]>(Array(100).fill(null).map(createItem));
 
 const data_source_length = computed(() => data_source.value.length.toLocaleString())
 

@@ -1,6 +1,7 @@
 import { TableState } from "@scode/table-state";
 import type {
   GetRowKey,
+  RawData,
   RowData,
   RowKey,
   TableColumn,
@@ -14,9 +15,12 @@ import type {
   TableProps,
   TableSlot,
 } from "../typing";
-import { getDFSLastColumns, noop } from "../utils/shared";
-import { useCellTooltip } from "./useCellTooltip";
 import { createLockedRequestAnimationFrame } from "../utils";
+import { noop } from "../utils/shared";
+import { useCellTooltip } from "./useCellTooltip";
+import { normalizeColumns } from "./useColumn";
+import { normalizePagination } from "./usePagination";
+import { useRowSelection } from "./useRowSelection";
 
 interface ITableContext {
   tableState: Ref<TableState>;
@@ -133,30 +137,24 @@ export function useStateProvide({
     return ((record: RowData) => record[rowKey] as RowKey) as GetRowKey;
   });
 
+  const { internal_row_selection, convertRowSelectionToColumn } = useRowSelection(props, {
+    getRowKey: internalGetRowKey
+  });
+
   function createTableState(): TableState {
-    const { columns, dataSource } = props;
+    const { dataSource } = props;
 
-    const lastColumn: TableColumn[] = getDFSLastColumns(columns ?? []);
+    // 标准化列配置信息
+    const columns = normalizeColumns(props);
 
-    if (lastColumn.length && !lastColumn.some((col) => col.expandable)) {
-      lastColumn[0].expandable = true;
+
+    if (internal_row_selection.value) {
+
+      columns.unshift(convertRowSelectionToColumn(internal_row_selection.value))
     }
 
-    let pagination;
-    if (props.pagination) {
-      pagination =
-        typeof props.pagination === "boolean"
-          ? {
-            page: 1,
-            size: 10,
-            total: dataSource?.length ?? 0,
-          }
-          : {
-            page: props.pagination.current ?? 1,
-            size: props.pagination.pageSize ?? 10,
-            total: props.pagination.total ?? 0,
-          };
-    }
+    // 标准化分页
+    const pagination = normalizePagination(props.pagination, dataSource);
 
     const {
       rowHeight,
@@ -175,11 +173,15 @@ export function useStateProvide({
       row_children_name: rowChildrenName,
       default_expand_all_rows: defaultExpandAllRows,
       default_expand_row_keys: defaultExpandedRowKeys,
-      pagination: pagination,
+      pagination: pagination ?? undefined,
     });
   }
 
   const state: Ref<UnwrapRef<TableState>> = ref(createTableState());
+
+  function internalGetRowKey(record: RawData, row_index: number): RowKey {
+    return state.value.row_state.get_row_key(record, row_index);
+  }
 
   // 处理展开逻辑
   const { handleRowExpand, expandedKeys, internalExpandedKeys } = useRowExpand({
