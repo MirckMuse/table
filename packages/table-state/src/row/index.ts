@@ -84,7 +84,6 @@ export class TableRowState {
       this.row_children_name = option.row_children_name;
     }
 
-
     this.before_init();
   }
 

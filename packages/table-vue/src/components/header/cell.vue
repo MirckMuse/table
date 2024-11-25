@@ -80,9 +80,7 @@ export default defineComponent({
         filterStates.push({ col_key: colKey, filter_keys: filterKeys });
       }
 
-      console.time('update_filter_states')
       tableState.value.update_filter_states(filterStates);
-      console.timeEnd('update_filter_states')
       callback['updateViewportDataSource']?.();
     }
 

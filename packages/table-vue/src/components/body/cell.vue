@@ -58,6 +58,7 @@ export default defineComponent({
         startRowIndex,
         endRowIndex,
       } = selection_state || {};
+
       if (!colKeys.length || startRowIndex === -1 || endRowIndex === -1) {
         return {};
       }
@@ -92,7 +93,7 @@ export default defineComponent({
 
     const cellClass = computed(() => {
       const { hoverState, column } = props;
-      // 十字架的格式需要确保 hover 的单元格的 key 和 meta 的 key一直
+      // 十字架的格式需要确保 hover 的单元格的 key 和 meta 的 key 一致
       return {
         [prefixClass]: true,
         [prefixClass + "__hover"]: !isNil(column.key) && hoverState?.colKey === column.key,
@@ -186,7 +187,6 @@ export default defineComponent({
           style: cellInnerStyle.value,
           ref: cellInnerRef,
         },
-
         [expandIcon ? expandIcon() : null].concat(
           props.transformCellText?.({
             text: children,

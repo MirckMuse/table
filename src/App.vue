@@ -35,7 +35,7 @@ const pagination = reactive<TablePaginationProps>({
 })
 
 const rowSelection = ref<ITableRowSelection>({
-  selectedRowKeys:[],
+  selectedRowKeys: [],
   onChange(){
     console.log(rowSelection.value.selectedRowKeys)
   }

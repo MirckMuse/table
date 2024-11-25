@@ -115,7 +115,7 @@ export function useRowExpand(option: IRowExpandOption) {
   return {
     expandedKeys: mergedExpandedKeys,
     handleRowExpand,
-    internalExpandedKeys
+    internalExpandedKeys,
   };
 }
 
@@ -137,9 +137,10 @@ export function useStateProvide({
     return ((record: RowData) => record[rowKey] as RowKey) as GetRowKey;
   });
 
-  const { internal_row_selection, convertRowSelectionToColumn } = useRowSelection(props, {
-    getRowKey: internalGetRowKey
-  });
+  const { internal_row_selection, convertRowSelectionToColumn } =
+    useRowSelection(props, {
+      getRowKey: internalGetRowKey,
+    });
 
   function createTableState(): TableState {
     const { dataSource } = props;
@@ -147,10 +148,10 @@ export function useStateProvide({
     // 标准化列配置信息
     const columns = normalizeColumns(props);
 
-
     if (internal_row_selection.value) {
-
-      columns.unshift(convertRowSelectionToColumn(internal_row_selection.value))
+      columns.unshift(
+        convertRowSelectionToColumn(internal_row_selection.value),
+      );
     }
 
     // 标准化分页
@@ -161,7 +162,7 @@ export function useStateProvide({
       childrenColumnName,
       rowChildrenName,
       defaultExpandAllRows,
-      defaultExpandedRowKeys
+      defaultExpandedRowKeys,
     } = props;
 
     return new TableState({
@@ -262,7 +263,7 @@ export function useStateProvide({
   });
 
   const callback = {
-    updateViewportDataSource: () => { },
+    updateViewportDataSource: () => {},
   };
 
   // 向下注入数据
@@ -295,8 +296,8 @@ export function useStateProvide({
   );
 
   return {
-    table_state: state
-  }
+    table_state: state,
+  };
 }
 
 export function useStateInject() {
